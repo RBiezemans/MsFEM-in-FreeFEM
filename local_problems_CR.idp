@@ -22,7 +22,7 @@
 //  b. -- [bx/by] the components of the advection field of the PDE
 //  consNormals -- function to construct normal vectors 
 //  edgeIntegral -- macro to select or exclude the global boundary in edge integration
-//  ip -- a macro to define inner productss
+//  ip -- a macro to define inner products
 //  
 // This file CREATES for later use in the MsFEM:
 //  Vx -- a P1 function on the fine mesh
