@@ -1,0 +1,101 @@
+// oversampling_build_patch.idp
+//
+// Construction of an over-sampling patch for a triangular coarse mesh element
+// This construction has only been verified for meshes with the option flag==0
+//  For flag==2, it probably suffices to changes the flag type of the patch container C defined below
+//
+//
+// This file USES:
+//  TH -- the coarse mesh of the global domain
+//  Th -- the fine mesh of the global domain
+//  i -- the integer associated to the triangle selected for over-sampling
+//    -- this triangle will be denoted by K in all comments below
+//  oscoef -- the homothety coefficient chosen for the over-sampling patch
+//  xb -- a P0 function on the coarse mesh 
+//        associates to each triangle the x-coordinate of its barycentre
+//  yb -- a P0 function on the coarse mesh
+//        associates to each triangle the y-coordinate of its barycentre
+//  h. -- [hx/hy] the fine mesh length scale in the .-direction
+//  time -- a real number representing the cpu time, used for performance assessment
+//  consNormals -- function to construct normal vectors 
+//  ipcheck -- a macro to check if two vectors point in the same direction
+//
+// This file CREATES for later use in the MsFEM:
+//  S -- the over-sampling patch, a restriction of the global fine mesh 
+//  RTh2S -- the array for making the conversion between the global fine mesh P1 space and the P1 space on S.
+
+
+// Defining the vertices of the ideal over-sampling patch (possibly lying partially outside the global domain)
+real[int,int] Kx(3,2); //save coordinates of the vertices belonging to K
+for(int kk=0; kk<3; kk++) {
+    Kx(kk,0) = TH[i][kk].x;
+    Kx(kk,1) = TH[i][kk].y;
+}
+real[int,int] Sx(3,2); //compute coordinates for the ideal over-sampling patch by homothety
+for(int kk=0; kk<3; kk++) {
+    Sx(kk,0) = (osCoef)*(Kx(kk,0) - xb[][i]) + xb[][i];
+    Sx(kk,1) = (osCoef)*(Kx(kk,1) - yb[][i]) + yb[][i];
+}
+
+if (timing) {
+    cout << "Defining the ideal patch and its normals lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
+
+
+// Definition of a patch-container C around K that is (much) smaller than Omega
+int NxC = Nx/nx;
+int NyC = Ny/ny;
+
+real xCL = (floor(Sx(:,0).min/hx)-1)*hx; //we take a small margin around the vertices of S as computed above
+xCL = max(0.,xCL); //ensure that the patch-container is a subset of the global domain
+real xCR = (ceil(Sx(:,0).max/hx)+1)*hx;
+xCR=min(Lx, xCR);
+real yCL = (floor(Sx(:,1).min/hy)-1)*hy;
+yCL = max(0., yCL);
+real yCR = (ceil(Sx(:,1).max/hy)+1)*hy;
+yCR = min(Ly, yCR);
+
+real dxC = xCR - xCL;
+int dxCn = lrint(dxC/hx); //integer closest to dxC/hx -- ensures that the mesh C defined below is compatible with Th
+real dyC = yCR - yCL;
+int dyCn = lrint(dyC/hy);
+
+mesh C=square(dxCn, dyCn, [xCL + dxC*x, yCL + dyC*y] );
+fespace VCh(C, P1);
+
+
+// Defining the ideal over-sampling patch by 3 conditions: lying at the correct side of all three normals associated to S
+real[int,int] normS(3,2); normS=consNormals(Sx); //normals to each of the boundaries of S
+/* 3 conditions that together define S */
+func cond1 = ( ipcheck(normS(2,:), Sx(0,:) ) < -1E-8 );
+func cond2 = ( ipcheck(normS(0,:), Sx(1,:) ) < -1E-8 );
+func cond3 = ( ipcheck(normS(1,:), Sx(2,:) ) < -1E-8 );
+
+VCh patch;
+patch = cond1 && cond2 && cond3; 
+// patch is a P1 representation of the conditions cond1, cond2 and cond3 being satisfied at the nodes of a fine mesh element
+// S is obtained by requiring that they are all satisfied in all the vertices, i.e. patch > 2/3
+// patch is built on C rather than Th entirely to save time in costly function evaluations
+if (debug) {
+    plot(C, patch, phi, fill=1, cmm="Mesh element and over-sampling patch", wait=1);
+}
+if (timing) {
+    cout << "Building the indicator function for the (real) patch lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
+
+
+// Build the real over-sampling patch S with the help of the function patch
+int[int] Th2S;
+mesh S = trunc(Th, patch>0.9, split=1, label=1, new2old=Th2S);
+// I would rather trunc C here, but then I do not know how to recover my basis functions in the correct numbering of the DOF
+fespace VSh(S,P1);
+int[int] RTh2S= restrict(VSh,Vh,Th2S);
+
+if (debug) plot(C, S, cmm="Over-sampling fine mesh", wait=1);
+
+if (timing) {
+    cout << "Building the patch lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
