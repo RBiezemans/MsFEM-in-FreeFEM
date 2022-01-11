@@ -1,0 +1,283 @@
+// init.idp
+//
+// Initialization of many relevant objects based on the name of the method
+// and the parameters given in an external file "parameters.txt"
+//
+// Compatible with both sequential and parallel versions (main_* files)
+// 
+//
+// This file REQUIRES 
+//  a main file  for:
+//  - name -- a string containing an acronyme for the MsFEM method that will be used..
+//            ..for all storage purposes
+//  - nbproc -- the number of processes
+//
+// This file CREATES
+// for external storage of computations and results
+// - values for the numerical test:
+//   -- eps (microscale), alpha (diffusion minimum), cont (contrast)
+//   -- theta (angle of advection field) 
+// - parametersFine -- relevant parameters for the reference solution
+// - parameters -- relevent parameters for the MsFEM solution
+// - name -- updated name for the method including MsFEM options
+// -         (use of bubbles, type of test function, weak/strong Dirichlet)
+// - basisDir -- name of the directory that will be used/created for reading/..
+//               ..saving the numerical correctors and bubbles
+// - coeffDir -- name of the directory that will be used/created for reading/..
+//               ..saving the effective coefficients associated to the MsFEM
+// the following parameters relevant for the numerical method
+// - useB == 0 : no bubbles are used in the trial space
+//        == 1 : bubbles are used in the trial space
+//               (predetermined coefficient == average of RHS function)
+// - testMS == 0 : test space is the coarse P1 space
+//          == 1 : test space is equal to the multiscale trial space
+// - strongDir == 0 : CR elements are defined with weak boundary conditions..
+//                    ..on the boundary of the global domain (average sense)
+//             == 1 : CR elements are defined with strong boundary conditions..
+//                    ..on the boundary of the global domain
+// - oscoef -- the homothety coefficient chosen for the over-sampling patch
+// for defining the PDE
+// - adif -- macro to be used in variational forms associated to diffusion
+// - aadv -- macro to be used in variational forms associated to diffusion
+// - a -- macro to be used in variational forms associated to the entire PDE
+// - fRHS -- function that is the RHS of the PDE
+// - rhsDescription -- string describing fRHS for documentation
+// objects for later use in the MsFEM
+// - TH -- coarse mesh
+// - VH0 -- P0 space on TH
+// - xb -- a P0 function on TH
+//         associates to each triangle the x-coordinate of its barycentre
+// - yb -- a P0 function TH
+//         associates to each triangle the y-coordinate of its barycentre
+// - phi -- a P0 function on TH to loop over coarse mesh elements
+// - Th -- fine mesh
+// - Vh -- P1 space on Vh
+// - widthMadiot -- boundary layer at the outflow according to Madiot
+// - storeV. -- [storeVx/storeVy] array to store numerical correctors associated..
+//              ..to the .-direction for each coarse mesh element
+// - storeB -- array to store the bubble functions for each coarse mesh element
+// - effective coefficients, the following P0 elements on the coarse mesh:
+//   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, rHx, rHy, rH, fH;
+//   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS, rHxTestMS, rHyTestMS, fHxTestMS, fHyTestMS;
+//   -- iAHxx, iAHxy, iAHyx, iAHyy, iBHx, iBHy, irHx, irHy, irH, ifH;
+//   -- iAHxxTestMS, iAHxyTestMS, iAHyxTestMS, iAHyyTestMS, irHxTestMS, irHyTestMS, ifHxTestMS, ifHyTestMS;
+
+
+/////// TO BE DONE
+// describe input, output, equation, assumptions (e.g. b does not need to be divergence free any more)
+// Possibility to construct the same method without advection in the basis functions (MsFEM rather than adv-MsFEM)
+// Understand and explain how the OS coefficient works, how large one can take it, etc.
+//  Also provide some correction of size h... None of this is clear now !!!
+//  Investigate OS strategies if flags in the mesh creation is not set to 0.
+
+// bool methodRHSbubbles=true; //include bubbles in the discrete problem that correspond to a piecewise constqnt approximation of the RHS
+// bool reconstructRHSbubbles=true; //include bubbles in the solution that correspond to a piecewise constant approximation of the RHS
+// if (!methodRHSbubbles) reconstructRHSbubbles=false;
+// NOTE that we never include the bubbles in the DOF but only multiply it by the mean of the RHS when the bubble option is activated
+////////
+
+
+///////////////////////////////////////////////////////////////////////
+// Some additional parameters that are used during code development  //
+int debug=0; //display/hide intermediate output                      //
+int plotBubbles=0; //show plots of numerical correctors and bubbles  //
+int plots=1; //display/hide basic input and output plots             //
+int timing=0; //time certain steps in oversampling methods           //
+///////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////
+// Declaring and reading external parameters                         //
+///////////////////////////////////////////////////////////////////////
+
+// Parameters defining the domain
+real L, Lx, Ly;
+// Parameters defining the fine mesh
+int Ndiscr, Nx, Ny;
+// Parameters defining the coarse mesh
+int n, nx, ny;
+// Parameters defining the PDE
+real eps, alpha, theta, cont, osCoef;
+//theta: angle of the advection field
+//cont: contrast of the multiscale coefficient
+int logalpha, logeps
+// Parameters tuning the MsFEM method
+int strongDir, useB, advMS, testMS;
+
+// Reading parameters from external file "parameters.txt"
+{
+	ifstream f("parameters.txt");
+	string read;
+	f >> read >> L;        Lx=L; Ly=L;
+	f >> read >> Ndiscr;   Nx=Ndiscr; Ny=Ndiscr;
+	f >> read >> n;		   nx=n; ny=n;
+	f >> read >> logeps;   eps=2.^logeps;
+	f >> read >> logalpha; alpha=2.^logalpha;
+	f >> read >> theta;
+	f >> read >> cont;
+    f >> read >> osCoef;
+	f >> read >> strongDir;
+	f >> read >> useB;
+	f >> read >> advMS;
+	f >> read >> testMS;
+}
+
+if (name=="CR_OS" || name=="CR_OS_MPI"){
+	assert(strongDir==0); 
+	//strong Dirichlet conditions for oversampling are not yet..
+	//..supported	[in progress]
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// Define the PDE                                                    //
+///////////////////////////////////////////////////////////////////////
+
+// Diffusion coefficient
+real delta = (cont-1.)/(cont+1.);
+func nu=alpha*(1+cont*cos(pi/eps*x)^2 * sin(pi/eps*y)^2);
+// Advection coefficient
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
+ 
+macro adif(u,v,nu) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu)// EOM
+//bilinear form associated to diffusion
+macro aadv(u,v,bx,by) ( v*(  bx*dx(u)+by*dy(u) ) )// EOM
+//bilinear form associated to advection
+macro a(u,v,nu,bx,by) (adif(u,v,nu) + aadv(u,v,bx,by))// EOM
+//bilinear form for advection-diffusion PDE
+
+// RHS of the PDE to be solved
+func fRHS=sin(x)*sin(y); 
+string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+//string used to document the tests performed in the error file
+
+if (plots) { //plot of diffusion coefficient
+	Vh nuh = nu;
+	plot(nuh, cmm="Diffusion coefficient", wait=1, fill=1, value=1);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// Define the global coarse and fine meshes and numerical parameters //
+///////////////////////////////////////////////////////////////////////
+
+// Coarse mesh TH
+real Hx=Lx/nx, Hy=Ly/ny;
+mesh TH=square(nx,ny,[Lx*x,Ly*y]);
+fespace VH0(TH,P0); //piecewise constant FE space on coarse mesh
+VH0 phi=0; //pw constant function to loop over coarse mesh elements
+VH0 xb,yb;
+xb=x; yb=y; //interpolate and stock the coordinates of the barycentre for each triangle
+
+// Fine mesh Th
+real hx=Lx/Nx, hy=Ly/Ny;
+int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements
+mesh Th=square(Nx,Ny,[Lx*x,Ly*y], label=labs);
+fespace Vh(Th,P1); //fine global FE space
+
+// Peclet numbers and boundary layer definition of F. Madiot
+real PeGlob = 1./2./alpha; //global Peclet number, computational domain
+real PeLoc = PeGlob*sqrt(2)/nx; //local Peclet number, coarse mesh
+real PeFine = PeGlob*sqrt(2)/Nx; //local Peclet number, fine mesh
+real widthMadiot = log(PeGlob)/PeGlob;
+
+
+///////////////////////////////////////////////////////////////////////
+// Define directory and file names for storage and output            //
+///////////////////////////////////////////////////////////////////////
+
+// Parameter strings for reference and MsFEM solution names
+string parametersFine = "_alpha_" + alpha + "_cont_" + cont + "_eps_" + eps; 
+//parameters relevant for the reference solution
+string parameters = parametersFine;
+parametersFine = parametersFine + "_N_" + Ndiscr;
+
+if (name=="CR_OS" || name=="CR_OS_MPI" || name=="LIN_OS" || name=="LIN_OS_MPI") {
+    //add OS coefficient for OS methods
+	parameters = parameters + "_OS_" + osCoef;
+}
+parameters = parameters + "_N_" + Ndiscr;
+parameters = parameters + "_n_" + nx;
+
+// Update name string to characterize specific MsFEM options
+if (name=="CR" || name=="CR_MPI" || name=="CR_OS" || name=="CR_OS_MPI") {
+	//specify the use of weak or strong BC for CR methods
+	if (strongDir) name = name + "_strDir";
+	else name = name + "_weakDir";
+}
+
+// Directory names for storage of numerical correctors, bubble functions..
+// ..for the MsFEM space, effective coefficient
+string basisDir = "basis_" + name + parameters;
+// The use of test function is irrelevant for the basis computation, but..
+// ..does (in some cases) impact the effective coefficients, so we add it
+// ..to name now
+name = name + "_testMS_" + testMS;
+string coeffDir = "effective_coeff_" + name + parameters;
+
+// The actual use of bubbles is handled later and irrelevant for basis..
+// ..computations, so we add it to name now
+if (useB) name = name + "_wB";
+else name = name + "_nB";
+
+
+///////////////////////////////////////////////////////////////////////
+// Define internal data structures                                   //
+///////////////////////////////////////////////////////////////////////
+
+int ndofOffline;
+{
+    //obtain the number of DOF for the discretization of each coarse element
+    phi[][0]=2;
+    mesh K=trunc(Th,phi>1,split=1);
+    fespace VK(K,P1);
+    ndofOffline=VK.ndof;
+	phi[][0]=0;
+}
+
+// Data structures to store offline computations, to be re-used in the reconstruction phase
+int storeLen = VH0.ndof/nbproc;
+if (VH0.ndof%nbproc>0) {
+	storeLen += 1; //correction for round-off
+}
+real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
+real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
+real[int,int] storeB(storeLen,ndofOffline); storeB=0;
+
+
+///////////////////////////////////////////////////////////////////////
+// Effective coefficients for the macroscopic problem                //
+///////////////////////////////////////////////////////////////////////
+
+// Effective coefficients for the main process (== only process for sequential code)
+VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0, BHx=0, BHy=0, rHx=0, rHy=0, rH=0, fH=0;
+//
+// AH.. respresent the 2x2 matrix that captures the effective (physical + upscaling) diffusion due to multiscale basis functions
+// BH.  represent the 2x1 vector that captures the effective (physical + upscaling) advection due to multiscale basis functions
+// 
+// rH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the trial space
+// rH represents the numerical advection due to bubble functions in the trial space
+//    these terms only appear on the RHS of the macro-scale scheme (hence are tested only against a single function)
+//
+// fH contains the average of the RHS function on each mesh element, to be used as coefficients for the bubble functions
+
+// Additional coefficients of the effective problem that are non-zero if multi-scale test functions are used
+VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, rHxTestMS=0, rHyTestMS=0, fHxTestMS=0, fHyTestMS=0;
+
+// Effective coefficients for the current process, to be sent to the main process later
+VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0, iBHx=0, iBHy=0, irHx=0, irHy=0, irH=0, ifH=0;
+VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, irHxTestMS=0, irHyTestMS=0, ifHxTestMS=0, ifHyTestMS=0;
+ 
+// Effective variational formulation in terms of the above coefficients (to be computed)
+macro effectiveVar(uH,vH) (
+	 int2d(TH,qft=qf1pT)( dx(vH)*AHxx*dx(uH) + dy(vH)*AHyx*dx(uH) + dx(vH)*AHxy*dy(uH) + dy(vH)*AHyy*dy(uH) + vH*BHx*dx(uH) + vH*BHy*dy(uH) )
+	+int2d(TH,qft=qf1pT)( dx(vH)*AHxxTestMS*dx(uH) + dy(vH)*AHyxTestMS*dx(uH) + dx(vH)*AHxyTestMS*dy(uH) + dy(vH)*AHyyTestMS*dy(uH) )
+	-int2d(TH)(fRHS*vH)
+	-int2d(TH)(fHxTestMS*dx(vH) + fHyTestMS*dy(vH))
+    -int2d(TH,qft=qf1pT)( fH*(rH*vH+rHx*dx(vH)+rHy*dy(vH)) )
+	-int2d(TH,qft=qf1pT)( fH*(rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) )
+) // EOM
+// All piecewise constant coefficients are computed in such a way that the evaluation..
+// ..of the respective integrals at the barycentre corresponds to the exact integral..
+// ..to be computed for the effective problem
