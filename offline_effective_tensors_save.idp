@@ -1,0 +1,90 @@
+{
+    string matrixFile = coeffDir + "/AHxx.txt";
+    ofstream ffmat (matrixFile);
+    ffmat << AHxx[];
+}
+{
+    string matrixFile = coeffDir + "/AHyx.txt";
+    ofstream ffmat (matrixFile);
+    ffmat << AHyx[];
+}
+{
+    string matrixFile = coeffDir + "/AHxy.txt";
+    ofstream ffmat (matrixFile);
+    ffmat << AHxy[];
+}
+{
+    string matrixFile = coeffDir + "/AHyy.txt";
+    ofstream ffmat (matrixFile);
+    ffmat << AHyy[];
+}
+{
+    string matrixFile = coeffDir + "/BHx.txt";
+    ofstream ffmat (matrixFile);
+    ffmat << BHx[];
+}
+{
+    string matrixFile = coeffDir + "/BHy.txt";
+    ofstream ffmat (matrixFile);
+    ffmat << BHy[];
+}
+
+if (testMS) {
+    {
+        string matrixFile = coeffDir + "/AHxxTestMS.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << AHxxTestMS[];
+    }
+    {
+        string matrixFile = coeffDir + "/AHyxTestMS.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << AHyxTestMS[];
+    }
+    {
+        string matrixFile = coeffDir + "/AHxyTestMS.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << AHxyTestMS[];
+    }
+    {
+        string matrixFile = coeffDir + "/AHyyTestMS.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << AHyyTestMS[];
+    }
+}
+
+if(useB) {
+
+    {
+        string matrixFile = coeffDir + "/rH.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << rH[];
+    }
+    {
+        string matrixFile = coeffDir + "/rHx.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << rHx[];
+    }
+    {
+        string matrixFile = coeffDir + "/rHy.txt";
+        ofstream ffmat (matrixFile);
+        ffmat << rHy[];
+    }
+
+    if(testMS) {
+        {
+            string matrixFile = coeffDir + "/rHxTestMS.txt";
+            ofstream ffmat (matrixFile);
+            ffmat << rHxTestMS[];
+        }
+        {
+            string matrixFile = coeffDir + "/rHyTestMS.txt";
+            ofstream ffmat (matrixFile);
+            ffmat << rHyTestMS[];
+        }
+    }
+}
+// {
+//     string matrixFile = coeffDir + "/fH.txt";
+//     ofstream ffmat (matrixFile);
+//     ffmat << fH[];
+// }

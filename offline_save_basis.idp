@@ -1,0 +1,17 @@
+// store basis functions on current triangle
+{
+    string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
+    ofstream writeVx(basisname);
+    writeVx << Vx[];
+}
+{
+    string basisname = basisDir + "/tri_" + i+ "_Vy" + ".txt";
+    ofstream writeVy(basisname);
+    writeVy << Vy[];
+}
+if(useB) {
+    string basisname = basisDir + "/tri_" + i+ "_B" + ".txt";
+    ofstream writeB(basisname);
+    writeB << B[];
+}
+

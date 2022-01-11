@@ -9,6 +9,8 @@
 //  - the oversampling patch [S]
 //  - the fine-scale P1 space on S [VS]
 //  - the array for making the conversion between the P1 space Vh (global) and the P1 space VS (on S) [RTh2S]
+//  offline_save_basis.idp to save numerical correctors and bubble functions for.. 
+//  ..a single coarse mesh element
 //
 // This file USES:
 //  Th -- the fine mesh of the global domain
@@ -20,6 +22,9 @@
 //  a -- the bilinear of the variational formulation of the PDE to be solved
 //  nu -- the (scalar) diffusion coefficient of the PDE
 //  b. -- [bx/by] the components of the advection field of the PDE
+//  storeV. -- [storeVx/storeVy] array to store numerical correctors associated..
+//              ..to the .-direction for each coarse mesh element
+//  storeB -- array to store the bubble functions for each coarse mesh element
 //  
 // This file CREATES for later use in the MsFEM:
 //  Vx -- a P1 function on the fine mesh
@@ -73,3 +78,13 @@ if(useB) {
     swap[](RTh2S)=BS[]; B[]=swap[](RK2Th);
 }
 
+if (plotBubbles) {
+    plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
+    plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
+    if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
+}
+
+
+// Saving (internally and externally) the offline computations
+storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+include "offline_save_basis.idp" //store numerical correctors, bubble functions on K

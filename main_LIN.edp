@@ -1,0 +1,69 @@
+// main_LIN.edp
+//
+// Computation of a numerical approximation to the PDE defined in init.idp
+// by the adv-MsFEM-LIN method
+// WITHOUT relying on a precomputed basis
+//
+// Parameters are read from parameters.txt
+//
+// 
+// This file INCLUDES
+// - init.idp to read parameters and initialize all objects needed for the MsFEM
+// - local_problems_LIN.idp to execute local computations for the adv-MsFEM-LIN..
+//   ..(numerical correctors and bubble functions) on a single coarse mesh element
+// - offline_effective_tensors.idp to compute the effective coefficients on a..
+//   ..single coarse mesh element
+// - offline_effective_tensors_save.idp to save the effective coefficient
+// - post.idp to create the output (reconstrucing the fine scale solution,.. 
+//   ..saving the coarse solution, reconstructed solution, errors)
+//
+// This file CREATES for later use in the MsFEM:
+//  uH -- the P1 solution to the effective macroscopic problem
+
+
+string name = "LIN"; //accronyme for the adv-MsFEM-LIN
+
+int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
+
+
+// INITALIZATION
+include "init.idp"
+// Build directories to save the results from the upcoming offline phase
+{
+    string createDir = "mkdir -p " + "basis_" + name + parameters;
+    exec(createDir); //directory to store numerical correctors and bubble functions
+    createDir = "mkdir -p " + "effective_coeff_" + name + parameters;
+    exec(createDir); //directory to store the effective coefficients for the MsFEM
+}
+
+
+// OFFLINE PHASE
+// Computation of numerical correctors and bubble functions per coarse mesh element
+// VH0 is the P0 space on coarse mesh -- created in init.idp
+// Data structures storeVx, storeVy, store B were created in init.idp
+for(int i=0; i<VH0.ndof; i++) {
+    cout <<"construction ms coefficients on tri "<<i<<endl;
+    phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
+
+    include "local_problems_LIN.idp" //compute numerical correctors, bubble functions on K
+    //saving the offline computations and computing effective tensor on K is also done here
+    include "offline_effective_tensors.idp" //compute effective coefficient on K
+
+    if (debug) cout << endl;
+    phi[][i]=0;
+}
+include "offline_effective_tensors_save.idp" //save effective coefficient (for the entire coarse mesh)
+
+
+// ONLINE PHASE -- solving the effective problem
+fespace VH(TH,P1); //coarse global FE space 
+VH uH,vH; //the global problem is formulated on a standard FE P1-basis
+solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH)(tgv*uH*vH);
+// BC need to be set depending on the type of FE used (conforming P1 here)
+// For P1 FE, the problem with classical Dirichlet conditions is well-posed
+// effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
+if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
+
+
+// POST-PROCESSING -- reconstruction, error computation, documentation
+include "post.idp"
