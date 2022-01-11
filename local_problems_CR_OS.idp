@@ -21,7 +21,6 @@
 //
 // This file USES:
 //  Th -- the fine mesh of the global domain
-//  TH -- the coarse mesh of the global domain
 //  phi -- a P0 function on the coarse mesh that is used to partition the global domain
 //  i -- the integer associated to the triangle indicated by phi
 //  xb -- a P0 function on the coarse mesh 
