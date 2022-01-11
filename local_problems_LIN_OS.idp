@@ -84,7 +84,4 @@ if (plotBubbles) {
     if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
 }
 
-
-// Saving (internally and externally) the offline computations
-storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
-include "offline_save_basis.idp" //store numerical correctors, bubble functions on K
+include "offline_save_basis.idp" //store (externally) numerical correctors, bubble functions on K

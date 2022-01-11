@@ -1,0 +1,23 @@
+//send contributions to the effective coefficients computed by the current process to the main process
+
+mpiReduce(iAHxx[], AHxx[], processor(0,comm), mpiSUM);
+mpiReduce(iAHyx[], AHyx[], processor(0,comm), mpiSUM);
+mpiReduce(iAHxy[], AHxy[], processor(0,comm), mpiSUM);
+mpiReduce(iAHyy[], AHyy[], processor(0,comm), mpiSUM);
+mpiReduce(iBHx[], BHx[], processor(0,comm), mpiSUM);
+mpiReduce(iBHy[], BHy[], processor(0,comm), mpiSUM);
+mpiReduce(irH[], rH[], processor(0,comm), mpiSUM);
+mpiReduce(irHx[], rHx[], processor(0,comm), mpiSUM);
+mpiReduce(irHy[], rHy[], processor(0,comm), mpiSUM);
+mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
+
+if (testMS) {
+    mpiReduce(iAHxxTestMS[], AHxxTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(iAHyxTestMS[], AHyxTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(iAHxyTestMS[], AHxyTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(iAHyyTestMS[], AHyyTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(irHxTestMS[], rHxTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(irHyTestMS[], rHyTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
+}
