@@ -23,7 +23,9 @@ func real[int,int] consNormals(real[int,int] & pp) {
 }
 
 
-// Integrals over edges (label==0 -> boundary of global domain, label==1 -> only interior edges are considered)
+// Integrals over edges 
+// In the use, we respect the following conventions;
+//   label==-1 -> boundary of global domain,  label==1 -> only interior edges are considered
 macro edgeIntegral(S,label,normS,edg,fnc) (int1d(S,label)( (ip(N.x,N.y,normS(edg,:))>0.99) *fnc))// EOM
 
 

@@ -8,6 +8,12 @@
 //  numerical correctors as well as bubble functions are only imposed to have zero mean on the boundary of the global domain
 //
 //
+// This file REQUIRES
+//  tools_CR_and_OS.idp  for:
+//  - consNormals -- function to construct normal vectors 
+//  - edgeIntegral -- macro to select or exclude the global boundary in edge integration
+//  - ip -- a macro to define inner products
+//
 // This file USES:
 //  Th -- the fine mesh of the global domain
 //  TH -- the coarse mesh of the global domain
@@ -20,9 +26,6 @@
 //  a -- the bilinear of the variational formulation of the PDE to be solved
 //  nu -- the (scalar) diffusion coefficient of the PDE
 //  b. -- [bx/by] the components of the advection field of the PDE
-//  consNormals -- function to construct normal vectors 
-//  edgeIntegral -- macro to select or exclude the global boundary in edge integration
-//  ip -- a macro to define inner products
 //  
 // This file CREATES for later use in the MsFEM:
 //  Vx -- a P1 function on the fine mesh
@@ -46,14 +49,15 @@ for(int kk=0; kk<3; kk++) {
 real[int,int] normK(3,2); normK=consNormals(Kx); //normal vectors associated to the edges of K
 
 
-// Select edges of K on which to impose Crouzeix-Raviart BC (i.e. not lying on the boundary of the global domain if strong Dirichlet conditions are chosen)
-// This relies on the fact that the global boundary was given the label 0, and the local boundaries the label 1
+// Select edges of K on which to impose Crouzeix-Raviart BC 
+// (i.e. not lying on the boundary of the global domain if strong Dirichlet conditions are chosen)
+// This relies on the fact that the global boundary was given the label -1, and the interior local boundaries the label 1
 real[int] edges(3); edges=3; //to store those indices corresponding to the edges where CR conditions are imposed
-int nedges=0; // number of edges where CR conditions will be imposed
+int nedges=0; //number of edges where CR conditions will be imposed
 if (strongDir) {
     for (int k=0; k<3; k++) {
         if (edgeIntegral(K,1,normK,k,1) > hx/10.) {
-            //this conditions tests positive iff edge k does not lie on the boundary of the global domain
+            //this condition tests positive iff edge k does not lie on the boundary of the global domain
             edges[nedges]=k;
             nedges+=1;
         }
@@ -75,10 +79,11 @@ if (strongDir) { //add strong Dirichlet conditions to A if required
     A = A+Adir;
 } //otherwise all boundary conditions are handled by the linear constraints
 
-int edg;
+int edg; //a dummy in intEdge representing integrations over each respective edge
 varf intEdge(unused,vh) = edgeIntegral(K,1,normK,edg,vh) + edgeIntegral(K,-1,normK,edg,vh); //variational formulation of local problems -- bilinear form -- Lagrange multipliers/linear constraints
 real[int,int] arrB(VK.ndof,nedges); //linear system of the local problems -- matrix associated to the Lagrange multipliers/linear constraints
-for(int k=0; k<nedges; k++) { //linear constraints are not to be imposed on the boundary of the global domain if strong Dirichlet conditions are chosen
+for(int k=0; k<nedges; k++) { 
+    //integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions
     edg=edges[k];
     // if (debug) {
     //     real meas=edgeIntegral(K,1,normK,edg,1) + edgeIntegral(K,-1,normK,edg,1);
@@ -114,30 +119,38 @@ if (debug) {
     cout << "Midpoints of the relevant edges: " << midpoints << endl;
 }
 
-// Define functions to set the correct boundary conditions for the numerical correctors (if strong Dirichlet conditions are chosen)
-// The following two functions are supported on the edges of K and ensure that (CR P1 basis function + numerical corrector) is zero on the boundary of the global domain
-func bcVx = (ip(N.x,N.y,normK(0,:))>0.99)*(x-midpoints(0,0)) + (ip(N.x,N.y,normK(1,:))>0.99)*(x-midpoints(1,0)) + (ip(N.x,N.y,normK(2,:))>0.99)*(x-midpoints(2,0));
-func bcVy = (ip(N.x,N.y,normK(0,:))>0.99)*(y-midpoints(0,1)) + (ip(N.x,N.y,normK(1,:))>0.99)*(y-midpoints(1,1)) + (ip(N.x,N.y,normK(2,:))>0.99)*(y-midpoints(2,1));
+// Define functions to set the correct boundary conditions for the numerical correctors 
+// (if strong Dirichlet conditions are chosen)
+// The following two functions are supported on the edges of K and ensure that..
+// ..(CR P1 basis function + numerical corrector) is zero on the boundary of the global domain
+func bcVx = (ip(N.x,N.y,normK(0,:))>0.99)*(x-midpoints(0,0)) 
+    + (ip(N.x,N.y,normK(1,:))>0.99)*(x-midpoints(1,0)) 
+    + (ip(N.x,N.y,normK(2,:))>0.99)*(x-midpoints(2,0));
+func bcVy = (ip(N.x,N.y,normK(0,:))>0.99)*(y-midpoints(0,1)) 
+    + (ip(N.x,N.y,normK(1,:))>0.99)*(y-midpoints(1,1)) 
+    + (ip(N.x,N.y,normK(2,:))>0.99)*(y-midpoints(2,1));
 varf boundaryVx(unused,vh) = -int1d(K,-1)(tgv*bcVx*vh);
 varf boundaryVy(unused,vh) = -int1d(K,-1)(tgv*bcVy*vh);
 // Strong Dirichlet conditions for the bubble functions are yet to be implementated
 
+// Complete definition and resolution of the linear systems for the fine-scale problems
 VK Vx=0, Vy=0, B=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
 // V. -- [Vx/Vy] is the numerical corrector associated to the .-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
 // uH. -- [uHx/uHy] is the coordinate function in the .-direction that appears in the definition of the effective coefficients
 //  it can also be used for the definition of the numerical correctors and bubble functions since the barycentre vanishes under the gradient
-// uH -- serves as a dummy in the variational formulation for V. and B
+// uH -- serves as a dummy in the variational form pbRHS to set the RHS for V. and B
 real[int] F(VK.ndof+nedges), X(VK.ndof+nedges); F=0;
 // F is used to set the RHS of the linear system for various problems
-// X is used to store the solutions to the linear systems. These contain the multi-scale basis functions and the Lagrange multipliers associated to the linear constraints
+// X is used to store the solutions to the linear systems. These contain the multi-scale basis functions..
+// ..and the Lagrange multipliers associated to the linear constraints
 
 varf pbRHS(unused,vh)=-int2d(K)(a(uH,vh,nu,bx,by)); //variational formulation of local problems -- linear form for the RHS of the numerical correctors
 varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
-
-// Complete definition and resolution of the linear systems for the fine-scale problems
+// Resolution:
 uH[]=uHx[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir) F(0:VK.ndof-1)+=boundaryVx(0,VK);  X=CRmat^-1*F;   Vx[]=X;
+//note that Vx[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
 uH[]=uHy[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir) F(0:VK.ndof-1)+=boundaryVy(0,VK);  X=CRmat^-1*F;   Vy[]=X;
 if (useB) {
-    F(0:VK.ndof-1)=id(0,VK); X=CRmat^-1*F; B[]=X;
+    F(0:VK.ndof-1)=id(0,VK);    X=CRmat^-1*F;   B[]=X;
 }

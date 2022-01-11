@@ -5,6 +5,11 @@
 //  For flag==2, it probably suffices to changes the flag type of the patch container C defined below
 //
 //
+// This file REQUIRES
+//  tools_CR_and_OS.idp  for:
+//  - consNormals -- function to construct normal vectors 
+//  - ipcheck -- a macro to check if two vectors point in the same direction
+//
 // This file USES:
 //  TH -- the coarse mesh of the global domain
 //  Th -- the fine mesh of the global domain
@@ -17,11 +22,10 @@
 //        associates to each triangle the y-coordinate of its barycentre
 //  h. -- [hx/hy] the fine mesh length scale in the .-direction
 //  time -- a real number representing the cpu time, used for performance assessment
-//  consNormals -- function to construct normal vectors 
-//  ipcheck -- a macro to check if two vectors point in the same direction
 //
 // This file CREATES for later use in the MsFEM:
 //  S -- the over-sampling patch, a restriction of the global fine mesh 
+//  normS -- the normals of the original mesh element == those of the ideal over-sampling patch 
 //  VS -- P1 finite element space on S
 //  RTh2S -- the array for making the conversion between the global fine mesh P1 space and the P1 space on S
 
