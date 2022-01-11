@@ -78,7 +78,7 @@ for(int i=0; i<VH0.ndof; i++) {
     uHhK+=uHdx[][i]*storeVx(i,:); //reconstructing the numerical corrector for the x-direction
     if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx");}
     uHhK+=uHdy[][i]*storeVy(i,:); //reconstructing the numerical corrector for the y-direction
-    if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + +Vx + Vy");}
+    if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx + Vy");}
 
     int[int] R=restrict(VKh, Vh, n2o);
     uHh[](R)=uHhK;

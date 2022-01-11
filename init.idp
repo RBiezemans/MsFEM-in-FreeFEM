@@ -100,7 +100,7 @@ int n, nx, ny;
 real eps, alpha, theta, cont, osCoef;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
-int logalpha, logeps
+int logalpha, logeps;
 // Parameters tuning the MsFEM method
 int strongDir, useB, advMS, testMS;
 
@@ -126,7 +126,34 @@ if (name=="CR_OS" || name=="CR_OS_MPI"){
 	assert(strongDir==0); 
 	//strong Dirichlet conditions for oversampling are not yet..
 	//..supported	[in progress]
+	assert(advMS==1); 
+	//only adv-MsFEM variants (as opposed to MsFEM) are available
 }
+
+
+///////////////////////////////////////////////////////////////////////
+// Define the global coarse and fine meshes and numerical parameters //
+///////////////////////////////////////////////////////////////////////
+
+// Coarse mesh TH
+real Hx=Lx/nx, Hy=Ly/ny;
+mesh TH=square(nx,ny,[Lx*x,Ly*y]);
+fespace VH0(TH,P0); //piecewise constant FE space on coarse mesh
+VH0 phi=0; //pw constant function to loop over coarse mesh elements
+VH0 xb,yb;
+xb=x; yb=y; //interpolate and stock the coordinates of the barycentre for each triangle
+
+// Fine mesh Th
+real hx=Lx/Nx, hy=Ly/Ny;
+int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements
+mesh Th=square(Nx,Ny,[Lx*x,Ly*y], label=labs);
+fespace Vh(Th,P1); //fine global FE space
+
+// Peclet numbers and boundary layer definition of F. Madiot
+real PeGlob = 1./2./alpha; //global Peclet number, computational domain
+real PeLoc = PeGlob*sqrt(2)/nx; //local Peclet number, coarse mesh
+real PeFine = PeGlob*sqrt(2)/Nx; //local Peclet number, fine mesh
+real widthMadiot = log(PeGlob)/PeGlob;
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -156,31 +183,6 @@ if (plots) { //plot of diffusion coefficient
 	Vh nuh = nu;
 	plot(nuh, cmm="Diffusion coefficient", wait=1, fill=1, value=1);
 }
-
-
-///////////////////////////////////////////////////////////////////////
-// Define the global coarse and fine meshes and numerical parameters //
-///////////////////////////////////////////////////////////////////////
-
-// Coarse mesh TH
-real Hx=Lx/nx, Hy=Ly/ny;
-mesh TH=square(nx,ny,[Lx*x,Ly*y]);
-fespace VH0(TH,P0); //piecewise constant FE space on coarse mesh
-VH0 phi=0; //pw constant function to loop over coarse mesh elements
-VH0 xb,yb;
-xb=x; yb=y; //interpolate and stock the coordinates of the barycentre for each triangle
-
-// Fine mesh Th
-real hx=Lx/Nx, hy=Ly/Ny;
-int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements
-mesh Th=square(Nx,Ny,[Lx*x,Ly*y], label=labs);
-fespace Vh(Th,P1); //fine global FE space
-
-// Peclet numbers and boundary layer definition of F. Madiot
-real PeGlob = 1./2./alpha; //global Peclet number, computational domain
-real PeLoc = PeGlob*sqrt(2)/nx; //local Peclet number, coarse mesh
-real PeFine = PeGlob*sqrt(2)/Nx; //local Peclet number, fine mesh
-real widthMadiot = log(PeGlob)/PeGlob;
 
 
 ///////////////////////////////////////////////////////////////////////

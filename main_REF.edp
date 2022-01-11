@@ -1,0 +1,26 @@
+// reference solution for advection-diffusion problems
+// run with   ff-mpirun -np 1 main_REF.edp  
+load "MUMPS"
+
+string name = "REF";
+
+int nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
+
+include "init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
+name = "REF"; // undo adaptations due to method settings
+
+
+Vh uh,vh; //the global problem is formulated on a standard FE basis !
+
+// BC need to be set depending on the type of FE used
+solve pb(uh,vh, solver=sparsesolver)=int2d(Th)(a(uh,vh,nu,bx,by)) +int1d(Th)(tgv*uh*vh)
+            -int2d(Th)(fRHS*vh);
+
+if (plots) plot(uh,value=1,wait=1,cmm="P1 solution on a global fine mesh");
+
+{
+    string solname = "sol_" + name + parametersFine + ".txt";
+    ofstream ff(solname);
+    ff << uh[] << endl;
+    ff << endl;
+}

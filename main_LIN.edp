@@ -1,5 +1,7 @@
 // main_LIN.edp
 //
+// run with   FreeFEM++ main_LIN.edp  
+//
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-LIN method
 // WITHOUT relying on a precomputed basis
@@ -30,9 +32,9 @@ int nbproc=1; //defined for compatibility with init.idp, that is also compatible
 include "init.idp"
 // Build directories to save the results from the upcoming offline phase
 {
-    string createDir = "mkdir -p " + "basis_" + name + parameters;
+    string createDir = "mkdir -p " + basisDir;
     exec(createDir); //directory to store numerical correctors and bubble functions
-    createDir = "mkdir -p " + "effective_coeff_" + name + parameters;
+    createDir = "mkdir -p " + coeffDir;
     exec(createDir); //directory to store the effective coefficients for the MsFEM
 }
 
