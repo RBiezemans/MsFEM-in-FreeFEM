@@ -1,0 +1,213 @@
+// local_problems_CR_OS.idp
+//
+// Computation of numerical correctors and bubble functions on a single coarse mesh element
+// for (adv-)MsFEM-CR on an oversamling patch
+//
+// TO BE DONE: considering the implementation of strong Dirichlet boundary conditions
+//  the current implementation can only be trusted for weak conditions: 
+//  numerical correctors as well as bubble functions are only imposed to have zero mean on the boundary of the global domain
+//
+//
+// This file REQUIRES
+//  tools_CR_and_OS.idp  for:
+//  - edgeIntegral -- macro to select or exclude the global boundary in edge integration
+//  - ip -- a macro to define inner products
+//
+// This file INCLUDES
+//  oversampling_build_patch.idp -- construction of:
+//  - the oversampling patch [S]
+//  - the fine-scale P1 space on S [VS]
+//  - the array for making the conversion between the P1 space Vh (global) and the P1 space VS (on S) [RTh2S]
+//
+// This file USES:
+//  Th -- the fine mesh of the global domain
+//  TH -- the coarse mesh of the global domain
+//  phi -- a P0 function on the coarse mesh that is used to partition the global domain
+//  i -- the integer associated to the triangle indicated by phi
+//  xb -- a P0 function on the coarse mesh 
+//        associates to each triangle the x-coordinate of its barycentre
+//  yb -- a P0 function on the coarse mesh
+//        associates to each triangle the y-coordinate of its barycentre
+//  a -- the bilinear of the variational formulation of the PDE to be solved
+//  nu -- the (scalar) diffusion coefficient of the PDE
+//  b. -- [bx/by] the components of the advection field of the PDE
+//  time -- a real number representing the cpu time, used for performance assessment
+//  
+// This file CREATES for later use in the MsFEM:
+//  Vx -- a P1 function on the fine mesh
+//        the nuemrical corrector for the x direction associated to the coarse mesh element indicated by phi
+//  Vy -- a P1 function on the fine mesh
+//        the nuemrical corrector for the y direction associated to the coarse mesh element indicated by phi
+//  B -- a P1 function on the fine mesh
+//       the bubble function for the MsFEM space associated to RHS = 1 
+
+
+// Construct fine mesh [K], over-sampling patch [S] and finite element space [VS], normals of S [normS]
+int[int] Th2K;
+mesh K=trunc(Th,phi>1,split=1,label=1,new2old=Th2K); 
+
+if (timing) {
+    cout << "Building the fine mesh locally lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
+
+include "oversampling_build_patch.idp"
+// Construction of S, normS, VS and RTh2S
+
+
+// Select edges of S on which to impose Crouzeix-Raviart BC 
+// (i.e. those edges of the patch that do correspond to an edge of the mesh element K..
+// ..that, if strong Dirichlet conditions are chosen, do not lie on the boundary of the global domain)
+// This relies on the fact that the global boundary was given the label -1, and the interior local boundaries the label 1
+real[int] edges(3); edges=3; //to store those indices corresponding to the edges where CR conditions are imposed
+int nedges=0; //number of edges where CR conditions will be imposed
+if (strongDir) {
+    for (int k=0; k<3; k++) {
+        if (edgeIntegral(K,1,normS,k,1) > hx/10.) {
+            //this condition tests positive iff edge k of K does not lie on the boundary of the global domain
+            edges[nedges]=k;
+            nedges+=1;
+        }
+    }
+} else {
+    nedges=3;
+    for (int k=0; k<nedges; k++) edges[k]=k;
+}
+
+if (debug) cout << "Edges for CR conditions: " << edges << endl;
+if (timing) {
+    cout << "Selecting the edges lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
+
+
+// Construction of the local problems with Crouzeix-Raviart boundary conditions
+// this is a sadlle point problem
+varf pdeLoc(uh,vh) = int2d(S)(a(uh,vh,nu,bx,by)); //variational formulation of local problems -- bilinear form -- LHS of the PDE on S of the saddle point problem
+matrix A = pdeLoc(VS,VS); //linear system of the local problems -- matrix associated to the PDE
+if (strongDir) {  //add strong Dirichlet conditions to A if required
+    varf pdeDir(uh,vh) = int1d(S,-1)(uh*vh*tgv);
+    matrix Adir = pdeDir(VS,VS);
+    A = A+Adir;
+}
+// Otherwise all boundary conditions corresponding to edges of K are handled by the linear constraints..
+// ..and all supplementary edges are given homogeneous Neumann conditions (which is automatically included in A)
+
+int edg; //a dummy in linF1 and linF2 representing integrations over each respective edge
+varf linF1(unused,vh) = edgeIntegral(S,1,normS,edg,vh) + edgeIntegral(S,-1,normS,edg,vh);
+real[int,int] arrB1(VS.ndof,nedges); //Lagrange multiplier matrix (linear form 1, for integrations over the boundary of S)
+for(int k=0; k<nedges; k++) {
+    //integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions
+    edg=edges[k];
+    real meas=edgeIntegral(S,1,normS,edg,1) + edgeIntegral(S,-1,normS,edg,1);
+    if (debug) cout << "Measure of over-sampled edge: " << meas << endl;
+    real[int] Bedge = linF1(0,VS);
+    Bedge = Bedge/meas;
+    arrB1(:,k) = Bedge;
+    if (debug) {
+        VS test;
+        test[] = arrB1(:,k);
+        plot(S, test, cmm="Edge selection on S for integration", fill=1, wait=1);
+    }
+}
+
+varf linF2(unused,vh) = edgeIntegral(K,1,normS,edg,vh) + edgeIntegral(K,-1,normS,edg,vh);
+real[int,int] arrB2(VS.ndof,nedges); //constraint matrix (linear form 2, for integrations over the boundary of K)
+for(int k=0; k<nedges; k++) {
+    edg=edges[k];
+    //integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions
+    //real meas=edgeIntegral(K,1,normS,edg,1) + edgeIntegral(K,-1,normS,edg,1);
+    //normalization is unnecessary since we are only imposing homogeneous constraints in the local problems
+    //if (debug) cout << "Measure of coarse element edge: " << meas << endl;
+    real[int] Bedge = linF2(0,VS);
+    //Bedge = Bedge/meas;
+    arrB2(:,k) = Bedge;
+    if (debug) {
+        VS test;
+        test[] = arrB2(:,k);
+        plot(S, test, cmm="Edge selection on K for integration", fill=1, wait=1);
+    }
+}
+
+matrix B1 = arrB1;
+matrix B2 = arrB2;
+
+matrix CRmat = [[A,B1],
+                [B2',0]]; /* matrix for local saddle-point problem on S */
+set(CRmat, solver=UMFPACK);
+
+if (timing) {
+    cout << "Building the matrix lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
+
+
+// Save midpoints of the edges of K for possible strong Dirichlet conditions
+real[int,int] midpoints(3,2);
+midpoints=-1;
+for(int k=0; k<3; k++) {
+    real meas=edgeIntegral(K,-1,normS,k,1);
+    if (meas>hx/10.) {
+        midpoints(k,0) = edgeIntegral(K,-1,normS,k,x)/meas;
+        midpoints(k,1) = edgeIntegral(K,-1,normS,k,y)/meas;
+    }
+}
+if (debug) {
+    cout << "Midpoints of the relevant edges: " << midpoints << endl;
+}
+// Define functions to set the correct boundary conditions for the numerical correctors 
+// (if strong Dirichlet conditions are chosen)
+// The following two functions are supported on the edges of S and ensure that..
+// ..(CR P1 basis function + numerical corrector) is zero on the boundary of the global domain
+func bcVx = (ip(N.x,N.y,normS(0,:))>0.99)*(x-midpoints(0,0)) 
+    + (ip(N.x,N.y,normS(1,:))>0.99)*(x-midpoints(1,0)) 
+    + (ip(N.x,N.y,normS(2,:))>0.99)*(x-midpoints(2,0));
+func bcVy = (ip(N.x,N.y,normS(0,:))>0.99)*(y-midpoints(0,1)) 
+    + (ip(N.x,N.y,normS(1,:))>0.99)*(y-midpoints(1,1)) 
+    + (ip(N.x,N.y,normS(2,:))>0.99)*(y-midpoints(2,1));
+varf boundaryVx(unused,vh) = -int1d(S,-1)(tgv*bcVx*vh);
+varf boundaryVy(unused,vh) = -int1d(S,-1)(tgv*bcVy*vh);
+// Strong Dirichlet conditions for the bubble functions are yet to be implementated
+
+
+// Complete definition and resolution of the linear systems for the fine-scale problems
+VS VxS=0, VyS=0, BS=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
+// V.S -- [VxS/VyS] is the numerical corrector on the patch associated to the .-direction
+// BS -- bubble function on the patch for the MsFEM space associated to RHS = 1
+// uH. -- [uHx/uHy] is the coordinate function in the .-direction that appears in the definition of the effective coefficients
+//  it can also be used for the definition of the numerical correctors and bubble functions since the barycentre vanishes under the gradient
+// uH -- serves as a dummy in the variational form pbRHS to set the RHS for V.S and BS
+real[int] F(VS.ndof+nedges), X(VS.ndof+nedges); F=0;
+// F is used to set the RHS of the linear system for various problems
+// X is used to store the solutions to the linear systems. These contain the multi-scale basis functions..
+// ..and the Lagrange multipliers associated to the linear constraints
+
+varf pbRHS(unused,vh)=-int2d(S)(a(uH,vh,nu,bx,by));  //variational formulation of local problems -- linear form for the RHS of the numerical correctors
+varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
+// Resolution:
+uH[]=uHx[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VxS[]=X;
+//note that Vx[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
+uH[]=uHy[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
+if (useB) {
+    F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X;
+}
+
+if (timing) {
+    cout << "Solving for the basis functions lasted " << clock()-time << " s" << endl;
+    time=clock();
+}
+
+
+// Restriction of the functions on the patch to the mesh element K
+// Since K is a truncation of the global mesh, we first renumber the DOF on S in correspondance with the global mesh 
+fespace VK(K,P1);
+int[int] RTh2K = restrict(VK,Vh,Th2K);
+Vh swap=0; //dummy used for global renumbering of functions on the patch
+VK Vx=0, Vy=0, B=0;
+// V. -- [Vx/Vy] is the numerical corrector associated to the .-direction
+// B -- bubble function for the MsFEM space associated to RHS = 1
+swap[](RTh2S)=VxS[]; Vx[]=swap[](RTh2K);
+swap[](RTh2S)=VyS[]; Vy[]=swap[](RTh2K);
+if(useB) {
+    swap[](RTh2S)=BS[]; B[]=swap[](RK2Th);
+}
