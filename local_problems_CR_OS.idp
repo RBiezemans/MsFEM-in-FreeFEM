@@ -14,7 +14,7 @@
 //  - ip -- a macro to define inner products
 //
 // This file INCLUDES
-//  oversampling_build_patch.idp -- construction of:
+//  tools_oversampling_patch.idp -- construction of:
 //  - the oversampling patch [S]
 //  - the fine-scale P1 space on S [VS]
 //  - the array for making the conversion between the P1 space Vh (global) and the P1 space VS (on S) [RTh2S]
@@ -50,7 +50,7 @@ if (timing) {
     time=clock();
 }
 
-include "oversampling_build_patch.idp"
+include "tools_oversampling_patch.idp"
 // Construction of S, normS, VS and RTh2S
 
 
