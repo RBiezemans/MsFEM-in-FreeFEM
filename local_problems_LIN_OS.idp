@@ -1,0 +1,67 @@
+// local_problems_LIN_OS.idp
+//
+// Computation of numerical correctors and bubble functions on a single coarse mesh element
+// for (adv-)MsFEM-LIN on an oversamling patch
+//
+//
+// This file USES:
+//  Th -- the fine mesh of the global domain
+//  phi -- a P0 function on the coarse mesh that is used to partition the global domain
+//  xb -- a P0 function on the coarse mesh 
+//        associates to each triangle the x-coordinate of its barycentre
+//  yb -- a P0 function on the coarse mesh
+//        associates to each triangle the y-coordinate of its barycentre
+//  a -- the bilinear of the variational formulation of the PDE to be solved
+//  nu -- the (scalar) diffusion coefficient of the PDE
+//  b. -- [bx/by] the components of the advection field of the PDE
+//  
+// This file CREATES for later use in the MsFEM:
+//  Vx -- a P1 function on the fine mesh
+//        the nuemrical corrector for the x direction associated to the coarse mesh element indicated by phi
+//  Vy -- a P1 function on the fine mesh
+//        the nuemrical corrector for the y direction associated to the coarse mesh element indicated by phi
+//  B -- a P1 function on the fine mesh
+//       the bubble function for the MsFEM space associated to RHS = 1 
+
+int[int] Th2K;
+mesh K=trunc(Th,phi>1,split=1,label=1,new2old=Th2K); 
+
+include "oversampling_build_patch.idp"
+// Construction of the oversampling patch [S],
+// the fine-scale P1 space on S [VS],
+// and the array for making the conversion between the P1 space Vh (global) and the P1 space VS (on S) [RTh2S]
+
+fespace VK(K,P1);
+VS VxS=0, VyS=0, BS=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
+// V.S -- [VxS/VyS] is the numerical corrector on the patch associated to the .-direction
+// BS -- bubble function on the patch for the MsFEM space associated to RHS = 1
+// uH. -- [uHx/uHy] is the coordinate function in the .-direction that appears in the definition of the effective coefficients
+//  it can also be used for the definition of the numerical correctors and bubble functions since the barycentre vanishes under the gradient
+// uH -- serves as a dummy in the variational formulation for V.S and BS
+
+varf pb(uh,vh)=int2d(S)(a(uh,vh,nu,bx,by)) + int1d(S)(tgv*uh*vh) //variational formulation of local problems -- bilinear form
+            -int2d(S)(a(uH,vh,nu,bx,by)); //variational formulation of local problems -- linear form for the RHS of the numerical correctors
+varf id(unused,vh) = int2d(S)(vh);  //variational formulation of local problems -- linear form of the RHS for the bubble functions
+
+// Definition and resolution of the linear systems for the fine-scale problems
+matrix A=pb(VS,VS, solver=UMFPACK);
+real[int] F(VS.ndof);
+uH[]=uHx[];  F=pb(0,VS);  VxS[]=A^-1*F;
+uH[]=uHy[];  F=pb(0,VS);  VyS[]=A^-1*F;
+if (useB) {
+    uH=1; F=id(0,VK); BS[]=A^-1*F;
+}
+
+// Restriction of the functions on the patch to the mesh element K
+// Since K is a truncation of the global mesh, we first renumber the DOF on S in correspondance with the global mesh 
+int[int] RTh2K = restrict(VK,Vh,Th2K);
+Vh swap=0; //dummy used for global renumbering of functions on the patch
+VK Vx=0, Vy=0, B=0;
+// V. -- [Vx/Vy] is the numerical corrector associated to the .-direction
+// B -- bubble function for the MsFEM space associated to RHS = 1
+swap[](RTH2S)=VxS[]; Vx[]=swap[](RTh2K);
+swap[](RTh2S)=VyS[]; Vy[]=swap[](RTh2K);
+if(useB) {
+    swap[](RTh2S)=BS[];   B[]=swap[](RK2Th);
+}
+
