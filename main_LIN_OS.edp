@@ -40,7 +40,7 @@ include "init.idp"
     exec(createDir); //directory to store the effective coefficients for the MsFEM
 }
 
-include "tools_CR_and_OS.idp"
+include "tools_CR_and_OS.idp" //load some functions and macros for OS
 
 
 // OFFLINE PHASE
