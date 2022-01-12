@@ -1,10 +1,11 @@
 // main_CROS.edp
 //
-// run with   FreeFEM++ main_CROS.edp  
+// run with   FreeFEM++ main_CROS.edp -o [offline_mode]
+//            -o specifies the option for the offline stage: either "compute" or "load"
+// The user must ensure at all times that the appropriate mode is used for correct results
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-CR method with over-sampling
-// WITHOUT relying on a precomputed basis
 //
 // Sequential version
 //
@@ -19,6 +20,7 @@
 // - offline_effective_tensors.idp to compute the effective coefficients on a..
 //   ..single coarse mesh element
 // - offline_effective_tensors_save.idp to save the effective coefficient
+// - offline_load.idp to replace the offline phase if it can be preloaded
 // - post.idp to create the output (reconstrucing the fine scale solution,.. 
 //   ..saving the coarse solution, reconstructed solution, errors)
 //
@@ -50,19 +52,23 @@ include "msfem_blocks/tools_CR_and_OS.idp"
 // Computation of numerical correctors and bubble functions per coarse mesh element
 // VH0 is the P0 space on the coarse mesh -- created in init.idp
 // Data structures storeVx, storeVy, store B were created in init.idp
-for(int i=0; i<VH0.ndof; i++) {
-    cout <<"construction ms coefficients on tri "<<i<<endl;
-    phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
+if (offlineMode == "compute") {
+    for(int i=0; i<VH0.ndof; i++) {
+        cout <<"construction ms coefficients on tri "<<i<<endl;
+        phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-    include "msfem_blocks/local_problems_CR_OS.idp" //compute numerical correctors, bubble functions on K
-    // Saving (internally) the offline computations on K
-    storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
-    include "msfem_blocks/offline_effective_tensors.idp" //compute effective coefficient on K
+        include "msfem_blocks/local_problems_CR_OS.idp" //compute numerical correctors, bubble functions on K
+        // Saving (internally) the offline computations on K
+        storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+        include "msfem_blocks/offline_effective_tensors.idp" //compute effective coefficient on K
 
-    if (debug) cout << endl;
-    phi[][i]=0;
+        if (debug) cout << endl;
+        phi[][i]=0;
+    }
+    include "msfem_blocks/offline_effective_tensors_save.idp" //save effective coefficient (for the entire coarse mesh)
+} else if (offlineMode == "load") {
+    include "msfem_blocks/offline_load.idp"
 }
-include "msfem_blocks/offline_effective_tensors_save.idp" //save effective coefficient (for the entire coarse mesh)
 
 
 // ONLINE PHASE -- solving the effective problem

@@ -29,9 +29,9 @@
 //        associates to each triangle the y-coordinate of its barycentre
 //  a -- the bilinear of the variational formulation of the PDE to be solved
 //  nu -- the (scalar) diffusion coefficient of the PDE
-//  b. -- [bx/by] the components of the advection field of the PDE
-//  storeV. -- [storeVx/storeVy] array to store numerical correctors associated..
-//              ..to the .-direction for each coarse mesh element
+//  b[x/y] -- the components of the advection field of the PDE
+//  storeV[x/y] -- array to store numerical correctors associated..
+//                 ..to the .-direction for each coarse mesh element
 //  storeB -- array to store the bubble functions for each coarse mesh element
 //  
 // This file CREATES for later use in the MsFEM:
@@ -142,11 +142,11 @@ varf boundaryVy(unused,vh) = -int1d(K,-1)(tgv*bcVy*vh);
 
 // Complete definition and resolution of the linear systems for the fine-scale problems
 VK Vx=0, Vy=0, B=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
-// V. -- [Vx/Vy] is the numerical corrector associated to the .-direction
+// V[x/y] -- the numerical corrector associated to the [x/y]-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
-// uH. -- [uHx/uHy] is the coordinate function in the .-direction that appears in the definition of the effective coefficients
+// uH[x/y] -- the coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
 //  it can also be used for the definition of the numerical correctors and bubble functions since the barycentre vanishes under the gradient
-// uH -- serves as a dummy in the variational form pbRHS to set the RHS for V. and B
+// uH -- serves as a dummy in the variational form pbRHS to set the RHS for V[x/y] and B
 real[int] F(VK.ndof+nedges), X(VK.ndof+nedges); F=0;
 // F is used to set the RHS of the linear system for various problems
 // X is used to store the solutions to the linear systems. These contain the multi-scale basis functions..

@@ -11,8 +11,8 @@
 //  - name -- a string containing an acronyme for the MsFEM method used to name the error report
 //  - parametersFine -- relevant parameters to find the reference solution
 //  - uH -- solution to the effective problem on the coarse mesh
-//  - storeV. -- [storeVx/storeVy] array with numerical correctors associated..
-//              ..to the .-direction for each coarse mesh element
+//  - storeV[x/y] -- array with numerical correctors associated..
+//                   ..to the .-direction for each coarse mesh element
 //  - storeB -- array to store the bubble functions for each coarse mesh element
 // a file by the name "sol_REF" + parametersFine + ".txt" with the reference solution on the fine mesh Th
 //  it will be computed of no such file is found

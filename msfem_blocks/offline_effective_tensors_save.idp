@@ -1,3 +1,10 @@
+// offline_effective_tensors_save.idp
+// 
+// Save all computed effective tensors (on the global process) to dedicated folders
+// 
+// Compatible with seqential and parallelized versions
+
+
 {
     string matrixFile = coeffDir + "/AHxx.txt";
     ofstream ffmat (matrixFile);
@@ -83,8 +90,3 @@ if(useB) {
         }
     }
 }
-// {
-//     string matrixFile = coeffDir + "/fH.txt";
-//     ofstream ffmat (matrixFile);
-//     ffmat << fH[];
-// }

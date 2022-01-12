@@ -20,7 +20,7 @@
 //        associates to each triangle the x-coordinate of its barycentre
 //  yb -- a P0 function on the coarse mesh
 //        associates to each triangle the y-coordinate of its barycentre
-//  h. -- [hx/hy] the fine mesh length scale in the .-direction
+//  h[x/y] -- the fine mesh length scale in the .-direction
 //  time -- a real number representing the cpu time, used for performance assessment
 //
 // This file CREATES for later use in the MsFEM:

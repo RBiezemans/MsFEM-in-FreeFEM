@@ -21,9 +21,9 @@
 //        associates to each triangle the y-coordinate of its barycentre
 //  a -- the bilinear of the variational formulation of the PDE to be solved
 //  nu -- the (scalar) diffusion coefficient of the PDE
-//  b. -- [bx/by] the components of the advection field of the PDE
-//  storeV. -- [storeVx/storeVy] array to store numerical correctors associated..
-//              ..to the .-direction for each coarse mesh element
+//  b[x/y] -- the components of the advection field of the PDE
+//  storeV[x/y] -- array to store numerical correctors associated..
+//                 ..to the .-direction for each coarse mesh element
 //  storeB -- array to store the bubble functions for each coarse mesh element
 //  
 // This file CREATES for later use in the MsFEM:
@@ -45,11 +45,11 @@ include "tools_oversampling_patch.idp"
 
 fespace VK(K,P1);
 VS VxS=0, VyS=0, BS=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
-// V.S -- [VxS/VyS] is the numerical corrector on the patch associated to the .-direction
+// V[x/y]S -- the numerical corrector on the patch associated to the [x/y]-direction
 // BS -- bubble function on the patch for the MsFEM space associated to RHS = 1
-// uH. -- [uHx/uHy] is the coordinate function in the .-direction that appears in the definition of the effective coefficients
+// uH[x/y] -- the coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
 //  it can also be used for the definition of the numerical correctors and bubble functions since the barycentre vanishes under the gradient
-// uH -- serves as a dummy in the variational form pb to set the RHS for V.S and BS
+// uH -- serves as a dummy in the variational form pb to set the RHS for V[x/y]S and BS
 
 varf pb(uh,vh)=int2d(S)(a(uh,vh,nu,bx,by)) + int1d(S)(tgv*uh*vh) //variational formulation of local problems -- bilinear form
             -int2d(S)(a(uH,vh,nu,bx,by)); //variational formulation of local problems -- linear form for the RHS of the numerical correctors
@@ -70,7 +70,7 @@ if (useB) {
 int[int] RTh2K = restrict(VK,Vh,Th2K);
 Vh swap=0; //dummy used for global renumbering of functions on the patch
 VK Vx=0, Vy=0, B=0;
-// V. -- [Vx/Vy] is the numerical corrector associated to the .-direction
+// V[x/y] -- the numerical corrector associated to the [x/y]-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
 swap[](RTh2S)=VxS[]; Vx[]=swap[](RTh2K);
 swap[](RTh2S)=VyS[]; Vy[]=swap[](RTh2K);

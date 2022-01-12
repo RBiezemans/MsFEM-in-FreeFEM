@@ -1,5 +1,9 @@
+// offline_effective_tensors_MPI.idp
+//
 // Computation for the effective tensors for advection-diffusion based on pre-computed bubbles Vx, Vy and B
-// compatible only with parallel version
+//
+// Compatible only with parallel version
+
 
 iAHxx[][i]=int2d(K)(a(uHx,uHx,nu,bx,by) + a(Vx,uHx,nu,bx,by))/K.measure;
 iAHyx[][i]=int2d(K)(a(uHx,uHy,nu,bx,by) + a(Vx,uHy,nu,bx,by))/K.measure; 

@@ -1,0 +1,159 @@
+// offline_load.idp
+//
+// Read numerical correctors, bubble functions, and effective coefficients (if..
+// ..available) from earlier computations. 
+// Compute and save effective coefficients if they were not available for the method used
+// Compute coefficients ifH[x/y]]TestMS related to the RHS of the PDE
+// 
+// Compatible only with sequential version
+//
+// This file INCLUDES:
+// - offline_effective_tensors.idp to compute the effective coefficients on a..
+//   ..single coarse mesh element
+// - offline_effective_tensors_save.idp to save the effective coefficient
+//
+// This file USES:
+// - basisDir -- name of the directory that will be used for reading the..
+//               ..numerical correctors and bubbles
+// - coeffDir -- name of the directory that will be used/created for reading/..
+//               ..saving the effective coefficients associated to the MsFEM
+//  storeV[x/y] -- the numerical correctors associated to the [x/y] direction relevant..
+//                 ..to the current process are stored here
+//  storeB -- the bubble functions associated to the [x/y] direction relevant to the..
+//            ..current process are stored here
+//  phi -- a P0 function on the coarse mesh that is used to partition the global domain
+// - effective coefficients, the following P0 elements on the coarse mesh (possibly not all needed):
+//   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, rHx, rHy, rH, fH;
+//   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS, rHxTestMS, rHyTestMS, fHxTestMS, fHyTestMS;
+
+
+int computeCoeff=0; //variable to indicate whether or not the effective coefficients were found
+    //this is indeed possible when the basis was computed but the coefficients were determined
+    //with another type of test functions
+
+
+// Try to open a file from the directory with effective coefficients
+try {
+    string matrixFile = coeffDir + "/AHxx.txt";
+    ifstream ff(matrixFile);
+}
+catch (...) {
+    computeCoeff=1; // compute effective coefficients below if the correct version does not exist yet
+}
+
+
+// Load and store the basis in storeV[x/y] and storeB
+// Compute effective coefficients per coarse mesh element if needed
+for(int i=0; i<VH0.ndof; i++) {
+    cout << "loading offline phase for tri " << i << endl;
+    phi[][i]=2;
+    { //store numerical correctors associated to the x-direction
+        string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
+        ifstream readVx(basisname);
+        real[int] vec(ndofOffline);
+        readVx >> vec;
+        storeVx(i,:) = vec;
+    }
+    { //store numerical correctors associated to the y-direction
+        string basisname = basisDir + "/tri_" + i + "_Vy" + ".txt";
+        ifstream readVy(basisname);
+        real[int] vec(ndofOffline);
+        readVy >> vec;
+        storeVy(i,:) = vec;
+    }
+    if (useB) { //store bubble functions for the FE space
+        string basisname = basisDir + "/tri_" + i + "_B" + ".txt";
+        ifstream readB(basisname);
+        real[int] vec(ndofOffline);
+        readB >> vec;
+        storeB(i,:) = vec;
+    }
+
+    // Define the numerical correctors on the current triangle in order to..
+    // ..compute the necessary effective quantities
+    mesh K=trunc(Th,phi>1,split=1); 
+    fespace VK(K, P1);
+    VK Vx, Vy;
+    Vx[]=storeVx(i,:);
+    Vy[]=storeVy(i,:);
+
+    // Compute effective coefficients (if needed)
+    if (computeCoeff) {
+        VK B; B[]=storeB(i,:);
+        VK uHx=x-xb[][i], uHy=y-yb[][i];
+        include "offline_effective_tensors.idp"
+    } else {
+    // Anything related to the right-hand side cannot be loaded from the previous..
+    // ..offline phase and must be computed regardless of the availability of the..
+    // ..coefficients
+        ifH[][i]=int2d(K)(fRHS)/K.measure;
+        if (testMS) {
+            ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
+            ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
+        }
+    }
+
+    phi[][i]=0;
+}
+
+// Storage of effective quantities if newly computed
+if (computeCoeff) {
+    //if nonexistent, the directory to store the effective coefficient was..
+    //..created by the main file
+    include "offline_effective_tensors_save.idp"
+}
+
+
+// Loading the effective coefficients when possible
+// Only to be done by the main process
+if (computeCoeff==0) {
+    // store the piecewise constant coefficients of the effective PDE
+    cout << "loading effective coefficients" << endl;
+    {
+        string matrixFile = coeffDir + "/AHxx.txt";
+        ifstream ffmat (matrixFile);
+        ffmat >> AHxx[];
+    }
+    {
+        string matrixFile = coeffDir + "/AHyx.txt";
+        ifstream ffmat (matrixFile);
+        ffmat >> AHyx[];
+    }
+    {
+        string matrixFile = coeffDir + "/AHxy.txt";
+        ifstream ffmat (matrixFile);
+        ffmat >> AHxy[];
+    }
+    {
+        string matrixFile = coeffDir + "/AHyy.txt";
+        ifstream ffmat (matrixFile);
+        ffmat >> AHyy[];
+    }
+    {
+        string matrixFile = coeffDir + "/BHx.txt";
+        ifstream ffmat (matrixFile);
+        ffmat >> BHx[];
+    }
+    {
+        string matrixFile = coeffDir + "/BHy.txt";
+        ifstream ffmat (matrixFile);
+        ffmat >> BHy[];
+    }
+    if(useB) {
+        {
+            string matrixFile = coeffDir + "/rH.txt";
+            ifstream ffmat (matrixFile);
+            ffmat >> rH[];
+        }
+        {
+            string matrixFile = coeffDir + "/rHx.txt";
+            ifstream ffmat (matrixFile);
+            ffmat >> rHx[];
+        }
+        {
+            string matrixFile = coeffDir + "/rHy.txt";
+            ifstream ffmat (matrixFile);
+            ffmat >> rHy[];
+        }
+    }
+}

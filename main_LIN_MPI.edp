@@ -1,10 +1,11 @@
 // main_LIN_MPI.edp
 //
-// run with   mpirun -np [number_of_processes] FreeFEM++-mpi main_LIN_MPI.edp  
+// run with   mpirun -np [number_of_processes] FreeFEM++-mpi main_LIN_MPI.edp -o [offline_mode]
+//            -o specifies the option for the offline stage: either "compute" or "load"
+// The user must ensure at all times that the appropriate mode is used for correct results
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-LIN method
-// WITHOUT relying on a precomputed basis
 //
 // Parallelized version
 //
@@ -20,6 +21,7 @@
 // - offline_effective_tensors_MPI_reduce.idp to send all effective tensor..
 //   ..computations to the main process
 // - offline_effective_tensors_save.idp to save the effective coefficient
+// - offline_load_MPI.idp to replace the offline phase if it can be preloaded
 // - post.idp to create the output (reconstrucing the fine scale solution,.. 
 //   ..saving the coarse solution, reconstructed solution, errors)
 //
@@ -53,29 +55,33 @@ mpiBarrier(comm);
 // ..assigned to the current process
 // VH0 is the P0 space on the coarse mesh -- created in init.idp
 // Data structures storeVx, storeVy, store B were created in init.idp
-int countOffline=0; //to count the number of calculations completed by the current process
-for(int i=0; i<VH0.ndof; i++) {
-if (iproc == i%nbproc) {
-    cout <<"construction ms coefficients on tri "<<i<<endl;
-    phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
+int countOffline=0; //to count the number of triangles associated to the current process
+if (offlineMode == "compute") {
+    for(int i=0; i<VH0.ndof; i++) {
+    if (iproc == i%nbproc) {
+        cout <<"construction ms coefficients on tri "<<i<<endl;
+        phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-    include "msfem_blocks/local_problems_LIN.idp" //compute numerical correctors, bubble functions on K
-    // Saving (internally) the offline computations on K
-    storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
-    if (useB) storeB(countOffline,:)=B[];
-    include "msfem_blocks/offline_effective_tensors_MPI.idp" //compute effective coefficient on K
+        include "msfem_blocks/local_problems_LIN.idp" //compute numerical correctors, bubble functions on K
+        // Saving (internally) the offline computations on K
+        storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
+        if (useB) storeB(countOffline,:)=B[];
+        include "msfem_blocks/offline_effective_tensors_MPI.idp" //compute effective coefficient on K
 
-    if (debug) cout << endl;
-    phi[][i]=0;
-    countOffline++;
+        if (debug) cout << endl;
+        phi[][i]=0;
+        countOffline++;
+    }
+    }
+    // send all information for the global problem to the main process
+    include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
+    if (iproc==0) {//the main process saves the effective coefficient (for the entire coarse mesh)
+        include "msfem_blocks/offline_effective_tensors_save.idp" 
+    }
+    mpiBarrier(comm);
+} else if (offlineMode == "load") {
+    include "msfem_blocks/offline_load_MPI.idp"
 }
-}
-// send all information for the global problem to the main process
-include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
-if (iproc==0) {//the main process saves the effective coefficient (for the entire coarse mesh)
-    include "msfem_blocks/offline_effective_tensors_save.idp" 
-}
-mpiBarrier(comm);
 
 
 // ONLINE PHASE -- solving the effective problem

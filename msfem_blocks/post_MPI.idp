@@ -14,8 +14,8 @@
 //  name -- a string containing an acronyme for the MsFEM method used to name the error report
 //  parametersFine -- relevant parameters to find the reference solution
 //  uH -- solution to the effective problem on the coarse mesh
-//  storeV. -- [storeVx/storeVy] array with numerical correctors associated..
-//            ..to the .-direction for each coarse mesh element of the current process
+//  storeV[x/y] -- array with numerical correctors associated..
+//                 to the .-direction for each coarse mesh element of the current process
 //  storeB -- array to store the bubble functions for each coarse mesh element of the current process
 //  output -- a string with the name of the directory where the results should be written (ending in /)
 //

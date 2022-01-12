@@ -6,17 +6,26 @@
 // Compatible with both sequential and parallel versions (main_* files)
 // 
 //
-// This file REQUIRES 
-//  a main file  for:
-//  - name -- a string containing an acronyme for the MsFEM method that will be used..
+// This file INCLUDES
+//  getARGV.idp to read the option for the offline stage from the command line arguments
+//   [either "compute" or "load"]
+//
+// This file USES 
+//  name -- a string containing an acronyme for the MsFEM method that will be used..
 //            ..for all storage purposes
-//  - nbproc -- the number of processes
+//  nbproc -- the number of processes
 //
 // This file CREATES
-// for external storage of computations and results
+// for external storage/loading of computations and results
 // - values for the numerical test:
 //   -- eps (microscale), alpha (diffusion minimum), cont (contrast)
 //   -- theta (angle of advection field) 
+// - offlineMODE == "compute" : ensures the computation of basis functions and..
+//                ..consecutive computation and storage of the effective..
+//                ..coefficients for the MsFEM
+// -             == "compute" : requires the availability of pre-computed basis..
+//                ..functions (numerical correctors and bubbles) and will resort to..
+//                ..the computation of the effective coefficients if these are not available
 // - parametersFine -- relevant parameters for the reference solution
 // - parameters -- relevent parameters for the MsFEM solution
 // - name -- updated name for the method including MsFEM options
@@ -53,8 +62,8 @@
 // - Th -- fine mesh
 // - Vh -- P1 space on Vh
 // - widthMadiot -- boundary layer at the outflow according to Madiot
-// - storeV. -- [storeVx/storeVy] array to store numerical correctors associated..
-//              ..to the .-direction for each coarse mesh element
+// - storeV[x/y] -- array to store numerical correctors associated..
+//                  ..to the .-direction for each coarse mesh element
 // - storeB -- array to store the bubble functions for each coarse mesh element
 // - effective coefficients, the following P0 elements on the coarse mesh:
 //   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, rHx, rHy, rH, fH;
@@ -89,6 +98,11 @@ int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
 // Declaring and reading external parameters                         //
 ///////////////////////////////////////////////////////////////////////
+
+// Command line argument: option for the offline phase
+include "getARGV.idp"
+string offlineMode = getARGV("-o", "compute");
+assert(offlineMode == "compute" || offlineMode == "load");
 
 // Parameters defining the domain
 real L, Lx, Ly;
