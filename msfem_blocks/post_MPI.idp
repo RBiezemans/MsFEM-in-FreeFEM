@@ -6,21 +6,23 @@
 // compatible with parallel version only
 // 
 //
-// This file REQUIRES 
-//  a main file  for:
-//  - name -- a string containing an acronyme for the MsFEM method used to name the error report
-//  - parametersFine -- relevant parameters to find the reference solution
-//  - uH -- solution to the effective problem on the coarse mesh
-//  - storeV. -- [storeVx/storeVy] array with numerical correctors associated..
-//              ..to the .-direction for each coarse mesh element of the current process
-//  - storeB -- array to store the bubble functions for each coarse mesh element of the current process
-// a file by the name "sol_REF" + parametersFine + ".txt" with the reference solution on the fine mesh Th
-//  it will be computed of no such file is found
+// This file REQUIRES
+// a file by the name output + "sol_REF" + parametersFine + ".txt" with the reference solution on the fine mesh Th
+//  it will be computed of no such file is found (output is a string -> see under USES)
+//
+// This file USES 
+//  name -- a string containing an acronyme for the MsFEM method used to name the error report
+//  parametersFine -- relevant parameters to find the reference solution
+//  uH -- solution to the effective problem on the coarse mesh
+//  storeV. -- [storeVx/storeVy] array with numerical correctors associated..
+//            ..to the .-direction for each coarse mesh element of the current process
+//  storeB -- array to store the bubble functions for each coarse mesh element of the current process
+//  output -- a string with the name of the directory where the results should be written (ending in /)
 //
 // This file CREATES/WRITES to the following files (all writes appended)
-// - "err_" + name + ".txt" -- file name of the error report
-// - "solCoarse_" + name + parameters -- file name for saving the coarse scale solution
-// - "sol_" + name + parameters -- file name for saving the reconstructed micro-scale solution
+// - output + "err_" + name + ".txt" -- file name of the error report
+// - output + "solCoarse_" + name + parameters -- file name for saving the coarse scale solution
+// - output + "sol_" + name + parameters -- file name for saving the reconstructed micro-scale solution
 //
 //
 // NOTE
@@ -38,7 +40,7 @@ Vh uHhGl=0; //global reconstructed solution, contributions will be reduced to th
 
 if(iproc==0) { //on the main process, load reference solution on Th
     try {
-        string refname = "sol_REF" + parametersFine + ".txt";
+        string refname = output + "sol_REF" + parametersFine + ".txt";
         ifstream ff(refname);
         ff>>uref[];
     }
@@ -200,7 +202,7 @@ if (iproc==0) {
     cout << "Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
 
     {// Saving coarse scale solution
-        string solCname = "solCoarse_" + name + parameters;
+        string solCname = output + "solCoarse_" + name + parameters;
         solCname = solCname + ".txt";
         cout << "Writing solution in P1 basis to " << solCname << endl; 
         ofstream ff(solCname, append);
@@ -208,7 +210,7 @@ if (iproc==0) {
         ff << endl;
     }
     {// Saving reconstructed micro-scale solution
-        string solname = "sol_" + name + parameters;
+        string solname = output + "sol_" + name + parameters;
         solname = solname + ".txt";
         cout << "Writing reconstructed fine scale solution to " << solname << endl; 
         ofstream ff(solname, append);
@@ -217,7 +219,7 @@ if (iproc==0) {
     }
 
     {// Writing errors to an external file
-        string errname = "err_" + name + ".txt";
+        string errname = output + "err_" + name + ".txt";
         cout << "Writing errors to " << errname << endl;
         ofstream ff(errname, append);
         ff  << rhsDescription

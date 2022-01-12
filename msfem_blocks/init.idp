@@ -189,6 +189,8 @@ if (plots) { //plot of diffusion coefficient
 // Define directory and file names for storage and output            //
 ///////////////////////////////////////////////////////////////////////
 
+string output = "results/";
+
 // Parameter strings for reference and MsFEM solution names
 string parametersFine = "_alpha_" + alpha + "_cont_" + cont + "_eps_" + eps; 
 //parameters relevant for the reference solution
@@ -210,12 +212,12 @@ if (name=="CR" || name=="CR_MPI" || name=="CR_OS" || name=="CR_OS_MPI") {
 
 // Directory names for storage of numerical correctors, bubble functions..
 // ..for the MsFEM space, effective coefficient
-string basisDir = "basis_" + name + parameters;
+string basisDir = output + "basis_" + name + parameters;
 // The use of test function is irrelevant for the basis computation, but..
 // ..does (in some cases) impact the effective coefficients, so we add it
 // ..to name now
 name = name + "_testMS_" + testMS;
-string coeffDir = "effective_coeff_" + name + parameters;
+string coeffDir = output + "effective_coeff_" + name + parameters;
 
 // The actual use of bubbles is handled later and irrelevant for basis..
 // ..computations, so we add it to name now

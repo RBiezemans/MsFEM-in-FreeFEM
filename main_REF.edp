@@ -19,7 +19,9 @@ solve pb(uh,vh, solver=sparsesolver)=int2d(Th)(a(uh,vh,nu,bx,by)) +int1d(Th)(tgv
 if (plots) plot(uh,value=1,wait=1,cmm="P1 solution on a global fine mesh");
 
 {
-    string solname = "sol_" + name + parametersFine + ".txt";
+    string createDir = "mkdir -p " + output;
+    exec(createDir); //directory where all output is stored
+    string solname = output + "sol_" + name + parametersFine + ".txt";
     ofstream ff(solname);
     ff << uh[] << endl;
     ff << endl;

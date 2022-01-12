@@ -1,9 +1,9 @@
-// main_LIN_OS_MPI.edp
+// main_CR_MPI.edp
 //
-// run with   mpirun -np [number_of_processes] FreeFEM++-mpi main_LIN_OS_MPI.edp  
+// run with   mpirun -np [number_of_processes] FreeFEM++-mpi main_CR_MPI.edp  
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
-// by the adv-MsFEM-LIN method with over-sampling
+// by the adv-MsFEM-CR method
 // WITHOUT relying on a precomputed basis
 //
 // Parallelized version
@@ -13,7 +13,7 @@
 // 
 // This file INCLUDES
 // - init.idp to read parameters and initialize all objects needed for the MsFEM
-// - local_problems_LIN.idp to execute local computations for the adv-MsFEM-LIN..
+// - local_problems_CR.idp to execute local computations for the adv-MsFEM-CR..
 //   ..(numerical correctors and bubble functions) on a single coarse mesh element
 // - offline_effective_tensors_MPI.idp to compute the effective coefficients on a..
 //   ..single coarse mesh element
@@ -24,28 +24,31 @@
 //   ..saving the coarse solution, reconstructed solution, errors)
 //
 // This file CREATES for later use in the MsFEM:
-//  uH -- the P1 solution to the effective macroscopic problem
+//  uH -- the P1 Crouzeix-Raviart solution to the effective macroscopic problem
 
 
-// INITALIZATION
-string name = "LIN_OS_MPI"; //accronyme for the parallelized adv-MsFEM-LIN-OS
+// INITIALIZATION
+string name = "CR_MPI"; //accronyme for the parallelized adv-MsFEM-CR
 
 // MPI
 mpiComm comm(mpiCommWorld,0,0);
 int nbproc = mpiSize(comm); //number of processes in parallel
 int iproc = mpiRank(comm); //current process
 
-include "./msfem_blocks/init.idp"
+include "msfem_blocks/init.idp"
 // Build directories to save the results from the upcoming offline phase
 if (iproc==0) {
-    string createDir = "mkdir -p " + basisDir;
-    exec(createDir);
+    string createDir = "mkdir -p " + output;
+    exec(createDir); //directory where all output is stored
+    createDir = "mkdir -p " + basisDir;
+    exec(createDir); //directory to store numerical correctors and bubble functions
     createDir = "mkdir -p " + coeffDir;
-    exec(createDir);
+    exec(createDir); //directory to store the effective coefficients for the MsFEM
 }
 mpiBarrier(comm);
 
-include "./msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+include "msfem_blocks/tools_CR_and_OS.idp" 
+//load some functions and macros for the construction of multiscale CR elements
 
 
 // OFFLINE PHASE
@@ -59,11 +62,11 @@ if (iproc == i%nbproc) {
     cout <<"construction ms coefficients on tri "<<i<<endl;
     phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-    include "./msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
+    include "msfem_blocks/local_problems_CR.idp" //compute numerical correctors, bubble functions on K
     // Saving (internally) the offline computations on K
     storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
     if (useB) storeB(countOffline,:)=B[];
-    include "./msfem_blocks/offline_effective_tensors_MPI.idp" //compute effective coefficient on K
+    include "msfem_blocks/offline_effective_tensors_MPI.idp" //compute effective coefficient on K
 
     if (debug) cout << endl;
     phi[][i]=0;
@@ -71,22 +74,22 @@ if (iproc == i%nbproc) {
 }
 }
 // send all information for the global problem to the main process
-include "./msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
+include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
 if (iproc==0) {//the main process saves the effective coefficient (for the entire coarse mesh)
-    include "./msfem_blocks/offline_effective_tensors_save.idp" 
+    include "msfem_blocks/offline_effective_tensors_save.idp" 
 }
 mpiBarrier(comm);
 
 
 // ONLINE PHASE -- solving the effective problem
-fespace VH(TH,P1); //coarse global FE space 
-VH uH,vH; //the global problem is formulated on a standard FE P1-basis
+fespace VH(TH,P1nc); //coarse global FE space 
+VH uH,vH; //the global problem is formulated on a standard P1 Crouzeix-Raviart basis
 if (iproc==0) { //only the main process solves
     solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH,qfe=qf1pE)(tgv*uH*vH);
-    // BC need to be set depending on the type of FE used (conforming P1 here)
-    // For P1 FE, the problem with classical Dirichlet conditions is well-posed,..
-    // ..but these are not verified by OS numerical correctors and bubbles
-    // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
+    // BC need to be set depending on the type of FE used (P1 Crouzeix-Ravairt here, nonconforming)
+    // Note 1: the bounadry condition is set here at the midpoints of the boundary edges only:..
+    // ..the Dirichlet boundary condition is set only in the weak (average) sense. 
+    // Note 2: classical Dirichlet conditions are too strong for the problem to be well-posed
     if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 
     for (int i=1; i<nbproc; i++) { //send the coarse scale solution to the other processes
@@ -99,4 +102,4 @@ if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 
 
 // POST-PROCESSING -- reconstruction, error computation, documentation
-include "./msfem_blocks/post_MPI.idp"
+include "msfem_blocks/post_MPI.idp"

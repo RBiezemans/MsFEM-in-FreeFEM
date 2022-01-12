@@ -1,9 +1,9 @@
-// main_LIN_MPI.edp
+// main_LINOS_MPI.edp
 //
-// run with   mpirun -np [number_of_processes] FreeFEM++-mpi main_LIN_MPI.edp  
+// run with   mpirun -np [number_of_processes] FreeFEM++-mpi main_LINOS_MPI.edp  
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
-// by the adv-MsFEM-LIN method
+// by the adv-MsFEM-LIN method with over-sampling
 // WITHOUT relying on a precomputed basis
 //
 // Parallelized version
@@ -28,7 +28,7 @@
 
 
 // INITIALIZATION
-string name = "Lin_MPI"; //accronyme for the parallelized adv-MsFEM-LIN
+string name = "LinOS_MPI"; //accronyme for the parallelized adv-MsFEM-LIN-OS
 
 // MPI
 mpiComm comm(mpiCommWorld,0,0);
@@ -47,6 +47,8 @@ if (iproc==0) {
 }
 mpiBarrier(comm);
 
+include "msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+
 
 // OFFLINE PHASE
 // Computation of numerical correctors and bubble functions per coarse mesh element..
@@ -59,7 +61,7 @@ if (iproc == i%nbproc) {
     cout <<"construction ms coefficients on tri "<<i<<endl;
     phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-    include "msfem_blocks/local_problems_LIN.idp" //compute numerical correctors, bubble functions on K
+    include "msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
     // Saving (internally) the offline computations on K
     storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
     if (useB) storeB(countOffline,:)=B[];
@@ -84,7 +86,8 @@ VH uH,vH; //the global problem is formulated on a standard FE P1-basis
 if (iproc==0) { //only the main process solves
     solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH,qfe=qf1pE)(tgv*uH*vH);
     // BC need to be set depending on the type of FE used (conforming P1 here)
-    // For P1 FE, the problem with classical Dirichlet conditions is well-posed
+    // For P1 FE, the problem with classical Dirichlet conditions is well-posed,..
+    // ..but these are not verified by OS numerical correctors and bubbles
     // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
     if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 

@@ -35,7 +35,7 @@ VH0 uHdx=dx(uH), uHdy=dy(uH); //interpolation of derivatives of uH (which in fac
 Vh uHh, uref, error; //reconstructed solution, reference solution, error (on the current process)
 
 try { //load reference solution on Th
-    string refname = "sol_REF" + parametersFine + ".txt";
+    string refname = "results/sol_REF" + parametersFine + ".txt";
     ifstream ff(refname);
     ff>>uref[];
 }
@@ -145,14 +145,14 @@ cout << "Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH
 
 // Saving and writing test results (main process only)
 {
-    string solCname = "solCoarse_" + name + parameters;
+    string solCname = "results/solCoarse_" + name + parameters;
     solCname = solCname + ".txt";
     ofstream ff(solCname, append);
     ff << uH[] << endl;
     ff << endl;
 }
 {
-    string solname = "sol_" + name + parameters;
+    string solname = "results/sol_" + name + parameters;
     solname = solname + ".txt";
     ofstream ff(solname, append);
     ff << uHh[] << endl;
@@ -161,7 +161,7 @@ cout << "Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH
 
 {
     // Writing errors to an external file
-    string errname = "err_" + name + ".txt";
+    string errname = "results/err_" + name + ".txt";
     ofstream ff(errname, append);
     ff  << rhsDescription
         << endl
