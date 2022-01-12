@@ -10,8 +10,8 @@
 
 
 # FreeFem++ EXECUTION
-NUMBER_OF_TESTS = 6 #actually, the real number of tests (per type) minus 1
-NUMBER_OF_PROC = 8
+NUMBER_OF_TESTS=6 #actually, the real number of tests (per type) minus 1
+NUMBER_OF_PROC=8
 
 cp "experiment_parameters/testMS_0_wB/parameters_0.txt" parameters.txt 
 /usr/bin/mpirun -np 1 /usr/local/bin/FreeFem++-mpi main_REF.edp
