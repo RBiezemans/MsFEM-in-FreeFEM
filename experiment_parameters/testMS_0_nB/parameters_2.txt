@@ -1,7 +1,7 @@
 L= 1.
 N= 1024
 n= 16
-2logeps= -7
+eps= 0.020947
 2logalpha= 0
 theta= 0.125
 cont= 100

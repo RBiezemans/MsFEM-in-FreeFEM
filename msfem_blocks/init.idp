@@ -125,7 +125,8 @@ int strongDir, useB, advMS, testMS;
 	f >> read >> L;        Lx=L; Ly=L;
 	f >> read >> Ndiscr;   Nx=Ndiscr; Ny=Ndiscr;
 	f >> read >> n;		   nx=n; ny=n;
-	f >> read >> logeps;   eps=2.^logeps;
+	//f >> read >> logeps;   eps=2.^logeps; //variant if logeps is given instead of eps
+	f >> read >> eps;
 	f >> read >> logalpha; alpha=2.^logalpha;
 	f >> read >> theta;
 	f >> read >> cont;
