@@ -1,0 +1,12 @@
+L= 1.
+N= 1024
+n= 4
+2logeps= -7
+2logalpha= 0
+theta= 0.125
+cont= 100
+osCoef= 2
+strong_Dirichlet= 0
+useB= 0
+advMS= 1
+testMS= 1
