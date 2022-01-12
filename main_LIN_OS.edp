@@ -13,6 +13,7 @@
 // 
 // This file INCLUDES
 // - init.idp to read parameters and initialize all objects needed for the MsFEM
+// - tools_CR_and_OS.idp for local_problems_LIN.idp to be included properly
 // - local_problems_LIN.idp to execute local computations for the adv-MsFEM-LIN-OS..
 //   ..(numerical correctors and bubble functions) on a single coarse mesh element
 // - offline_effective_tensors.idp to compute the effective coefficients on a..
@@ -38,6 +39,8 @@ include "init.idp"
     createDir = "mkdir -p " + coeffDir;
     exec(createDir); //directory to store the effective coefficients for the MsFEM
 }
+
+include "tools_CR_and_OS.idp"
 
 
 // OFFLINE PHASE

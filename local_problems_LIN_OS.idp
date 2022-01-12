@@ -61,7 +61,7 @@ real[int] F(VS.ndof);
 uH[]=uHx[];  F=pb(0,VS);  VxS[]=A^-1*F;
 uH[]=uHy[];  F=pb(0,VS);  VyS[]=A^-1*F;
 if (useB) {
-    uH=1;   F=id(0,VK);     BS[]=A^-1*F;
+    uH=1;   F=id(0,VS);     BS[]=A^-1*F;
 }
 
 
@@ -75,7 +75,7 @@ VK Vx=0, Vy=0, B=0;
 swap[](RTh2S)=VxS[]; Vx[]=swap[](RTh2K);
 swap[](RTh2S)=VyS[]; Vy[]=swap[](RTh2K);
 if(useB) {
-    swap[](RTh2S)=BS[]; B[]=swap[](RK2Th);
+    swap[](RTh2S)=BS[]; B[]=swap[](RTh2K);
 }
 
 if (plotBubbles) {

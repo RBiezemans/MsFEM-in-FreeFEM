@@ -80,7 +80,7 @@
 ///////////////////////////////////////////////////////////////////////
 // Some additional parameters that are used during code development  //
 int debug=0; //display/hide intermediate output                      //
-int plotBubbles=0; //show plots of numerical correctors and bubbles  //
+int plotBubbles=1; //show plots of numerical correctors and bubbles  //
 int plots=1; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
@@ -153,7 +153,7 @@ fespace Vh(Th,P1); //fine global FE space
 real PeGlob = 1./2./alpha; //global Peclet number, computational domain
 real PeLoc = PeGlob*sqrt(2)/nx; //local Peclet number, coarse mesh
 real PeFine = PeGlob*sqrt(2)/Nx; //local Peclet number, fine mesh
-real widthMadiot = log(PeGlob)/PeGlob;
+real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -246,6 +246,8 @@ if (VH0.ndof%nbproc>0) {
 real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
 real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
 real[int,int] storeB(storeLen,ndofOffline); storeB=0;
+
+real time=clock(); //current cpu time used for performance assessment if timing==True
 
 
 ///////////////////////////////////////////////////////////////////////
