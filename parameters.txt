@@ -7,6 +7,6 @@ theta= 0.15
 cont= 2
 osCoef= 2.1
 strong_Dirichlet= 0
-useB= 1 
+useB= 0 
 advMS= 1
 testMS= 1

@@ -122,7 +122,7 @@ int strongDir, useB, advMS, testMS;
 	f >> read >> testMS;
 }
 
-if (name=="CR_OS" || name=="CR_OS_MPI"){
+if (name=="LIN_OS" || name=="LIN_OS_MPI" || name=="CR_OS" || name=="CR_OS_MPI"){
 	assert(strongDir==0); 
 	//strong Dirichlet conditions for oversampling are not yet..
 	//..supported	[in progress]

@@ -49,7 +49,7 @@ mpiBarrier(comm);
 // OFFLINE PHASE
 // Computation of numerical correctors and bubble functions per coarse mesh element..
 // ..assigned to the current process
-// VH0 is the P0 space on coarse mesh -- created in init.idp
+// VH0 is the P0 space on the coarse mesh -- created in init.idp
 // Data structures storeVx, storeVy, store B were created in init.idp
 int countOffline=0; //to count the number of calculations completed by the current process
 for(int i=0; i<VH0.ndof; i++) {
