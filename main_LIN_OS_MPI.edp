@@ -35,7 +35,7 @@ mpiComm comm(mpiCommWorld,0,0);
 int nbproc = mpiSize(comm); //number of processes in parallel
 int iproc = mpiRank(comm); //current process
 
-include "init.idp"
+include "./msfem_blocks/init.idp"
 // Build directories to save the results from the upcoming offline phase
 if (iproc==0) {
     string createDir = "mkdir -p " + basisDir;
@@ -45,7 +45,7 @@ if (iproc==0) {
 }
 mpiBarrier(comm);
 
-include "tools_CR_and_OS.idp" //load some functions and macros for OS
+include "./msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
 
 
 // OFFLINE PHASE
@@ -59,11 +59,11 @@ if (iproc == i%nbproc) {
     cout <<"construction ms coefficients on tri "<<i<<endl;
     phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-    include "local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
+    include "./msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
     // Saving (internally) the offline computations on K
     storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
     if (useB) storeB(countOffline,:)=B[];
-    include "offline_effective_tensors_MPI.idp" //compute effective coefficient on K
+    include "./msfem_blocks/offline_effective_tensors_MPI.idp" //compute effective coefficient on K
 
     if (debug) cout << endl;
     phi[][i]=0;
@@ -71,9 +71,9 @@ if (iproc == i%nbproc) {
 }
 }
 // send all information for the global problem to the main process
-include "offline_effective_tensors_MPI_reduce.idp"
+include "./msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
 if (iproc==0) {//the main process saves the effective coefficient (for the entire coarse mesh)
-    include "offline_effective_tensors_save.idp" 
+    include "./msfem_blocks/offline_effective_tensors_save.idp" 
 }
 mpiBarrier(comm);
 
@@ -99,4 +99,4 @@ if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 
 
 // POST-PROCESSING -- reconstruction, error computation, documentation
-include "post_MPI.idp"
+include "./msfem_blocks/post_MPI.idp"

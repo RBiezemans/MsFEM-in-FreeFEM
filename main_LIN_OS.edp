@@ -31,7 +31,7 @@ string name = "LIN_OS"; //accronyme for the adv-MsFEM-LIN
 
 int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
-include "init.idp"
+include "./msfem_blocks/init.idp"
 // Build directories to save the results from the upcoming offline phase
 {
     string createDir = "mkdir -p " + basisDir;
@@ -40,7 +40,7 @@ include "init.idp"
     exec(createDir); //directory to store the effective coefficients for the MsFEM
 }
 
-include "tools_CR_and_OS.idp" //load some functions and macros for OS
+include "./msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
 
 
 // OFFLINE PHASE
@@ -51,15 +51,15 @@ for(int i=0; i<VH0.ndof; i++) {
     cout <<"construction ms coefficients on tri "<<i<<endl;
     phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-    include "local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
+    include "./msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
     // Saving (internally) the offline computations on K
     storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
-    include "offline_effective_tensors.idp" //compute effective coefficient on K
+    include "./msfem_blocks/offline_effective_tensors.idp" //compute effective coefficient on K
 
     if (debug) cout << endl;
     phi[][i]=0;
 }
-include "offline_effective_tensors_save.idp" //save effective coefficient (for the entire coarse mesh)
+include "./msfem_blocks/offline_effective_tensors_save.idp" //save effective coefficient (for the entire coarse mesh)
 
 
 // ONLINE PHASE -- solving the effective problem
@@ -74,4 +74,4 @@ if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 
 
 // POST-PROCESSING -- reconstruction, error computation, documentation
-include "post.idp"
+include "./msfem_blocks/post.idp"
