@@ -199,8 +199,7 @@ if (name=="CR_OS" || name=="CR_OS_MPI" || name=="LIN_OS" || name=="LIN_OS_MPI") 
     //add OS coefficient for OS methods
 	parameters = parameters + "_OS_" + osCoef;
 }
-parameters = parameters + "_N_" + Ndiscr;
-parameters = parameters + "_n_" + nx;
+parameters = parameters + "_N_" + Ndiscr + "_n_" + nx;
 
 // Update name string to characterize specific MsFEM options
 if (name=="CR" || name=="CR_MPI" || name=="CR_OS" || name=="CR_OS_MPI") {
