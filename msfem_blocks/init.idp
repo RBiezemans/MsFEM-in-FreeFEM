@@ -59,6 +59,7 @@
 //         associates to each triangle the y-coordinate of its barycentre
 // - phi -- a P0 function on TH to loop over coarse mesh elements
 // - Th -- fine mesh
+// - labs -- labels used for the boundary of the global domain
 // - Vh -- P1 space on Vh
 // - widthMadiot -- boundary layer at the outflow according to Madiot
 // - storeV[x/y] -- array to store numerical correctors associated..

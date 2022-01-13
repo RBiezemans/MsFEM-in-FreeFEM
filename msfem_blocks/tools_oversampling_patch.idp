@@ -22,12 +22,13 @@
 //        associates to each triangle the y-coordinate of its barycentre
 //  h[x/y] -- the fine mesh length scale in the .-direction
 //  time -- a real number representing the cpu time, used for performance assessment
+//  labs -- labels used for the boundary of the global domain, copied here to the..
+//          ..boundary of the patch container
 //
 // This file CREATES for later use in the MsFEM:
 //  S -- the over-sampling patch, a restriction of the global fine mesh 
 //  normS -- the normals of the original mesh element == those of the ideal over-sampling patch 
 //  VS -- P1 finite element space on S
-//  RTh2S -- the array for making the conversion between the global fine mesh P1 space and the P1 space on S
 
 
 // Defining the vertices of the ideal over-sampling patch (possibly lying partially outside the global domain)
@@ -66,8 +67,8 @@ int dxCn = lrint(dxC/hx); //integer closest to dxC/hx -- ensures that the mesh C
 real dyC = yCR - yCL;
 int dyCn = lrint(dyC/hy);
 
-mesh C=square(dxCn, dyCn, [xCL + dxC*x, yCL + dyC*y] );
-fespace VCh(C, P1);
+mesh C=square(dxCn, dyCn, [xCL + dxC*x, yCL + dyC*y], label=labs);
+fespace VC(C, P1);
 
 
 // Defining the ideal over-sampling patch by 3 conditions: lying at the correct side of all three normals associated to S
@@ -77,7 +78,7 @@ func cond1 = ( ipcheck(normS(2,:), Sx(0,:) ) < -1E-8 );
 func cond2 = ( ipcheck(normS(0,:), Sx(1,:) ) < -1E-8 );
 func cond3 = ( ipcheck(normS(1,:), Sx(2,:) ) < -1E-8 );
 
-VCh patch;
+VC patch;
 patch = cond1 && cond2 && cond3; 
 // patch is a P1 representation of the conditions cond1, cond2 and cond3 being satisfied at the nodes of a fine mesh element
 // S is obtained by requiring that they are all satisfied in all the vertices, i.e. patch > 2/3
@@ -92,11 +93,8 @@ if (timing) {
 
 
 // Build the real over-sampling patch S with the help of the function patch
-int[int] Th2S;
-mesh S = trunc(Th, patch>0.9, split=1, label=1, new2old=Th2S);
-// I would rather trunc C here, but then I do not know how to recover my basis functions in the correct numbering of the DOF
+mesh S = trunc(C, patch>0.9, split=1, label=1);//, new2old=Th2S);
 fespace VS(S,P1);
-int[int] RTh2S= restrict(VS,Vh,Th2S);
 
 if (debug) plot(C, S, cmm="Over-sampling fine mesh", wait=1);
 
