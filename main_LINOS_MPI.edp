@@ -30,7 +30,7 @@
 
 
 // INITIALIZATION
-string name = "LinOS_MPI"; //accronyme for the parallelized adv-MsFEM-LIN-OS
+string name = "LinOS_old_MPI"; //accronyme for the parallelized adv-MsFEM-LIN-OS
 
 // MPI
 mpiComm comm(mpiCommWorld,0,0);

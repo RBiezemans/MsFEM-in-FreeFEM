@@ -6,6 +6,7 @@
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-LIN method
+// Over-sampling is used if the parametervalue osCoef is larger than 0.5
 //
 // Sequential version
 //
@@ -29,6 +30,7 @@
 
 // INITIALIZATION
 string name = "Lin"; //accronyme for the adv-MsFEM-LIN
+string nameMPI = ""; //added to name later to indicate if the parallel code was used
 
 int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
@@ -53,10 +55,22 @@ if (offlineMode == "compute") {
         cout <<"construction ms coefficients on tri "<<i<<endl;
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-        include "./msfem_blocks/local_problems_LIN.idp" //compute numerical correctors, bubble functions on K
-        // Saving (internally) the offline computations on K
-        storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
-        include "msfem_blocks/offline_effective_tensors.idp" //compute effective coefficient on K
+        if (osCoef < 0.5) {  //compute numerical correctors, bubble functions on K
+            //osCoef is larger than 1 if over-sampling should be used
+            include "msfem_blocks/local_problems_LIN.idp"
+            // Saving (internally) the offline computations on K
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+            // Compute effective coefficient on K
+            include "msfem_blocks/offline_effective_tensors.idp"
+        } else {
+            include "msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+            include "msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
+            // Saving (internally) the offline computations on K
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+            // Compute effective coefficient on K
+            include "msfem_blocks/offline_effective_tensors.idp"
+        }
+        
 
         if (debug) cout << endl;
         phi[][i]=0;

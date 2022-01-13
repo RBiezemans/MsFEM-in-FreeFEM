@@ -68,14 +68,14 @@ if (useB) {
 // Restriction of the functions on the patch to the mesh element K
 // Since K is a truncation of the global mesh, we first renumber the DOF on S in correspondance with the global mesh 
 int[int] RTh2K = restrict(VK,Vh,Th2K);
-Vh swap=0; //dummy used for global renumbering of functions on the patch
+Vh swaparray=0; //dummy used for global renumbering of functions on the patch
 VK Vx=0, Vy=0, B=0;
 // V[x/y] -- the numerical corrector associated to the [x/y]-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
-swap[](RTh2S)=VxS[]; Vx[]=swap[](RTh2K);
-swap[](RTh2S)=VyS[]; Vy[]=swap[](RTh2K);
+swaparray[](RTh2S)=VxS[]; Vx[]=swaparray[](RTh2K);
+swaparray[](RTh2S)=VyS[]; Vy[]=swaparray[](RTh2K);
 if(useB) {
-    swap[](RTh2S)=BS[]; B[]=swap[](RTh2K);
+    swaparray[](RTh2S)=BS[]; B[]=swaparray[](RTh2K);
 }
 
 if (plotBubbles) {

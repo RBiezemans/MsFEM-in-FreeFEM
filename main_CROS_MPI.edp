@@ -31,7 +31,7 @@
 
 
 // INITIALIZATION
-string name = "CROS_MPI"; //accronyme for the parallelized adv-MsFEM-CR-OS
+string name = "CROS_old_MPI"; //accronyme for the parallelized adv-MsFEM-CR-OS
 
 // MPI
 mpiComm comm(mpiCommWorld,0,0);

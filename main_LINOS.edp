@@ -29,7 +29,8 @@
 
 
 // INITIALIZATION
-string name = "LinOS"; //accronyme for the adv-MsFEM-LIN
+string name = "LinOS_old"; //accronyme for the adv-MsFEM-LIN
+string nameMPI = ""; //added to name later to indicate if the parallel code was used
 
 int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 

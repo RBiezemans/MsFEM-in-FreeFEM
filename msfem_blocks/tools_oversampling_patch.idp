@@ -15,7 +15,7 @@
 //  Th -- the fine mesh of the global domain
 //  i -- the integer associated to the triangle selected for over-sampling
 //    -- this triangle will be denoted by K in all comments below
-//  oscoef -- the homothety coefficient chosen for the over-sampling patch
+//  osCoef -- the homothety coefficient chosen for the over-sampling patch
 //  xb -- a P0 function on the coarse mesh 
 //        associates to each triangle the x-coordinate of its barycentre
 //  yb -- a P0 function on the coarse mesh

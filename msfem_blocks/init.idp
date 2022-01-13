@@ -11,8 +11,8 @@
 //   [either "compute" or "load"]
 //
 // This file USES 
-//  name -- a string containing an acronyme for the MsFEM method that will be used..
-//            ..for all storage purposes
+//  name -- a string containing an acronyme for the MsFEM boundary conditions/underlying..
+//          affine space method that will be used for all storage purposes
 //  nbproc -- the number of processes
 //
 // This file CREATES
@@ -28,8 +28,6 @@
 //                ..the computation of the effective coefficients if these are not available
 // - parametersFine -- relevant parameters for the reference solution
 // - parameters -- relevent parameters for the MsFEM solution
-// - name -- updated name for the method including MsFEM options
-// -         (use of bubbles, type of test function, weak/strong Dirichlet)
 // - basisDir -- name of the directory that will be used/created for reading/..
 //               ..saving the numerical correctors and bubbles
 // - coeffDir -- name of the directory that will be used/created for reading/..
@@ -44,14 +42,14 @@
 //                    ..on the boundary of the global domain (average sense)
 //             == 1 : CR elements are defined with strong boundary conditions..
 //                    ..on the boundary of the global domain
-// - oscoef -- the homothety coefficient chosen for the over-sampling patch
-// for defining the PDE
+// - osCoef -- the homothety coefficient chosen for the over-sampling patch
+//   for defining the PDE
 // - adif -- macro to be used in variational forms associated to diffusion
 // - aadv -- macro to be used in variational forms associated to diffusion
 // - a -- macro to be used in variational forms associated to the entire PDE
 // - fRHS -- function that is the RHS of the PDE
 // - rhsDescription -- string describing fRHS for documentation
-// objects for later use in the MsFEM
+//   objects for later use in the MsFEM
 // - TH -- coarse mesh
 // - VH0 -- P0 space on TH
 // - xb -- a P0 function on TH
@@ -70,6 +68,10 @@
 //   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS, rHxTestMS, rHyTestMS, fHxTestMS, fHyTestMS;
 //   -- iAHxx, iAHxy, iAHyx, iAHyy, iBHx, iBHy, irHx, irHy, irH, ifH;
 //   -- iAHxxTestMS, iAHxyTestMS, iAHyxTestMS, iAHyyTestMS, irHxTestMS, irHyTestMS, ifHxTestMS, ifHyTestMS;
+//
+// This file MODIFIES for later use
+// - name -- updated for the method including MsFEM options and MPI option
+// -         (use of over-sampling, use of bubbles, type of test function, weak/strong Dirichlet)
 
 
 /////// TO BE DONE
@@ -137,7 +139,13 @@ int strongDir, useB, advMS, testMS;
 	f >> read >> testMS;
 }
 
-if (name=="LIN_OS" || name=="LIN_OS_MPI" || name=="CR_OS" || name=="CR_OS_MPI"){
+if (osCoef > 0.5) {
+	//osCoef should be 0 when no oversampling is applied and larger than 1 is it is applied
+	name = name + "OS";
+}
+name = name + nameMPI;
+
+if (name=="LinOS" || name=="LinOS_MPI" || name=="CROS" || name=="CROS_MPI"){
 	assert(strongDir==0); 
 	//strong Dirichlet conditions for oversampling are not yet..
 	//..supported	[in progress]
@@ -212,14 +220,14 @@ string parametersFine = "_alpha_" + alpha + "_cont_" + cont + "_eps_" + eps;
 string parameters = parametersFine;
 parametersFine = parametersFine + "_N_" + Ndiscr;
 
-if (name=="CR_OS" || name=="CR_OS_MPI" || name=="LIN_OS" || name=="LIN_OS_MPI") {
+if (name=="CROS" || name=="CROS_MPI" || name=="LinOS" || name=="LinOS_MPI") {
     //add OS coefficient for OS methods
 	parameters = parameters + "_OS_" + osCoef;
 }
 parameters = parameters + "_N_" + Ndiscr + "_n_" + nx;
 
 // Update name string to characterize specific MsFEM options
-if (name=="CR" || name=="CR_MPI" || name=="CR_OS" || name=="CR_OS_MPI") {
+if (name=="CR" || name=="CR_MPI" || name=="CROS" || name=="CROS_MPI") {
 	//specify the use of weak or strong BC for CR methods
 	if (strongDir) name = name + "_strDir";
 	else name = name + "_weakDir";

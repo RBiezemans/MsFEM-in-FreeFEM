@@ -29,7 +29,7 @@
 
 
 // INITIALIZATION
-string name = "CROS"; //accronyme for the adv-MsFEM-CR
+string name = "CROS_old"; //accronyme for the adv-MsFEM-CR
 
 int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
