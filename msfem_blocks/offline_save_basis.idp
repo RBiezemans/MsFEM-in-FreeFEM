@@ -1,6 +1,6 @@
 // offline_save_basis.idp
 //
-// Store basis functions on current triangle
+// Store basis functions on current triangle (to external files)
 //
 // Compatible with both sequential and parallel versions
 

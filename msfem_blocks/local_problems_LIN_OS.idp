@@ -8,7 +8,6 @@
 //  tools_oversampling_patch.idp -- construction of:
 //  - the oversampling patch [S]
 //  - the fine-scale P1 space on S [VS]
-//  - the array for making the conversion between the P1 space Vh (global) and the P1 space VS (on S) [RTh2S]
 //  offline_save_basis.idp to save numerical correctors and bubble functions for.. 
 //  ..a single coarse mesh element
 //
@@ -35,15 +34,18 @@
 //       the bubble function for the MsFEM space associated to RHS = 1 
 
 
-int[int] Th2K;
-mesh K=trunc(Th,phi>1,split=1,label=1,new2old=Th2K); 
-
+// Construction of the oversampling patch [S],..
+// the fine-scale P1 space on S [VS]
 include "tools_oversampling_patch.idp"
-// Construction of the oversampling patch [S],
-// the fine-scale P1 space on S [VS],
-// and the array for making the conversion between the P1 space Vh (global) and the P1 space VS (on S) [RTh2S]
 
+
+// Construction of the actual coarse mesh element K inside of the patch
+int[int] S2K;
+mesh K=trunc(S,phi>1,split=1,label=1,new2old=S2K); 
 fespace VK(K,P1);
+int[int] RS2K = restrict(VK,VS,S2K); //array for the restriction of a function on S to K
+
+
 VS VxS=0, VyS=0, BS=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
 // V[x/y]S -- the numerical corrector on the patch associated to the [x/y]-direction
 // BS -- bubble function on the patch for the MsFEM space associated to RHS = 1
@@ -66,17 +68,10 @@ if (useB) {
 
 
 // Restriction of the functions on the patch to the mesh element K
-// Since K is a truncation of the global mesh, we first renumber the DOF on S in correspondance with the global mesh 
-int[int] RTh2K = restrict(VK,Vh,Th2K);
-Vh swaparray=0; //dummy used for global renumbering of functions on the patch
 VK Vx=0, Vy=0, B=0;
 // V[x/y] -- the numerical corrector associated to the [x/y]-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
-swaparray[](RTh2S)=VxS[]; Vx[]=swaparray[](RTh2K);
-swaparray[](RTh2S)=VyS[]; Vy[]=swaparray[](RTh2K);
-if(useB) {
-    swaparray[](RTh2S)=BS[]; B[]=swaparray[](RTh2K);
-}
+Vx[]=VxS[](RS2K);    Vy[]=VyS[](RS2K);  if(useB) B[]=BS[](RS2K);
 
 if (plotBubbles) {
     plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");

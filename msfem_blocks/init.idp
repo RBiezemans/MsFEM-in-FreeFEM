@@ -13,6 +13,7 @@
 // This file USES 
 //  name -- a string containing an acronyme for the MsFEM boundary conditions/underlying..
 //          affine space method that will be used for all storage purposes
+//  nameMPI -- indicates whether or not the script run is parallelized (empty if not, "_MPI" otherwise)
 //  nbproc -- the number of processes
 //
 // This file CREATES
@@ -59,6 +60,7 @@
 //         associates to each triangle the y-coordinate of its barycentre
 // - phi -- a P0 function on TH to loop over coarse mesh elements
 // - Th -- fine mesh
+// - labs -- labels used for the boundary of the global domain
 // - Vh -- P1 space on Vh
 // - widthMadiot -- boundary layer at the outflow according to Madiot
 // - storeV[x/y] -- array to store numerical correctors associated..
