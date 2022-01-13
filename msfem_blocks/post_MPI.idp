@@ -89,6 +89,9 @@ erOL1Gl=0; erOL2Gl=0; erOH1Gl=0; erOMaxGl=0; //relative errors outside the mesh 
 // Error computation does not yet apply square roots, because these are to be taken once..
 // ..everyhing is reduced and added on the main process
 countOffline=0; //counter used to retrieve the result from the local computations per triangle
+real[int] correctReduce(Vh.ndof); correctReduce=0;
+//correctReduce will be set to 1 on each triangle associated to the current process
+//it will be used below to correct for mpiReduce on repeated edges
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
     //build fine mesh of the coarse mesh element K treated by the current process
@@ -113,6 +116,8 @@ if (iproc == i%nbproc) {
     
     int[int] R=restrict(VK, Vh, n2o);
     uHh[](R)=uHhK;
+    real[int] unity(VK.ndof); unity=1;
+    correctReduce(R)=unity;
 
     VK errK=0;
     errK[] = uref[](R);
@@ -156,7 +161,10 @@ mpiBarrier(comm);
 // Reducing all computations to the main process
 
 // Reconstructed solution
-mpiReduce(uHh[], uHhGl[], processor(0,comm), mpiSUM); // I should think of a meaningful way to do this, because it is not like this, due to discontinuities at the boundaries for CR elements
+mpiReduce(uHh[], uHhGl[], processor(0,comm), mpiSUM); //uHhGl will be corrected by the main process
+// Compute the correct correction of the reconstructed solution
+real[int] correctReduceGl(Vh.ndof); correctReduceGl=0;
+mpiReduce(correctReduce, correctReduceGl, processor(0,comm), mpiSUM);
 // Errors
 mpiReduce(eL1,   eL1Gl,   processor(0,comm), mpiSUM);
 mpiReduce(eL2,   eL2Gl,   processor(0,comm), mpiSUM);
@@ -174,6 +182,8 @@ mpiReduce(eOMax, eOMaxGl, processor(0,comm), mpiMAX);
 
 // Saving and writing test results (main process only)
 if (iproc==0) {
+    // Correcting the reconstructed solution for double used edges
+    uHhGl[] = uHhGl[]./correctReduceGl;
     // Computing norms of the reference solution
     real nL1=0, nL2=0, nH1=0, nMax=0;
     nL1=int2d(Th)(abs(uref));

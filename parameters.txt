@@ -1,11 +1,11 @@
 L= 1.
-N= 30
-n= 3
+N= 100
+n= 5
 eps= 0.2
 2logalpha= 0
 theta= 0.125
 cont= 5
-osCoef= 1.2
+osCoef= 1.7
 strong_Dirichlet= 0
 useB= 1
 advMS= 1
