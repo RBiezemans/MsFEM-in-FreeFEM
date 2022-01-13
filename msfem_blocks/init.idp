@@ -139,20 +139,21 @@ int strongDir, useB, advMS, testMS;
 	f >> read >> testMS;
 }
 
+assert(advMS==1); 
+//only adv-MsFEM variants (as opposed to MsFEM) are available
+
 if (osCoef > 0.5) {
 	//osCoef should be 0 when no oversampling is applied and larger than 1 is it is applied
 	name = name + "OS";
 }
-name = name + nameMPI;
 
-if (name=="LinOS" || name=="LinOS_MPI" || name=="CROS" || name=="CROS_MPI"){
+if (name=="LinOS" || name=="CROS"){
 	assert(strongDir==0); 
 	//strong Dirichlet conditions for oversampling are not yet..
 	//..supported	[in progress]
-	assert(advMS==1); 
-	//only adv-MsFEM variants (as opposed to MsFEM) are available
 }
 
+name = name + nameMPI;
 
 ///////////////////////////////////////////////////////////////////////
 // Define the global coarse and fine meshes and numerical parameters //

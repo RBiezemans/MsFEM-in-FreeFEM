@@ -17,6 +17,9 @@
 // - init.idp to read parameters and initialize all objects needed for the MsFEM
 // - local_problems_LIN.idp to execute local computations for the adv-MsFEM-LIN..
 //   ..(numerical correctors and bubble functions) on a single coarse mesh element
+// - tools_CR_and_OS.idp for local_problems_LIN_OS.idp to be included properly
+// - local_problems_LIN_OS.idp to execute local computations for the adv-MsFEM-LIN..
+//   ..on a single coarse mesh element with over-sampling
 // - offline_effective_tensors.idp to compute the effective coefficients on a..
 //   ..single coarse mesh element
 // - offline_effective_tensors_save.idp to save the effective coefficient
@@ -30,7 +33,7 @@
 
 // INITIALIZATION
 string name = "Lin"; //accronyme for the adv-MsFEM-LIN
-string nameMPI = ""; //added to name later to indicate if the parallel code was used
+string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 
 int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
@@ -45,6 +48,8 @@ include "msfem_blocks/init.idp"
     exec(createDir); //directory to store the effective coefficients for the MsFEM
 }
 
+include "msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+
 
 // OFFLINE PHASE
 // Computation of numerical correctors and bubble functions per coarse mesh element
@@ -58,14 +63,13 @@ if (offlineMode == "compute") {
         if (osCoef < 0.5) {  //compute numerical correctors, bubble functions on K
             //osCoef is larger than 1 if over-sampling should be used
             include "msfem_blocks/local_problems_LIN.idp"
-            // Saving (internally) the offline computations on K
+            // Save (internally) the offline computations on K
             storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
             // Compute effective coefficient on K
             include "msfem_blocks/offline_effective_tensors.idp"
-        } else {
-            include "msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
-            include "msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
-            // Saving (internally) the offline computations on K
+        } else { //OS case
+            include "msfem_blocks/local_problems_LIN_OS.idp"
+            // Save (internally) the offline computations on K
             storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
             // Compute effective coefficient on K
             include "msfem_blocks/offline_effective_tensors.idp"
@@ -86,7 +90,9 @@ fespace VH(TH,P1); //coarse global FE space
 VH uH,vH; //the global problem is formulated on a standard FE P1-basis
 solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH)(tgv*uH*vH);
 // BC need to be set depending on the type of FE used (conforming P1 here)
-// For P1 FE, the problem with classical Dirichlet conditions is well-posed
+// For P1 FE, the problem with classical Dirichlet conditions is well-posed,..
+// ..but these are not verified by OS numerical correctors and bubbles..
+// ..and at the interfaces, the reconstructed solution is discontinuous
 // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
 if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 

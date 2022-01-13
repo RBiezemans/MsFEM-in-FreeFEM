@@ -6,6 +6,7 @@
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-LIN method
+// Over-sampling is used if the parametervalue osCoef is larger than 0.5
 //
 // Parallelized version
 //
@@ -16,6 +17,9 @@
 // - init.idp to read parameters and initialize all objects needed for the MsFEM
 // - local_problems_LIN.idp to execute local computations for the adv-MsFEM-LIN..
 //   ..(numerical correctors and bubble functions) on a single coarse mesh element
+// - tools_CR_and_OS.idp for local_problems_LIN_OS.idp to be included properly
+// - local_problems_LIN_OS.idp to execute local computations for the adv-MsFEM-LIN..
+//   ..on a single coarse mesh element with over-sampling
 // - offline_effective_tensors_MPI.idp to compute the effective coefficients on a..
 //   ..single coarse mesh element
 // - offline_effective_tensors_MPI_reduce.idp to send all effective tensor..
@@ -30,7 +34,8 @@
 
 
 // INITIALIZATION
-string name = "Lin_MPI"; //accronyme for the parallelized adv-MsFEM-LIN
+string name = "Lin"; //accronyme for the parallelized adv-MsFEM-LIN
+string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
 
 // MPI
 mpiComm comm(mpiCommWorld,0,0);
@@ -49,6 +54,8 @@ if (iproc==0) {
 }
 mpiBarrier(comm);
 
+include "msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+
 
 // OFFLINE PHASE
 // Computation of numerical correctors and bubble functions per coarse mesh element..
@@ -62,11 +69,22 @@ if (offlineMode == "compute") {
         cout <<"construction ms coefficients on tri "<<i<<endl;
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-        include "msfem_blocks/local_problems_LIN.idp" //compute numerical correctors, bubble functions on K
-        // Saving (internally) the offline computations on K
-        storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
-        if (useB) storeB(countOffline,:)=B[];
-        include "msfem_blocks/offline_effective_tensors_MPI.idp" //compute effective coefficient on K
+        if (osCoef < 0.5) { //compute numerical correctors, bubble functions on K
+            //osCoef is larger than 1 if over-sampling should be used
+            include "msfem_blocks/local_problems_LIN.idp" 
+            // Save (internally) the offline computations on K
+            storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
+            if (useB) storeB(countOffline,:)=B[];
+            // Compute effective coefficient on K
+            include "msfem_blocks/offline_effective_tensors_MPI.idp"
+        } else { //OS case
+            include "msfem_blocks/local_problems_LIN_OS.idp" //compute numerical correctors, bubble functions on K
+            // Save (internally) the offline computations on K
+            storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
+            if (useB) storeB(countOffline,:)=B[];
+            // Compute effective coefficient on K
+            include "msfem_blocks/offline_effective_tensors_MPI.idp"
+        }
 
         if (debug) cout << endl;
         phi[][i]=0;
@@ -90,7 +108,9 @@ VH uH,vH; //the global problem is formulated on a standard FE P1-basis
 if (iproc==0) { //only the main process solves
     solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH,qfe=qf1pE)(tgv*uH*vH);
     // BC need to be set depending on the type of FE used (conforming P1 here)
-    // For P1 FE, the problem with classical Dirichlet conditions is well-posed
+    // For P1 FE, the problem with classical Dirichlet conditions is well-posed,..
+    // ..but these are not verified by OS numerical correctors and bubbles..
+    // ..and at the interfaces, the reconstructed solution is discontinuous
     // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
     if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 
