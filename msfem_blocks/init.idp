@@ -23,7 +23,8 @@
 // - offlineMODE == "compute" : ensures the computation of basis functions and..
 //                ..consecutive computation and storage of the effective..
 //                ..coefficients for the MsFEM
-// -             == "compute" : requires the availability of pre-computed basis..
+//                [default]
+// -             == "offline" : requires the availability of pre-computed basis..
 //                ..functions (numerical correctors and bubbles) and will resort to..
 //                ..the computation of the effective coefficients if these are not available
 // - parametersFine -- relevant parameters for the reference solution
