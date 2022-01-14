@@ -35,7 +35,7 @@
 string name = "Lin"; //accronyme for the adv-MsFEM-LIN
 string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 
-int nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
+int iproc=1, nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
 include "msfem_blocks/init.idp"
 // Build directories to save the results from the upcoming offline phase
@@ -57,7 +57,7 @@ include "msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for 
 // Data structures storeVx, storeVy, store B were created in init.idp
 if (offlineMode == "compute") {
     for(int i=0; i<VH0.ndof; i++) {
-        cout <<"construction ms coefficients on tri "<<i<<endl;
+        if (i%(2*n)==0) cout <<"construction ms coefficients on tri "<<i<<endl;
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < 0.5) {  //compute numerical correctors, bubble functions on K

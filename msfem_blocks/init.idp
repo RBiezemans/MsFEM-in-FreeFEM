@@ -2,6 +2,7 @@
 //
 // Initialization of many relevant objects based on the name of the method
 // and the parameters given in an external file "parameters.txt"
+// Printing relevant launch output on the terminal
 //
 // Compatible with both sequential and parallel versions (main_* files)
 // 
@@ -250,6 +251,18 @@ string coeffDir = output + "effective_coeff_" + name + parameters;
 // ..computations, so we add it to name now
 if (useB) name = name + "_wB";
 else name = name + "_nB";
+
+// Write starting message for the method
+if (iproc==1) {
+	cout << "////////////////////////////////////////////////////////////////" << endl;
+	if (ARGV[1] == "main_REF.edp") //OS option is irrelevant for the reference solution
+	{
+		cout << "// Computing reference solution with parameters " + parametersFine << endl;
+	} else {
+		cout << "// Performing " + name + " with parameters " + parameters << endl;
+	}
+}
+
 
 
 ///////////////////////////////////////////////////////////////////////

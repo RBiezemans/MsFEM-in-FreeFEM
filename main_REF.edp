@@ -5,7 +5,7 @@ load "MUMPS"
 string name = "REF";
 string nameMPI = ""; //empty string for compatibility with init.idp
 
-int nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
+int iproc=1, nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
 
 include "./msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
 name = "REF"; // undo adaptations due to method settings
@@ -23,7 +23,10 @@ if (plots) plot(uh,value=1,wait=1,cmm="P1 solution on a global fine mesh");
     string createDir = "mkdir -p " + output;
     exec(createDir); //directory where all output is stored
     string solname = output + "sol_" + name + parametersFine + ".txt";
+    cout << "Writing reference solution to " << solname << endl; 
     ofstream ff(solname);
     ff << uh[] << endl;
     ff << endl;
 }
+
+cout << endl; //end of reference computations

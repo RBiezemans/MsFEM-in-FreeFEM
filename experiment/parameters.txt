@@ -1,7 +1,7 @@
 L= 1.
-N= 100
-n= 5
-eps= 0.05
+N= 200
+n= 20
+eps= 0.2
 2logalpha= 0
 theta= 0.125
 cont= 2
@@ -9,4 +9,4 @@ osCoef= 2
 strong_Dirichlet= 0
 useB= 0
 advMS= 1
-testMS= 0
+testMS= 1

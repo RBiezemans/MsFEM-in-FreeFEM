@@ -45,6 +45,7 @@ if(iproc==0) { //on the main process, load reference solution on Th
         ff>>uref[];
     }
     catch (...) { //or compute the referece solution if the file is not found
+        cout << "WARNING: No reference solution was found and it is recomputed" << endl;
         Vh vh;
         solve pb(uref,vh)=int2d(Th)(a(uref,vh,nu,bx,by)) +int1d(Th)(tgv*uref*vh)
                 -int2d(Th)(fRHS*vh);
@@ -92,10 +93,11 @@ countOffline=0; //counter used to retrieve the result from the local computation
 real[int] correctReduce(Vh.ndof); correctReduce=0;
 //correctReduce will be set to 1 on each triangle associated to the current process
 //it will be used below to correct for mpiReduce on repeated edges
+if (timing) time=clock();
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
     //build fine mesh of the coarse mesh element K treated by the current process
-    cout <<"reconstruction on tri "<<i<<endl;
+    if (i%(2*n)==0) cout <<"reconstruction on tri "<<i<<endl;
     phi[][i]=2;
     int[int] n2o;
     mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
@@ -153,6 +155,10 @@ if (iproc == i%nbproc) {
     countOffline++;
 
     phi[][i]=0;
+    if (timing) {
+        cout << "Reconstruction on tri" << i << " lasted " << clock()-timing << endl;
+        timing=clock();
+    }
 }
 }
 mpiBarrier(comm);
@@ -209,7 +215,7 @@ if (iproc==0) {
         plot(error, value=1, cmm="Error");
     }
 
-    cout << "Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
+    cout << "  Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
 
     {// Saving coarse scale solution
         string solCname = output + "solCoarse_" + name + parameters;
@@ -271,4 +277,6 @@ if (iproc==0) {
 
         ff<<endl;
     }
+
+    cout << endl; //end of MsFEM routine
 }
