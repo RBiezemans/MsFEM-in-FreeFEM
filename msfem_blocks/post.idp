@@ -40,6 +40,7 @@ try { //load reference solution on Th
     ff>>uref[];
 }
 catch (...) { //or compute the referece solution if the file is not found
+    cout << "WARNING: No reference solution was found and it is recomputed" << endl;
     Vh vh;
     solve pb(uref,vh)=int2d(Th)(a(uref,vh,nu,bx,by)) +int1d(Th)(tgv*uref*vh)
             -int2d(Th)(fRHS*vh);
@@ -124,6 +125,8 @@ nL2=sqrt(int2d(Th)(uref*uref));
 nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
 uref = abs(uref);
 nMax=uref[].max;
+string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+cout << printNorms;
 // Taking square roots, determining the relative errors
 eL2=sqrt(eL2);
 eML2=sqrt(eML2);
@@ -140,13 +143,14 @@ if (plots) {
     plot(error, value=1, cmm="Error");
 }
 
-cout << "Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
+cout << "  Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
 
 
 // Saving and writing test results (main process only)
 {
     string solCname = "results/solCoarse_" + name + parameters;
     solCname = solCname + ".txt";
+    cout << "Writing solution in P1 basis to " << solCname << endl; 
     ofstream ff(solCname, append);
     ff << uH[] << endl;
     ff << endl;
@@ -154,6 +158,7 @@ cout << "Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH
 {
     string solname = "results/sol_" + name + parameters;
     solname = solname + ".txt";
+    cout << "Writing reconstructed fine scale solution to " << solname << endl; 
     ofstream ff(solname, append);
     ff << uHh[] << endl;
     ff << endl;
@@ -162,6 +167,7 @@ cout << "Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH
 {
     // Writing errors to an external file
     string errname = "results/err_" + name + ".txt";
+    cout << "Writing errors to " << errname << endl;
     ofstream ff(errname, append);
     ff  << rhsDescription
         << endl
@@ -202,3 +208,5 @@ cout << "Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH
 
     ff<<endl;
 }
+
+cout << endl; //end of MsFEM routine

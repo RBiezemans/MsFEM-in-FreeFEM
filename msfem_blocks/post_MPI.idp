@@ -45,6 +45,7 @@ if(iproc==0) { //on the main process, load reference solution on Th
         ff>>uref[];
     }
     catch (...) { //or compute the referece solution if the file is not found
+        cout << "WARNING: No reference solution was found and it is recomputed" << endl;
         Vh vh;
         solve pb(uref,vh)=int2d(Th)(a(uref,vh,nu,bx,by)) +int1d(Th)(tgv*uref*vh)
                 -int2d(Th)(fRHS*vh);
@@ -209,7 +210,7 @@ if (iproc==0) {
         plot(error, value=1, cmm="Error");
     }
 
-    cout << "Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
+    cout << "  Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
 
     {// Saving coarse scale solution
         string solCname = output + "solCoarse_" + name + parameters;
@@ -271,4 +272,6 @@ if (iproc==0) {
 
         ff<<endl;
     }
+
+    cout << endl; //end of MsFEM routine
 }
