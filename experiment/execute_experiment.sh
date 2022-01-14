@@ -16,15 +16,15 @@ NUMBER_OF_PROC=8
 TOTEST_L="1."
 TOTEST_LARGE_N="100"
 TOTEST_SMALL_N="5"
-TOTEST_EPS="0.2 0.05"
+TOTEST_EPS="0.2"
 TOTEST_2LOGALP="0"
 TOTEST_THETA="0.125"
 TOTEST_CONT="2"
-TOTEST_OSCOEF="2"
+TOTEST_OSCOEF="0.55"
 TOTEST_STR_DIR="0"
 TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
 TOTEST_ADV_MS="1"
-TOTEST_MS="0"
+TOTEST_MS="1"
 
 
 # LOOP OVER ALL PARAMETER VALUES AND FreeFem++ EXECUTION
@@ -33,13 +33,13 @@ for TEST_EPS in $TOTEST_EPS; do sed -i "s/eps=.*/eps= $TEST_EPS/" "experiment/pa
 for TEST_2LOGALP in $TOTEST_2LOGALP; do sed -i "s/2logalpha=.*/2logalpha= $TEST_2LOGALP/" "experiment/parameters.txt" 
 for TEST_THETA in $TOTEST_THETA; do sed -i "s/theta=.*/theta= $TEST_THETA/" "experiment/parameters.txt" 
 for TEST_CONT in $TOTEST_CONT; do sed -i "s/cont=.*/cont= $TEST_CONT/" "experiment/parameters.txt" 
-for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt" 
+for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "experiment/parameters.txt" 
     
     # The above loops contain all parameters related to the reference solution
     cp experiment/parameters.txt parameters.txt
     /usr/bin/mpirun -np 1 /usr/local/bin/FreeFem++-mpi main_REF.edp -v 0
     
-    for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "experiment/parameters.txt" 
+    for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt" 
     for TEST_OSCOEF in $TOTEST_OSCOEF; do sed -i "s/osCoef=.*/osCoef= $TEST_OSCOEF/" "experiment/parameters.txt" 
     for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt" 
     for TEST_USE_B in $TOTEST_USE_B; do sed -i "s/useB=.*/useB= $TEST_USE_B/" "experiment/parameters.txt" 
