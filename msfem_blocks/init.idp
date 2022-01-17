@@ -190,7 +190,7 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-func nu=alpha*(1+cont*cos(pi/eps*x)^2 * sin(pi/eps*y)^2);
+func nu=alpha*(1+delta*cos(2*pi/eps*x));
 // Advection coefficient
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);
@@ -203,8 +203,8 @@ macro a(u,v,nu,bx,by) (adif(u,v,nu) + aadv(u,v,bx,by))// EOM
 //bilinear form for advection-diffusion PDE
 
 // RHS of the PDE to be solved
-func fRHS=sin(x)*sin(y); 
-string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y); ; 
+string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
 //string used to document the tests performed in the error file
 
 if (plots) { //plot of diffusion coefficient
