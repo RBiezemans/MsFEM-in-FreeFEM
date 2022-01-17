@@ -17,7 +17,7 @@ TOTEST_L="1."
 TOTEST_LARGE_N="2048" # 2^11
 TOTEST_SMALL_N="16"
 TOTEST_EPS="0.0078125" # 2^-7
-TOTEST_2LOGALP="0.25 0.125 0.0625 0.03125 0.015625 0.0078125 0.00390625" # 2^-2 ... 2^-8
+TOTEST_2LOGALP="-2 -3 -4 -5 -6 -7 -8" # 2^-2 ... 2^-8
 TOTEST_THETA="0.125"
 TOTEST_CONT="7"
 TOTEST_OSCOEF="2."
@@ -34,7 +34,7 @@ for TEST_2LOGALP in $TOTEST_2LOGALP; do sed -i "s/2logalpha=.*/2logalpha= $TEST_
 for TEST_THETA in $TOTEST_THETA; do sed -i "s/theta=.*/theta= $TEST_THETA/" "experiment/parameters.txt" 
 for TEST_CONT in $TOTEST_CONT; do sed -i "s/cont=.*/cont= $TEST_CONT/" "experiment/parameters.txt" 
 for TEST_LARGE_N in $TOTEST_LARGE_N; do 
-    if [ $TEST_2LOGALP = "0.00390625" ] # the last test requires a finer reference solution
+    if [ $TEST_2LOGALP = "-8" ] # the last test requires a finer reference solution
     then sed -i "s/N=.*/N= $TEST_LARGE_N/" "experiment/parameters.txt" 
     fi
 
