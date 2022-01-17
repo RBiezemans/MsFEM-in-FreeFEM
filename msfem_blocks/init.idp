@@ -257,7 +257,7 @@ if (iproc==1) {
 	cout << "////////////////////////////////////////////////////////////////" << endl;
 	if (ARGV[1] == "main_REF.edp") //OS option is irrelevant for the reference solution
 	{
-		cout << "// Computing reference solution with parameters " + parameters << endl;
+		cout << "// Computing reference solution with parameters " + parametersFine << endl;
 	} else {
 		cout << "// Performing " + name + " with parameters " + parameters << endl;
 	}

@@ -93,10 +93,11 @@ countOffline=0; //counter used to retrieve the result from the local computation
 real[int] correctReduce(Vh.ndof); correctReduce=0;
 //correctReduce will be set to 1 on each triangle associated to the current process
 //it will be used below to correct for mpiReduce on repeated edges
+if (timing) time=clock();
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
     //build fine mesh of the coarse mesh element K treated by the current process
-    cout <<"reconstruction on tri "<<i<<endl;
+    if (i%(2*n)==0) cout <<"reconstruction on tri "<<i<<endl;
     phi[][i]=2;
     int[int] n2o;
     mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
@@ -154,6 +155,10 @@ if (iproc == i%nbproc) {
     countOffline++;
 
     phi[][i]=0;
+    if (timing) {
+        cout << "Reconstruction on tri" << i << " lasted " << clock()-timing << endl;
+        timing=clock();
+    }
 }
 }
 mpiBarrier(comm);

@@ -45,7 +45,7 @@ catch (...) {
 // Load and store the basis in storeV[x/y] and storeB
 // Compute effective coefficients per coarse mesh element if needed
 for(int i=0; i<VH0.ndof; i++) {
-    cout << "loading offline phase for tri " << i << endl;
+    if (i%(2*n)==0) cout << "loading offline phase for tri " << i << endl;
     phi[][i]=2;
     { //store numerical correctors associated to the x-direction
         string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";

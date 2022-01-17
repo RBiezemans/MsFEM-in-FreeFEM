@@ -66,7 +66,7 @@ int countOffline=0; //to count the number of triangles associated to the current
 if (offlineMode == "compute") {
     for(int i=0; i<VH0.ndof; i++) {
     if (iproc == i%nbproc) {
-        cout <<"construction ms coefficients on tri "<<i<<endl;
+        if (i%(2*n)==0) cout <<"construction ms coefficients on tri "<<i<<endl;
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < 0.5) { //compute numerical correctors, bubble functions on K

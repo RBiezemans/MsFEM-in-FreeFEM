@@ -62,7 +62,7 @@ real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh ele
 // ..all contributions are added at the end of the next for loop
 for(int i=0; i<VH0.ndof; i++) {
     //build fine mesh of the current coarse mesh element K
-    cout <<"reconstruction on tri "<<i<<endl;
+    if (i%(2*n)==0) cout <<"reconstruction on tri "<<i<<endl;
     phi[][i]=2;
     int[int] n2o;
     mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
