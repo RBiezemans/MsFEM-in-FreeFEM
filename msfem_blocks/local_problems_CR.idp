@@ -109,7 +109,7 @@ matrix Bcr = arrB;
 
 matrix CRmat = [[A,Bcr],
             [Bcr',0]]; //matrix for local saddle-point problem on K
-set(CRmat, solver=sparsesolver);
+set(CRmat, solver=UMFPACK);
 
 
 // Save midpoints of the edges of K for possible strong Dirichlet conditions

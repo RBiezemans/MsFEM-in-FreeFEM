@@ -19,22 +19,27 @@
 //   ..(numerical correctors and bubble functions) on a single coarse mesh element
 // - tools_CR_and_OS.idp for local_problems_LIN_OS.idp to be included properly
 // - local_problems_LIN_OS.idp to execute local computations for the adv-MsFEM-LIN..
-//   ..on a single coarse mesh element with over-sampling
+//   ..on a single coarse mesh element with oversampling
 // - offline_effective_tensors_MPI.idp to compute the effective coefficients on a..
 //   ..single coarse mesh element
 // - offline_effective_tensors_MPI_reduce.idp to send all effective tensor..
 //   ..computations to the main process
-// - offline_effective_tensors_save.idp to save the effective coefficient
+// - offline_save_effective_tensors.idp to save the effective coefficient
 // - offline_load_MPI.idp to replace the offline phase if it can be preloaded
+// - online.idp to construct and solve the (effective) macroscopic system
 // - post.idp to create the output (reconstrucing the fine scale solution,.. 
 //   ..saving the coarse solution, reconstructed solution, errors)
 //
 // This file CREATES for later use in the MsFEM:
-//  uH -- the P1 solution to the effective macroscopic problem
+//  bcType -- a string to set the correct boundary conditions in the macroscopic..
+//            ..problem (Lin/CR) 
+//  name[MPI] -- basic information about the MsFEM routine that is executed
+//  VH -- the relevant P1 space for the macroscopic problem
 
 
 // INITIALIZATION
-string name = "Lin"; //accronyme for the parallelized adv-MsFEM-LIN
+string bcType = "Lin"; //type of boundary condtitions, relevant for the macroscopic problem
+string name = bcType; //accronyme for the parallelized adv-MsFEM-LIN
 string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
 
 // MPI
@@ -69,8 +74,8 @@ if (offlineMode == "compute") {
         if (i%(2*n)==0) cout <<"construction ms coefficients on tri "<<i<<endl;
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-        if (osCoef < 0.5) { //compute numerical correctors, bubble functions on K
-            //osCoef is larger than 1 if over-sampling should be used
+        if (osCoef < osThr) { //compute numerical correctors, bubble functions on K
+            //osCoef is larger than osThr if oversampling should be used
             include "msfem_blocks/local_problems_LIN.idp" 
             // Save (internally) the offline computations on K
             storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
@@ -86,7 +91,7 @@ if (offlineMode == "compute") {
             include "msfem_blocks/offline_effective_tensors_MPI.idp"
         }
 
-        if (debug) cout << endl;
+        if (debug) if (i%(2*n)==0) cout << endl;
         phi[][i]=0;
         countOffline++;
     }
@@ -94,7 +99,7 @@ if (offlineMode == "compute") {
     // send all information for the global problem to the main process
     include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
     if (iproc==0) {//the main process saves the effective coefficient (for the entire coarse mesh)
-        include "msfem_blocks/offline_effective_tensors_save.idp" 
+        include "msfem_blocks/offline_save_effective_tensors.idp" 
     }
     mpiBarrier(comm);
 } else if (offlineMode == "load") {
@@ -104,23 +109,23 @@ if (offlineMode == "compute") {
 
 // ONLINE PHASE -- solving the effective problem
 fespace VH(TH,P1); //coarse global FE space 
-VH uH,vH; //the global problem is formulated on a standard FE P1-basis
-if (iproc==0) { //only the main process solves
-    solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH,qfe=qf1pE)(tgv*uH*vH);
-    // BC need to be set depending on the type of FE used (conforming P1 here)
-    // For P1 FE, the problem with classical Dirichlet conditions is well-posed,..
-    // ..but these are not verified by OS numerical correctors and bubbles..
-    // ..and at the interfaces, the reconstructed solution is discontinuous
-    // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
-    if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
+include "msfem_blocks/online.idp"
+// the P1 solution is (VH) uH, the bubble coefficients are in (VH0) uB
 
+mpiBarrier(comm); //only the main process computes the solution
+if (iproc==0) { 
     for (int i=1; i<nbproc; i++) { //send the coarse scale solution to the other processes
         Send(processor(i,comm), uH[]);
+        Send(processor(i,comm), uB[]);
     }
 }
-if (iproc>0) Recv(processor(0,comm), uH[]); //the other processes receive the coarse scale solution
+mpiBarrier(comm); //only the main process computes the solution
+if (iproc>0) {
+    Recv(processor(0,comm), uH[]); //the other processes receive the coarse scale solution
+    Recv(processor(0,comm), uB[]);
+}
 
-if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
+//if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
 
 
 // POST-PROCESSING -- reconstruction, error computation, documentation

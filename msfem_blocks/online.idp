@@ -1,0 +1,103 @@
+// online.idp
+//
+// Resolution of the macroscopic problem with LIN boundary conditions
+//
+// Compatible with sequential and parallel versions
+//
+//
+// This file USES:
+//  bcType -- string determining the implementation of boundary conditions for the effective problem
+//  TH -- coarse mesh
+//  VH -- the relevant P1 space for the macroscopic problem
+//  VH0 -- P0 space on TH
+//  treatB == out_system : bubble coefficients are predetermined by the average of fRHS
+//         == in_system  : test equations are added to determined bubble coefficients
+//   NOTE in_system methods without oversampling first solve the diagonal block for..
+//        ..bubble coefficients independently
+//  fB -- integral of f against bubble functions
+//  Macroscopic variational forms:
+//  effectiveVar, rhsP1, rEffective, lEffective, the effective coefficient AB
+//  
+// This file CREATES for later use in the MsFEM:
+//  uH -- the P1 solution to the effective macroscopic problem
+//  uB -- (solution for) the coefficients in front of the bubble functions
+
+
+VH uH,vH; //the global problem is formulated on a standard FE P1-basis
+VH0 uB; //coefficients to be used for the bubble function per mesh element
+if (iproc==0) { //in case of parallel computing, only the main process solves the macroscopic problem
+    if (debug) cout << "-- Start of online phase" << endl;
+    // BC need to be set depending on the type of FE used 
+    // (conforming P1, non-conforming P1 Crouzeix-Raviart)
+    varf bcLin(uH,vH) = int1d(TH)(tgv*uH*vH);
+    // For P1 FE, the problem with classical Dirichlet conditions is well-posed,..
+    // ..but these are not verified by OS numerical correctors and bubbles..
+    // ..and at the interfaces, the reconstructed solution is discontinuous
+    varf bcCR(uH,vH) = int1d(TH,qfe=qf1pE)(tgv*uH*vH);
+    // Note 1: the bounadry condition is set here at the midpoints of the boundary edges only:..
+    // ..the Dirichlet boundary condition is set only in the weak (average) sense..
+    // ..and this is still valid (also for continuity at the interfaces) with OS, as opposed to adv-MsFEM-LIN
+    // Note 2: classical Dirichlet conditions are too strong for the problem to be well-posed
+
+    matrix Apde=effectiveVar(VH,VH), Abc;
+    if (bcType=="Lin") {
+        Abc=bcLin(VH,VH); 
+    }
+    if (bcType=="CR") {
+        Abc=bcCR(VH,VH); 
+    }
+    matrix A=Apde+Abc;
+    set(A, solver=UMFPACK);
+    // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
+    real[int] FH(VH.ndof); FH=rhsP1(0,VH); //RHS of the system for testing fRHS against P1
+
+    if (treatB == "out_system") {
+        if (useB) {
+            // Include bubbles in the equation for the nodal DOF for consistency
+            real[int] FHlhs(VH.ndof); FHlhs=rEffectiveOS(0,VH);
+            FH = FH - FHlhs;
+        }
+        uH[]=A^-1*FH;  
+        uB[]=fH[]; //bubble coefficients are not determined by the linear system
+    } else {
+        // Add unknowns and test equations for bubble functions to the linear system..
+        // ..for nodal test functions
+        matrix R = rEffective(VH0,VH);
+        
+        if (osCoef < osThr) {
+            // Solve for bubble DOF from diagonal block,
+            // then solve for nodal DOF
+            uB[]=fB[]./AHB[];
+            real[int] FHlhs(VH.ndof); FHlhs=R*uB[];
+            FH=FH-FHlhs;
+            uH[]=A^-1*FH;
+        }
+        else {
+            // Add unknowns and test equations for bubble functions to the linear system..
+            // ..for bubble test functions
+            matrix L = lEffective(VH,VH0);
+            matrix AB; AB.resize(VH0.ndof, VH0.ndof); AB.diag=AHB[];
+            matrix C = [[A,R],
+                        [L,AB]];
+            set(C,solver=UMFPACK);
+            if (debug) cout << "Extended linear system has been constructed" << endl;
+            // Build RHS for the system with nodal and bubble functions
+            real[int] FHB(VH.ndof+VH0.ndof);
+            FHB(0:VH.ndof-1) = FH; //RHS for testing against P1
+            FHB(VH.ndof:VH.ndof+VH0.ndof) = fB[]; //int2d(fRHS*B) computed in offline phase
+            // Solve for nodal and bubble DOF
+            real[int] uHB(VH.ndof+VH0.ndof);
+            //uHB=0;
+            uHB=C^-1*FHB;
+            if (debug) cout << "Inversion completed" << endl;
+            uH[]=uHB(0:VH.ndof-1);
+            if (debug) cout << "Nodal DOF has been stored" << endl;
+            uB[]=uHB(VH.ndof:VH.ndof+VH0.ndof);
+            if (debug) cout << "Bubble DOF has been stored" << endl;
+        }
+        if (debug) cout << "-- End of online phase" << endl;
+    }
+    if (debug) cout << "-- End of online phase" << endl;
+    if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
+    if (debug) cout << "-- End of online phase" << endl;
+}

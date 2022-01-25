@@ -14,6 +14,7 @@
 //  name -- a string containing an acronyme for the MsFEM method used to name the error report
 //  parametersFine -- relevant parameters to find the reference solution
 //  uH -- solution to the effective problem on the coarse mesh
+//  - uB -- (solution for) the coefficients in front of the bubble functions
 //  storeV[x/y] -- array with numerical correctors associated..
 //                 to the .-direction for each coarse mesh element of the current process
 //  storeB -- array to store the bubble functions for each coarse mesh element of the current process
@@ -27,7 +28,8 @@
 //
 // NOTE
 // If the computations of the off-line stage are loaded (instead of computed),..
-// ..the terms ifH dependent on the RHS are computed before post-processing the bubbles
+// ..the terms f[H/B], dependent on the RHS and used to determined the bubble..
+// ..coefficients, are computed before post-processing the bubbles
 // This is done in the load file
 
 
@@ -109,7 +111,7 @@ if (iproc == i%nbproc) {
     //copying the coarse scale solution to the fine scale without interpolating it
     if (debug) plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution");
     real[int] uHhK=uHK[]; //array currently representing the coarse solution on K
-    if (useB) uHhK+=ifH[][i]*storeB(countOffline,:); //reconstructing the bubble function
+    if (useB) uHhK+=uB[][i]*storeB(countOffline,:); //reconstructing the bubble function
     if (debug && useB) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B");}
     uHhK+=uHdx[][i]*storeVx(countOffline,:); //reconstructing the numerical corrector for the x-direction
     if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx");}
@@ -206,10 +208,14 @@ if (iproc==0) {
     eH1Gl[0]=sqrt(eH1Gl[0]);
     eMH1Gl[0]=sqrt(eMH1Gl[0]);
     eOH1Gl[0]=sqrt(eOH1Gl[0]);
-    erL1Gl[0]=eL1Gl[0]/nL1; erL2Gl[0]=eL2Gl[0]/nL2; erH1Gl[0]=eH1Gl[0]/nH1; erMaxGl[0]=eMaxGl[0]/nMax;
-    erML1Gl[0]=eML1Gl[0]/nL1; erML2Gl[0]=eML2Gl[0]/nL2; erMH1Gl[0]=eMH1Gl[0]/nH1; erMMaxGl[0]=eMMaxGl[0]/nMax;
-    erOL1Gl[0]=eOL1Gl[0]/nL1; erOL2Gl[0]=eOL2Gl[0]/nL2; erOH1Gl[0]=eOH1Gl[0]/nH1; erOMaxGl[0]=eOMaxGl[0]/nMax;
-
+    try {
+        erL1Gl[0]=eL1Gl[0]/nL1; erL2Gl[0]=eL2Gl[0]/nL2; erH1Gl[0]=eH1Gl[0]/nH1; erMaxGl[0]=eMaxGl[0]/nMax;
+        erML1Gl[0]=eML1Gl[0]/nL1; erML2Gl[0]=eML2Gl[0]/nL2; erMH1Gl[0]=eMH1Gl[0]/nH1; erMMaxGl[0]=eMMaxGl[0]/nMax;
+        erOL1Gl[0]=eOL1Gl[0]/nL1; erOL2Gl[0]=eOL2Gl[0]/nL2; erOH1Gl[0]=eOH1Gl[0]/nH1; erOMaxGl[0]=eOMaxGl[0]/nMax;
+    } 
+    catch (...) {
+        cout << "ERROR: norms are equal to zero. No relative errors are computed."
+    }
     if (plots) {
         plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
         plot(error, value=1, cmm="Error");
@@ -223,6 +229,14 @@ if (iproc==0) {
         cout << "Writing solution in P1 basis to " << solCname << endl; 
         ofstream ff(solCname, append);
         ff << uH[] << endl;
+        ff << endl;
+    }
+    if (treatB == "in_system") {// Saving bubble coefficients
+        string solBname = "results/solCoarseB_" + name + parameters;
+        solBname = solBname + ".txt";
+        cout << "Writing oefficients for the bubble functions to " << solBname << endl; 
+        ofstream ff(solBname, append);
+        ff << uB[] << endl;
         ff << endl;
     }
     {// Saving reconstructed micro-scale solution

@@ -19,23 +19,28 @@
 // - local_problems_CR.idp to execute local computations for the adv-MsFEM-CR..
 //   ..(numerical correctors and bubble functions) on a single coarse mesh element
 // - local_problems_CR_OS.idp to execute local computations for the adv-MsFEM-CR..
-//   ..on a single coarse mesh element with over-sampling
+//   ..on a single coarse mesh element with oversampling
 // - offline_effective_tensors.idp to compute the effective coefficients on a..
 //   ..single coarse mesh element
-// - offline_effective_tensors_save.idp to save the effective coefficient
+// - offline_save_effective_tensors.idp to save the effective coefficient
 // - offline_load.idp to replace the offline phase if it can be preloaded
+// - online.idp to construct and solve the (effective) macroscopic system
 // - post.idp to create the output (reconstrucing the fine scale solution,.. 
 //   ..saving the coarse solution, reconstructed solution, errors)
 //
 // This file CREATES for later use in the MsFEM:
-//  uH -- the P1 Crouzeix-Raviart solution to the effective macroscopic problem
+//  bcType -- a string to set the correct boundary conditions in the macroscopic..
+//            ..problem (Lin/CR) 
+//  name[MPI] -- basic information about the MsFEM routine that is executed
+//  VH -- the relevant P1 space for the macroscopic problem
 
 
 // INITIALIZATION
-string name = "CR"; //accronyme for the adv-MsFEM-CR
+string bcType = "CR"; //type of boundary condtitions, relevant for the macroscopic problem
+string name = bcType; //accronyme for the adv-MsFEM-CR
 string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 
-int iproc=1, nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
+int iproc=0, nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
 include "msfem_blocks/init.idp"
 // Build directories to save the results from the upcoming offline phase
@@ -61,8 +66,8 @@ if (offlineMode == "compute") {
         if (i%(2*n)==0) cout <<"construction ms coefficients on tri "<<i<<endl;
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
-        if (osCoef < 0.5) {  //compute numerical correctors, bubble functions on K
-            //osCoef is larger than 1 if over-sampling should be used
+        if (osCoef < osThr) {  //compute numerical correctors, bubble functions on K
+            //osCoef is larger than osThr if oversampling should be used
             include "msfem_blocks/local_problems_CR.idp"
             // Save (internally) the offline computations on K
             storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
@@ -76,10 +81,10 @@ if (offlineMode == "compute") {
             include "msfem_blocks/offline_effective_tensors.idp"
         }
 
-        if (debug) cout << endl;
+        if (debug) if (i%(2*n)==0) cout << endl;
         phi[][i]=0;
     }
-    include "msfem_blocks/offline_effective_tensors_save.idp" //save effective coefficient (for the entire coarse mesh)
+    include "msfem_blocks/offline_save_effective_tensors.idp" //save effective coefficient (for the entire coarse mesh)
 } else if (offlineMode == "load") {
     include "msfem_blocks/offline_load.idp"
 }
@@ -87,14 +92,8 @@ if (offlineMode == "compute") {
 
 // ONLINE PHASE -- solving the effective problem
 fespace VH(TH,P1nc); //coarse global FE space 
-VH uH,vH; //the global problem is formulated on a standard P1 Crouzeix-Raviart basis
-solve PbGlob(uH,vH)= effectiveVar(uH,vH) + int1d(TH,qfe=qf1pE)(tgv*uH*vH);
-// BC need to be set depending on the type of FE used (P1 Crouzeix-Ravairt here, nonconforming)
-// Note 1: the bounadry condition is set here at the midpoints of the boundary edges only:..
-// ..the Dirichlet boundary condition is set only in the weak (average) sense..
-// ..and this is still valid (also for continuity at the interfaces) with OS, as opposed to adv-MsFEM-LIN
-// Note 2: classical Dirichlet conditions are too strong for the problem to be well-posed
-if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
+include "msfem_blocks/online.idp"
+// the P1 solution is (VH) uH, the bubble coefficients are in (VH0) uB
 
 
 // POST-PROCESSING -- reconstruction, error computation, documentation

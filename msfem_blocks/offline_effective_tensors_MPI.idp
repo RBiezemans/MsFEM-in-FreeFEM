@@ -14,13 +14,20 @@ iAHyy[][i]=int2d(K)(a(uHy,uHy,nu,bx,by) + a(Vy,uHy,nu,bx,by))/K.measure;
 iBHx[][i]=int2d(K)(aadv(uHx,1,bx,by) + aadv(Vx,1,bx,by))/K.measure;
 iBHy[][i]=int2d(K)(aadv(uHy,1,bx,by) + aadv(Vy,1,bx,by))/K.measure;
 
-if(useB) {
-    irH[][i] =-int2d(K)(aadv(B,1,bx,by))/K.measure;
-    irHx[][i]=-int2d(K)(a(B,uHx,nu,bx,by))/K.measure;
-    irHy[][i]=-int2d(K)(a(B,uHy,nu,bx,by))/K.measure;
-}
+if (useB) {
+    iAHB[][i] =int2d(K)(a(B,B,nu,bx,by))/K.measure;
 
-ifH[][i]=int2d(K)(fRHS)/K.measure;
+    irH[][i] =int2d(K)(aadv(B,1,bx,by))/K.measure;
+    irHx[][i]=int2d(K)(a(B,uHx,nu,bx,by))/K.measure;
+    irHy[][i]=int2d(K)(a(B,uHy,nu,bx,by))/K.measure;
+
+    if (treatB=="out_system") ifH[][i]=int2d(K)(fRHS)/K.measure;
+    else {
+        ilHx[][i]=int2d(K)(a(uHx,B,nu,bx,by) + a(Vx,B,nu,bx,by))/K.measure;
+        ilHy[][i]=int2d(K)(a(uHy,B,nu,bx,by) + a(Vy,B,nu,bx,by))/K.measure;
+        ifB[][i]=int2d(K)(fRHS*B)/K.measure;
+    }
+}
 
 if(testMS) {
     // One might also exclude this loop for certain methods since it will not yield any contributions, but let us test this first!
@@ -28,10 +35,11 @@ if(testMS) {
     iAHyxTestMS[][i]=int2d(K)(a(uHx,Vy,nu,bx,by) + a(Vx,Vy,nu,bx,by))/K.measure; 
     iAHxyTestMS[][i]=int2d(K)(a(uHy,Vx,nu,bx,by) + a(Vy,Vx,nu,bx,by))/K.measure; 
     iAHyyTestMS[][i]=int2d(K)(a(uHy,Vy,nu,bx,by) + a(Vy,Vy,nu,bx,by))/K.measure;
+    // No AHB -- we always use the (multiscale) precomputed bubbles B
 
     if(useB) {
-        irHxTestMS[][i]=-int2d(K)(a(B,Vx,nu,bx,by))/K.measure;
-        irHyTestMS[][i]=-int2d(K)(a(B,Vy,nu,bx,by))/K.measure;
+        irHxTestMS[][i]=int2d(K)(a(B,Vx,nu,bx,by))/K.measure;
+        irHyTestMS[][i]=int2d(K)(a(B,Vy,nu,bx,by))/K.measure;
     }
 
     ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;

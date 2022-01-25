@@ -1,0 +1,37 @@
+// offline_save_effective_tensors.idp
+// 
+// Save all computed effective tensors (on the global process) to dedicated folders
+// 
+// Compatible with seqential and parallelized versions
+
+
+// Macro that provides the writing procedure of the vector vec to a file with name coeffDir+filename
+macro writeVec2File(filename,vec) {string matrixFile = coeffDir + filename; ofstream ffmat (matrixFile); ffmat << vec;} // EOM
+
+cout << "saving effective coefficients" << endl;
+writeVec2File("/AHxx.txt", AHxx[])
+writeVec2File("/AHyx.txt", AHyx[])
+writeVec2File("/AHxy.txt", AHxy[])
+writeVec2File("/AHyy.txt", AHyy[])
+writeVec2File("/BHx.txt", BHx[])
+writeVec2File("/BHy.txt", BHy[])
+if (testMS) {
+    writeVec2File("/AHxxTestMS.txt", AHxxTestMS[])
+    writeVec2File("/AHyxTestMS.txt", AHyxTestMS[])
+    writeVec2File("/AHxyTestMS.txt", AHxyTestMS[])
+    writeVec2File("/AHyyTestMS.txt", AHyyTestMS[])
+}
+if(useB) {
+    writeVec2File("/rH.txt",  rH[])
+    writeVec2File("/rHx.txt", rHx[])
+    writeVec2File("/rHy.txt", rHy[])
+    if (treatB=="in_system") {
+        writeVec2File("/AHB.txt", AHB[])
+        writeVec2File("/lHx.txt", lHx[])
+        writeVec2File("/lHy.txt", lHy[])
+    } 
+    if(testMS) {
+        writeVec2File("/rHxTestMS.txt", rHxTestMS[])
+        writeVec2File("/rHyTestMS.txt", rHyTestMS[])
+    }
+}

@@ -1,6 +1,6 @@
 // tools_oversampling_patch.idp
 //
-// Construction of an over-sampling patch for a triangular coarse mesh element
+// Construction of an oversampling patch for a triangular coarse mesh element
 // This construction has only been verified for meshes with the option flag==0
 //  For flag==2, it probably suffices to changes the flag type of the patch container C defined below
 //
@@ -13,9 +13,9 @@
 // This file USES:
 //  TH -- the coarse mesh of the global domain
 //  Th -- the fine mesh of the global domain
-//  i -- the integer associated to the triangle selected for over-sampling
+//  i -- the integer associated to the triangle selected for oversampling
 //    -- this triangle will be denoted by K in all comments below
-//  osCoef -- the homothety coefficient chosen for the over-sampling patch
+//  osCoef -- the homothety coefficient chosen for the oversampling patch
 //  xb -- a P0 function on the coarse mesh 
 //        associates to each triangle the x-coordinate of its barycentre
 //  yb -- a P0 function on the coarse mesh
@@ -26,18 +26,18 @@
 //          ..boundary of the patch container
 //
 // This file CREATES for later use in the MsFEM:
-//  S -- the over-sampling patch, a restriction of the global fine mesh 
-//  normS -- the normals of the original mesh element == those of the ideal over-sampling patch 
+//  S -- the oversampling patch, a restriction of the global fine mesh 
+//  normS -- the normals of the original mesh element == those of the ideal oversampling patch 
 //  VS -- P1 finite element space on S
 
 
-// Defining the vertices of the ideal over-sampling patch (possibly lying partially outside the global domain)
+// Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain)
 real[int,int] Kx(3,2); //save coordinates of the vertices belonging to K
 for(int kk=0; kk<3; kk++) {
     Kx(kk,0) = TH[i][kk].x;
     Kx(kk,1) = TH[i][kk].y;
 }
-real[int,int] Sx(3,2); //compute coordinates for the ideal over-sampling patch by homothety
+real[int,int] Sx(3,2); //compute coordinates for the ideal oversampling patch by homothety
 for(int kk=0; kk<3; kk++) {
     Sx(kk,0) = (osCoef)*(Kx(kk,0) - xb[][i]) + xb[][i];
     Sx(kk,1) = (osCoef)*(Kx(kk,1) - yb[][i]) + yb[][i];
@@ -71,7 +71,7 @@ mesh C=square(dxCn, dyCn, [xCL + dxC*x, yCL + dyC*y], label=labs);
 fespace VC(C, P1);
 
 
-// Defining the ideal over-sampling patch by 3 conditions: lying at the correct side of all three normals associated to S
+// Defining the ideal oversampling patch by 3 conditions: lying at the correct side of all three normals associated to S
 real[int,int] normS(3,2); normS=consNormals(Sx); //normals to each of the boundaries of S
 /* 3 conditions that together define S */
 func cond1 = ( ipcheck(normS(2,:), Sx(0,:) ) < -1E-8 );
@@ -84,7 +84,7 @@ patch = cond1 && cond2 && cond3;
 // S is obtained by requiring that they are all satisfied in all the vertices, i.e. patch > 2/3
 // patch is built on C rather than Th entirely to save time in costly function evaluations
 if (debug) {
-    plot(C, patch, phi, fill=1, cmm="Mesh element and over-sampling patch", wait=1);
+    plot(C, patch, phi, fill=1, cmm="Mesh element and oversampling patch", wait=1);
 }
 if (timing) {
     cout << "Building the indicator function for the (real) patch lasted " << clock()-time << " s" << endl;
@@ -92,7 +92,7 @@ if (timing) {
 }
 
 
-// Build the real over-sampling patch S with the help of the function patch
+// Build the real oversampling patch S with the help of the function patch
 mesh S = trunc(C, patch>0.9, split=1, label=1);//, new2old=Th2S);
 fespace VS(S,P1);
 

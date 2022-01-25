@@ -39,14 +39,19 @@
 // - useB == 0 : no bubbles are used in the trial space
 //        == 1 : bubbles are used in the trial space
 //               (predetermined coefficient == average of RHS function)
+// - treatB == "out_system" : bubble DOF are fixed to average of fRHS
+// -             == "in_system"  : the system is enlarged to determined bubble DOF
 // - testMS == 0 : test space is the coarse P1 space
 //          == 1 : test space is equal to the multiscale trial space
 // - strongDir == 0 : CR elements are defined with weak boundary conditions..
 //                    ..on the boundary of the global domain (average sense)
 //             == 1 : CR elements are defined with strong boundary conditions..
 //                    ..on the boundary of the global domain
-// - osCoef -- the homothety coefficient chosen for the over-sampling patch
+// - osCoef -- the homothety coefficient chosen for the oversampling patch
 //   for defining the PDE
+// - osThr -- decide whether oversampling is to be employed:
+//     osCoef <  osThr : no oversampling
+//            => osThr : oversampling
 // - adif -- macro to be used in variational forms associated to diffusion
 // - aadv -- macro to be used in variational forms associated to diffusion
 // - a -- macro to be used in variational forms associated to the entire PDE
@@ -68,14 +73,16 @@
 //                  ..to the .-direction for each coarse mesh element
 // - storeB -- array to store the bubble functions for each coarse mesh element
 // - effective coefficients, the following P0 elements on the coarse mesh:
-//   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, rHx, rHy, rH, fH;
-//   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS, rHxTestMS, rHyTestMS, fHxTestMS, fHyTestMS;
-//   -- iAHxx, iAHxy, iAHyx, iAHyy, iBHx, iBHy, irHx, irHy, irH, ifH;
-//   -- iAHxxTestMS, iAHxyTestMS, iAHyxTestMS, iAHyyTestMS, irHxTestMS, irHyTestMS, ifHxTestMS, ifHyTestMS;
+//   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, AHB, rHx, rHy, rH, lHx, lHy, fH, fB;
+//   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS;
+//   -- rHxTestMS, rHyTestMS, fHxTestMS, fHyTestMS;
+//   -- iAHxx, iAHxy, iAHyx, iAHyy, iBHx, iBHy, irHx, irHy, irH, ilHx, ilHy, ifH, ifB;
+//   -- iAHxxTestMS, iAHxyTestMS, iAHyxTestMS, iAHyyTestMS;
+//   -- irHxTestMS, irHyTestMS, ifHxTestMS, ifHyTestMS;
 //
 // This file MODIFIES for later use
 // - name -- updated for the method including MsFEM options and MPI option
-// -         (use of over-sampling, use of bubbles, type of test function, weak/strong Dirichlet)
+// -         (use of oversampling, use of bubbles, type of test function, weak/strong Dirichlet)
 
 
 /////// TO BE DONE
@@ -96,7 +103,7 @@
 // Some additional parameters that are used during code development  //
 int debug=0; //display/hide intermediate output                      //
 int plotBubbles=0; //show plots of numerical correctors and bubbles  //
-int plots=1; //display/hide basic input and output plots             //
+int plots=0; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
 
@@ -120,9 +127,12 @@ int n, nx, ny;
 real eps, alpha, theta, cont, osCoef;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
+real osThr=0.5;
+//threshold to decide whether oversampling is to be employed
 int logalpha, logeps;
 // Parameters tuning the MsFEM method
 int strongDir, useB, advMS, testMS;
+string treatB;
 
 // Reading parameters from external file "parameters.txt"
 {
@@ -139,12 +149,16 @@ int strongDir, useB, advMS, testMS;
     f >> read >> osCoef;
 	f >> read >> strongDir;
 	f >> read >> useB;
+	f >> read >> treatB;
 	f >> read >> advMS;
 	f >> read >> testMS;
 }
 
 assert(advMS==1); 
 //only adv-MsFEM variants (as opposed to MsFEM) are available
+if (!useB) assert(treatB=="out_system");
+//without bubbles, the routine for the small size linear system must be adopted
+assert(treatB=="out_system" || treatB=="in_system");
 
 if (osCoef > 0.5) {
 	//osCoef should be 0 when no oversampling is applied and larger than 1 is it is applied
@@ -203,8 +217,10 @@ macro a(u,v,nu,bx,by) (adif(u,v,nu) + aadv(u,v,bx,by))// EOM
 //bilinear form for advection-diffusion PDE
 
 // RHS of the PDE to be solved
-func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y); ; 
+func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
 string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+// VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
+// string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
 //string used to document the tests performed in the error file
 
 if (plots) { //plot of diffusion coefficient
@@ -241,19 +257,23 @@ if (name=="CR" || name=="CR_MPI" || name=="CROS" || name=="CROS_MPI") {
 // Directory names for storage of numerical correctors, bubble functions..
 // ..for the MsFEM space, effective coefficient
 string basisDir = output + "basis_" + name + parameters;
+string coeffDir = output + "effective_coeff_" + name + parameters;
 // The use of test function is irrelevant for the basis computation, but..
 // ..does (in some cases) impact the effective coefficients, so we add it
 // ..to name now
 name = name + "_testMS_" + testMS;
-string coeffDir = output + "effective_coeff_" + name + parameters;
 
 // The actual use of bubbles is handled later and irrelevant for basis..
 // ..computations, so we add it to name now
-if (useB) name = name + "_wB";
+if (useB) {
+	name = name + "_wB";
+	if (treatB=="out_system") name = name + "os";
+	else name = name + "is";
+}
 else name = name + "_nB";
 
 // Write starting message for the method
-if (iproc==1) {
+if (iproc==0) {
 	cout << "////////////////////////////////////////////////////////////////" << endl;
 	if (ARGV[1] == "main_REF.edp") //OS option is irrelevant for the reference solution
 	{
@@ -296,33 +316,45 @@ real time=clock(); //current cpu time used for performance assessment if timing=
 ///////////////////////////////////////////////////////////////////////
 
 // Effective coefficients for the main process (== only process for sequential code)
-VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0, BHx=0, BHy=0, rHx=0, rHy=0, rH=0, fH=0;
+VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0, AHB=0, BHx=0, BHy=0, 
+	rH=0, rHx=0, rHy=0, lHx=0, lHy=0, fH=0, fB=0;
 //
-// AH.. respresent the 2x2 matrix that captures the effective (physical + upscaling) diffusion due to multiscale basis functions
+// AH.. represent the 2x2 matrix that captures the effective (physical + upscaling) diffusion due to multiscale basis functions
 // BH.  represent the 2x1 vector that captures the effective (physical + upscaling) advection due to multiscale basis functions
+// AHB  represents the diagonal entries capturing advection + diffusion for bubble functions
 // 
 // rH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the trial space
+// lH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the test space
 // rH represents the numerical advection due to bubble functions in the trial space
-//    these terms only appear on the RHS of the macro-scale scheme (hence are tested only against a single function)
+//    these terms can be moved to the RHS of the macro-scale scheme if bubble coefficients are predetermined
 //
-// fH contains the average of the RHS function on each mesh element, to be used as coefficients for the bubble functions
+// fH contains the average of the RHS function on each mesh element (can be used as coefficients for the bubble functions)
+// fB contains the integral of the RHS function on each mesh element against the respective bubble function
 
 // Additional coefficients of the effective problem that are non-zero if multi-scale test functions are used
-VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, rHxTestMS=0, rHyTestMS=0, fHxTestMS=0, fHyTestMS=0;
+VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, 
+	rHxTestMS=0, rHyTestMS=0, fHxTestMS=0, fHyTestMS=0;
 
 // Effective coefficients for the current process, to be sent to the main process later
-VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0, iBHx=0, iBHy=0, irHx=0, irHy=0, irH=0, ifH=0;
-VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, irHxTestMS=0, irHyTestMS=0, ifHxTestMS=0, ifHyTestMS=0;
+VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0, iAHB=0, iBHx=0, iBHy=0, 
+	irH=0, irHx=0, irHy=0, ilHx=0, ilHy=0, ifH=0, ifB=0;
+VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, 
+	irHxTestMS=0, irHyTestMS=0, ifHxTestMS=0, ifHyTestMS=0;
  
-// Effective variational formulation in terms of the above coefficients (to be computed)
-macro effectiveVar(uH,vH) (
+// Effective variational formulation(s) in terms of the above coefficients (to be computed)
+varf rhsP1(unused,vH) = 
+	 int2d(TH)(fRHS*vH)
+	+int2d(TH,qft=qf1pT)(fHxTestMS*dx(vH) + fHyTestMS*dy(vH));
+varf effectiveVar(uH,vH) =
 	 int2d(TH,qft=qf1pT)( dx(vH)*AHxx*dx(uH) + dy(vH)*AHyx*dx(uH) + dx(vH)*AHxy*dy(uH) + dy(vH)*AHyy*dy(uH) + vH*BHx*dx(uH) + vH*BHy*dy(uH) )
-	+int2d(TH,qft=qf1pT)( dx(vH)*AHxxTestMS*dx(uH) + dy(vH)*AHyxTestMS*dx(uH) + dx(vH)*AHxyTestMS*dy(uH) + dy(vH)*AHyyTestMS*dy(uH) )
-	-int2d(TH)(fRHS*vH)
-	-int2d(TH)(fHxTestMS*dx(vH) + fHyTestMS*dy(vH))
-    -int2d(TH,qft=qf1pT)( fH*(rH*vH+rHx*dx(vH)+rHy*dy(vH)) )
-	-int2d(TH,qft=qf1pT)( fH*(rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) )
-) // EOM
+	+int2d(TH,qft=qf1pT)( dx(vH)*AHxxTestMS*dx(uH) + dy(vH)*AHyxTestMS*dx(uH) + dx(vH)*AHxyTestMS*dy(uH) + dy(vH)*AHyyTestMS*dy(uH) );
+varf rEffectiveOS(unused,vH) =
+	 int2d(TH,qft=qf1pT)( fH*(rH*vH+rHx*dx(vH)+rHy*dy(vH)) )
+	+int2d(TH,qft=qf1pT)( fH*(rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) );
+varf rEffective(u0,vH) = 
+	 int2d(TH,qft=qf1pT)( (rHx*dx(vH)+rHy*dy(vH)+rH*vH) * u0)
+	+int2d(TH,qft=qf1pT)( (rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) * u0);
+varf lEffective(uH,v0) = int2d(TH,qft=qf1pT)( v0 * (lHx*dx(uH)+lHy*dy(uH)) );
 // All piecewise constant coefficients are computed in such a way that the evaluation..
 // ..of the respective integrals at the barycentre corresponds to the exact integral..
 // ..to be computed for the effective problem
