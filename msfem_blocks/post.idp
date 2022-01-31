@@ -142,7 +142,7 @@ try{
     erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1; erOMax=eOMax/nMax;
 }
 catch (...) {
-    cout << "ERROR: norms are equal to zero. No relative errors are computed."
+    cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
 }
 
 if (plots) {

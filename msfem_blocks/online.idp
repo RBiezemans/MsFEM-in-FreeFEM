@@ -39,6 +39,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
     // ..and this is still valid (also for continuity at the interfaces) with OS, as opposed to adv-MsFEM-LIN
     // Note 2: classical Dirichlet conditions are too strong for the problem to be well-posed
 
+    cout << "Building macroscopic linear system" << endl;
     matrix Apde=effectiveVar(VH,VH), Abc;
     if (bcType=="Lin") {
         Abc=bcLin(VH,VH); 
@@ -57,6 +58,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             real[int] FHlhs(VH.ndof); FHlhs=rEffectiveOS(0,VH);
             FH = FH - FHlhs;
         }
+        cout << "Solving macroscopic linear system" << endl;
         uH[]=A^-1*FH;  
         uB[]=fH[]; //bubble coefficients are not determined by the linear system
     } else {
@@ -70,6 +72,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             uB[]=fB[]./AHB[];
             real[int] FHlhs(VH.ndof); FHlhs=R*uB[];
             FH=FH-FHlhs;
+            cout << "Solving macroscopic linear system" << endl;
             uH[]=A^-1*FH;
         }
         else {
@@ -88,6 +91,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             // Solve for nodal and bubble DOF
             real[int] uHB(VH.ndof+VH0.ndof);
             //uHB=0;
+            cout << "Solving macroscopic linear system" << endl;
             uHB=C^-1*FHB;
             if (debug) cout << "Inversion completed" << endl;
             uH[]=uHB(0:VH.ndof-1);

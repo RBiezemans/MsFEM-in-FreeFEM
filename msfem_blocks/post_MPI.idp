@@ -214,7 +214,7 @@ if (iproc==0) {
         erOL1Gl[0]=eOL1Gl[0]/nL1; erOL2Gl[0]=eOL2Gl[0]/nL2; erOH1Gl[0]=eOH1Gl[0]/nH1; erOMaxGl[0]=eOMaxGl[0]/nMax;
     } 
     catch (...) {
-        cout << "ERROR: norms are equal to zero. No relative errors are computed."
+        cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
     }
     if (plots) {
         plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
