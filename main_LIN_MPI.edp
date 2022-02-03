@@ -119,7 +119,7 @@ if (iproc==0) {
         Send(processor(i,comm), uB[]);
     }
 }
-mpiBarrier(comm); //only the main process computes the solution
+//mpiBarrier(comm); //THIS BARRIER MUST NOT BE USED
 if (iproc>0) {
     Recv(processor(0,comm), uH[]); //the other processes receive the coarse scale solution
     Recv(processor(0,comm), uB[]);
