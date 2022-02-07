@@ -6,7 +6,7 @@
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-CR method
-// Over-sampling is used if the parametervalue osCoef is larger than 0.5
+// Over-sampling is used if the parametervalue osCoef is larger than osThr
 //
 // Sequential version
 //
@@ -63,7 +63,10 @@ include "msfem_blocks/tools_CR_and_OS.idp"
 // Data structures storeVx, storeVy, store B were created in init.idp
 if (offlineMode == "compute") {
     for(int i=0; i<VH0.ndof; i++) {
-        if (i%(2*n)==0) cout <<"construction ms coefficients on tri "<<i<<endl;
+        if (i%(2*n)==0) {
+            cout <<"construction ms coefficients on tri "<<i<<endl;
+            ffLog <<"construction ms coefficients on tri "<<i<<endl;
+        }
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < osThr) {  //compute numerical correctors, bubble functions on K
@@ -88,6 +91,7 @@ if (offlineMode == "compute") {
 } else if (offlineMode == "load") {
     include "msfem_blocks/offline_load.idp"
 }
+printTime("Offline phase (computing + storing) lasted ")
 
 
 // ONLINE PHASE -- solving the effective problem

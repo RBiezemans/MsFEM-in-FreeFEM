@@ -28,6 +28,7 @@ VH uH,vH; //the global problem is formulated on a standard FE P1-basis
 VH0 uB; //coefficients to be used for the bubble function per mesh element
 if (iproc==0) { //in case of parallel computing, only the main process solves the macroscopic problem
     cout << "-- Start of online phase" << endl;
+    ffLog << "-- Start of online phase" << endl;
     // BC need to be set depending on the type of FE used 
     // (conforming P1, non-conforming P1 Crouzeix-Raviart)
     varf bcLin(uH,vH) = int1d(TH)(tgv*uH*vH);
@@ -40,7 +41,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
     // ..and this is still valid (also for continuity at the interfaces) with OS, as opposed to adv-MsFEM-LIN
     // Note 2: classical Dirichlet conditions are too strong for the problem to be well-posed
 
-    cout << "Building macroscopic linear system" << endl;
+    if (debug) cout << "Building macroscopic linear system" << endl;
     matrix Apde=effectiveVar(VH,VH), Abc;
     if (bcType=="Lin") {
         Abc=bcLin(VH,VH); 
@@ -62,7 +63,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             real[int] FHlhs(VH.ndof); FHlhs=rEffectiveOS(0,VH);
             FH = FH - FHlhs;
         }
-        cout << "Solving macroscopic linear system" << endl;
+        if (debug) cout << "Solving macroscopic linear system" << endl;
         uH[]=A^-1*FH;  
         uB[]=fH[]; //bubble coefficients are not determined by the linear system
         residue(A,FH,uH[],writeGlobalRes)
@@ -78,7 +79,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             uB[]=fB[]./AHB[];
             real[int] FHlhs(VH.ndof); FHlhs=R*uB[];
             FH=FH-FHlhs;
-            cout << "Solving macroscopic linear system" << endl;
+            if (debug) cout << "Solving macroscopic linear system" << endl;
             uH[]=A^-1*FH;
         }
         else {
@@ -97,7 +98,7 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             // Solve for nodal and bubble DOF
             real[int] uHB(VH.ndof+VH0.ndof);
             //uHB=0;
-            cout << "Solving macroscopic linear system" << endl;
+            if (debug) cout << "Solving macroscopic linear system" << endl;
             uHB=C^-1*FHB;
             if (debug) cout << "Inversion completed" << endl;
             residue(C,FHB,uHB,writeGlobalRes)
@@ -109,4 +110,5 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
         if (debug) cout << "-- End of online phase" << endl;
     }
     if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
+    printTime("Online phase lasted ")
 }

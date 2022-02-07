@@ -9,6 +9,7 @@
 macro writeVec2File(filename,vec) {string matrixFile = coeffDir + filename; ofstream ffmat (matrixFile); ffmat << vec;} // EOM
 
 cout << "saving effective coefficients" << endl;
+ffLog << "saving effective coefficients" << endl;
 writeVec2File("/AHxx.txt", AHxx[])
 writeVec2File("/AHyx.txt", AHyx[])
 writeVec2File("/AHxy.txt", AHxy[])

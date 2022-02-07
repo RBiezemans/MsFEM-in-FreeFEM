@@ -64,7 +64,10 @@ catch (...) {
 // Load and store the basis in storeV[x/y] and storeB
 // Compute effective coefficients per coarse mesh element if needed
 for(int i=0; i<VH0.ndof; i++) {
-    if (i%(2*n)==0) cout << "loading offline phase for tri " << i << endl;
+    if (i%(2*n)==0) {
+        cout << "loading offline phase for tri " << i << endl;
+        ffLog << "loading offline phase for tri " << i << endl;
+    }
     phi[][i]=2;
     { //store numerical correctors associated to the x-direction
         string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
@@ -131,6 +134,7 @@ if (computeCoeff) {
 if (computeCoeff==0) {
     // store the piecewise constant coefficients of the effective PDE
     cout << "loading effective coefficients" << endl;
+    ffLog << "loading effective coefficients" << endl;
     readFile2Vec("/AHxx.txt", AHxx[])
     readFile2Vec("/AHyx.txt", AHyx[])
     readFile2Vec("/AHxy.txt", AHxy[])

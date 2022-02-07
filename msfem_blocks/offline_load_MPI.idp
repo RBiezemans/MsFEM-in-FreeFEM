@@ -72,7 +72,10 @@ catch (...) {
 // Compute effective coefficients per coarse mesh element if needed
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
-    if (i%(2*n)==0) cout << "loading offline phase for tri " << i << endl;
+    if (i%(2*n)==0) {
+        cout << "loading offline phase for tri " << i << endl;
+        if (iproc==0) ffLog << "loading offline phase for tri " << i << endl;
+    }
     phi[][i]=2;
     { //store numerical correctors associated to the x-direction
         string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
@@ -128,7 +131,7 @@ if (iproc == i%nbproc) {
 }
 }
 
-cout << "process " + iproc + " is done loading" + endl;
+//ffLog << "process " + iproc + " is done loading" + endl;
 
 // Reduction of effective quantities to the main process
 // Storage of effective quantities if newly computed
@@ -159,6 +162,7 @@ mpiBarrier(comm);
 if (computeCoeff==0 && iproc==0) {
     // store the piecewise constant coefficients of the effective PDE
     cout << "loading effective coefficients" << endl;
+    ffLog << "loading effective coefficients" << endl;
     readFile2Vec("/AHxx.txt", AHxx[])
     readFile2Vec("/AHyx.txt", AHyx[])
     readFile2Vec("/AHxy.txt", AHxy[])
@@ -188,3 +192,4 @@ if (computeCoeff==0 && iproc==0) {
 }
 
 mpiBarrier(comm);
+if (iproc==0) printTime("Offline phase (computing + storing, measure by main process) lasted ")

@@ -6,7 +6,7 @@
 //
 // Computation of a numerical approximation to the PDE defined in init.idp
 // by the adv-MsFEM-LIN method
-// Over-sampling is used if the parametervalue osCoef is larger than 0.5
+// Over-sampling is used if the parametervalue osCoef is larger than osThr
 //
 // Parallelized version
 //
@@ -71,7 +71,10 @@ int countOffline=0; //to count the number of triangles associated to the current
 if (offlineMode == "compute") {
     for(int i=0; i<VH0.ndof; i++) {
     if (iproc == i%nbproc) {
-        if (i%(2*n)==0) cout <<"construction ms coefficients on tri "<<i<<endl;
+        if (i%(2*n)==0) {
+            cout <<"construction ms coefficients on tri "<<i<<endl;
+            if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
+        }
         phi[][i]=2; //created in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < osThr) { //compute numerical correctors, bubble functions on K
@@ -102,6 +105,7 @@ if (offlineMode == "compute") {
         include "msfem_blocks/offline_save_effective_tensors.idp" 
     }
     mpiBarrier(comm);
+    if (iproc==0) printTime("Offline phase (computing + storing) lasted ")
 } else if (offlineMode == "load") {
     include "msfem_blocks/offline_load_MPI.idp"
 }

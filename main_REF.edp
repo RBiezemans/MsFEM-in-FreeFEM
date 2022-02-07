@@ -23,10 +23,11 @@ if (plots) plot(uh,value=1,wait=1,cmm="P1 solution on a global fine mesh");
     string createDir = "mkdir -p " + output;
     exec(createDir); //directory where all output is stored
     string solname = output + "sol_" + name + parametersFine + ".txt";
-    cout << "Writing reference solution to " << solname << endl; 
+    ffLog << "Writing reference solution to " << solname << endl; 
     ofstream ff(solname);
     ff << uh[] << endl;
     ff << endl;
 }
 
-cout << endl; //end of reference computations
+printTime("Computation of reference solution lasted ")
+ffLog << endl; //end of reference computations

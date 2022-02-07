@@ -20,6 +20,7 @@
 // This file CREATES
 // for external storage/loading of computations and results
 // - residue -- a macro to compute and write residues for the resolution of linear systems
+// - printTime -- a macro that prints a message followed by the time since the last clocking of the time variable
 // - values for the numerical test:
 //   -- eps (microscale), alpha (diffusion minimum), cont (contrast)
 //   -- theta (angle of advection field) 
@@ -73,6 +74,7 @@
 // - storeV[x/y] -- array to store numerical correctors associated..
 //                  ..to the .-direction for each coarse mesh element
 // - storeB -- array to store the bubble functions for each coarse mesh element
+// - time -- real number in which cpu times at different moments during the code are stored
 // - effective coefficients, the following P0 elements on the coarse mesh:
 //   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, AHB, rHx, rHy, rH, lHx, lHy, fH, fB;
 //   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS;
@@ -109,7 +111,7 @@ int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
 
 
-//Macro for residue computation of the resolution of linear systems
+// Macro for residue computation of the resolution of linear systems
 macro residue(mat,rhs,sol,message) {
     real[int] res=mat*sol;
     res=res-rhs;
@@ -117,7 +119,19 @@ macro residue(mat,rhs,sol,message) {
     real rhsNorm=sqrt(rhs'*rhs);
     resNorm=resNorm/rhsNorm;
     cout << message << resNorm << endl;
+	ffLog << message << resNorm << endl;
 } // EOM
+
+real time=clock(); //current cpu time used for performance assessment if timing==True
+macro printTime(message) {
+	real timeLapse = clock()-time;
+	ffLog << message << timeLapse << "s" << endl;
+	time=clock();
+}
+// EOM
+
+// Outfile stream for process output
+ofstream ffLog("log_msfem.txt", append);
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -172,7 +186,7 @@ if (!useB) assert(treatB=="out_system");
 //without bubbles, the routine for the small size linear system must be adopted
 assert(treatB=="out_system" || treatB=="in_system");
 
-if (osCoef > 0.5) {
+if (osCoef > osThr) {
 	//osCoef should be 0 when no oversampling is applied and larger than 1 is it is applied
 	name = name + "OS";
 }
@@ -217,6 +231,7 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
 func nu=alpha*(1+delta*cos(2*pi/eps*x));
+// func nu=alpha*(1+delta*cos(pi/eps)^2*sin(pi/eps)^2);
 // Advection coefficient
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);
@@ -231,9 +246,12 @@ macro a(u,v,nu,bx,by) (adif(u,v,nu) + aadv(u,v,bx,by))// EOM
 // RHS of the PDE to be solved
 func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
 string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+//string used to document the tests performed in the error file
+// func fRHS=sin(x)*sin(y);
+// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --"
 // VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
 // string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
-//string used to document the tests performed in the error file
+
 
 if (plots) { //plot of diffusion coefficient
 	Vh nuh = nu;
@@ -287,11 +305,14 @@ else name = name + "_nB";
 // Write starting message for the method
 if (iproc==0) {
 	cout << "////////////////////////////////////////////////////////////////" << endl;
+	ffLog << "////////////////////////////////////////////////////////////////" << endl;
 	if (ARGV[1] == "main_REF.edp") //OS option is irrelevant for the reference solution
 	{
 		cout << "// Computing reference solution with parameters " + parametersFine << endl;
+		ffLog << "// Computing reference solution with parameters " + parametersFine << endl;
 	} else {
 		cout << "// Performing " + name + " with parameters " + parameters << endl;
+		ffLog << "// Performing " + name + " with parameters " + parameters << endl;
 	}
 }
 
@@ -319,8 +340,6 @@ if (VH0.ndof%nbproc>0) {
 real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
 real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
 real[int,int] storeB(storeLen,ndofOffline); storeB=0;
-
-real time=clock(); //current cpu time used for performance assessment if timing==True
 
 
 ///////////////////////////////////////////////////////////////////////

@@ -9,24 +9,24 @@
 
 
 # Number of processors to be used
-NUMBER_OF_PROC=8
+NUMBER_OF_PROC=2
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_L="1."
-TOTEST_LARGE_N="100" # 2^11
-TOTEST_LARGER_N="4096" # 2^12
-TOTEST_SMALL_N="4"
-TOTEST_EPS="0.0078125" # 2^-7
-TOTEST_2LOGALP="-2" # -3 -4 -5 -6 -7" # 2^-2 ... 2^-8
-TOTEST_THETA="0.15"
-TOTEST_CONT="7"
-TOTEST_OSCOEF="1.2"
+TOTEST_LARGE_N="1024" 
+TOTEST_LARGER_N="0" # unused in this experiment 
+TOTEST_SMALL_N="4 8 16 31 64 128 256"
+TOTEST_EPS="0.020947"
+TOTEST_2LOGALP="0"
+TOTEST_THETA="0.125"
+TOTEST_CONT="100"
+TOTEST_OSCOEF="0 3"
 TOTEST_STR_DIR="0"
 TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
 TOTEST_TREAT_B="in_system out_system"
 TOTEST_ADV_MS="1"
-TOTEST_MS="0"
+TOTEST_MS="1 0"
 
 ## SOME PARAMETER RULES
 ## - Usage of bubbles must be executed before non-usage: "1 0" or "0"
@@ -41,9 +41,6 @@ for TEST_2LOGALP in $TOTEST_2LOGALP; do sed -i "s/2logalpha=.*/2logalpha= $TEST_
 for TEST_THETA in $TOTEST_THETA; do sed -i "s/theta=.*/theta= $TEST_THETA/" "experiment/parameters.txt" 
 for TEST_CONT in $TOTEST_CONT; do sed -i "s/cont=.*/cont= $TEST_CONT/" "experiment/parameters.txt" 
 for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "experiment/parameters.txt"
-    if [ $TEST_2LOGALP = "-8" ] # the last test requires a finer reference solution (skipped here)
-    then sed -i "s/N=.*/N= $TOTEST_LARGER_N/" "experiment/parameters.txt" 
-    fi
 
     # The above loops contain all parameters related to the reference solution
     sed -i "s/treatB=.*/treatB= out_system/" "experiment/parameters.txt"

@@ -48,6 +48,7 @@ if(iproc==0) { //on the main process, load reference solution on Th
     }
     catch (...) { //or compute the referece solution if the file is not found
         cout << "WARNING: No reference solution was found and it is recomputed" << endl;
+        ffLog << "WARNING: No reference solution was found and it is recomputed" << endl;
         Vh vh;
         solve pb(uref,vh)=int2d(Th)(a(uref,vh,nu,bx,by)) +int1d(Th)(tgv*uref*vh)
                 -int2d(Th)(fRHS*vh);
@@ -99,7 +100,10 @@ if (timing) time=clock();
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
     //build fine mesh of the coarse mesh element K treated by the current process
-    if (i%(2*n)==0) cout <<"reconstruction on tri "<<i<<endl;
+    if (i%(2*n)==0) {
+        cout <<"reconstruction on tri "<<i<<endl;
+        if (iproc==0) ffLog <<"reconstruction on tri "<<i<<endl;
+    }
     phi[][i]=2;
     int[int] n2o;
     mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
@@ -158,7 +162,7 @@ if (iproc == i%nbproc) {
 
     phi[][i]=0;
     if (timing) {
-        cout << "Reconstruction on tri" << i << " lasted " << clock()-timing << endl;
+        ffLog << "Reconstruction on tri" << i << " lasted " << clock()-timing << endl;
         timing=clock();
     }
 }
@@ -200,7 +204,7 @@ if (iproc==0) {
     uref = abs(uref);
     nMax=uref[].max;
     string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-    cout << printNorms;
+    ffLog << printNorms;
     // Taking square roots, determining the relative errors
     eL2Gl[0]=sqrt(eL2Gl[0]);
     eML2Gl[0]=sqrt(eML2Gl[0]);
@@ -215,18 +219,20 @@ if (iproc==0) {
     } 
     catch (...) {
         cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+        ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
     }
     if (plots) {
         plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
         plot(error, value=1, cmm="Error");
     }
 
-    cout << "  Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
+    ffLog << "  Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
+    printTime("Reconstruction + error computation lasted ")
 
     {// Saving coarse scale solution
         string solCname = output + "solCoarse_" + name + parameters;
         solCname = solCname + ".txt";
-        cout << "Writing solution in P1 basis to " << solCname << endl; 
+        ffLog << "Writing solution in P1 basis to " << solCname << endl; 
         ofstream ff(solCname, append);
         ff << uH[] << endl;
         ff << endl;
@@ -234,7 +240,7 @@ if (iproc==0) {
     if (treatB == "in_system") {// Saving bubble coefficients
         string solBname = "results/solCoarseB_" + name + parameters;
         solBname = solBname + ".txt";
-        cout << "Writing oefficients for the bubble functions to " << solBname << endl; 
+        ffLog << "Writing oefficients for the bubble functions to " << solBname << endl; 
         ofstream ff(solBname, append);
         ff << uB[] << endl;
         ff << endl;
@@ -242,15 +248,15 @@ if (iproc==0) {
     {// Saving reconstructed micro-scale solution
         string solname = output + "sol_" + name + parameters;
         solname = solname + ".txt";
-        cout << "Writing reconstructed fine scale solution to " << solname << endl; 
+        ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
         ofstream ff(solname, append);
         ff << uHhGl[] << endl;
         ff << endl;
     }
 
     {// Writing errors to an external file
-        string errname = output + "err_" + name + ".txt";
-        cout << "Writing errors to " << errname << endl;
+        string errname = output + "err_" + name + "_OS" + osCoef + ".txt";
+        ffLog << "Writing errors to " << errname << endl;
         ofstream ff(errname, append);
         ff  << rhsDescription
             << endl
@@ -292,5 +298,6 @@ if (iproc==0) {
         ff<<endl;
     }
 
-    cout << endl; //end of MsFEM routine
+    cout << endl;
+    ffLog << endl << endl; //end of MsFEM routine
 }
