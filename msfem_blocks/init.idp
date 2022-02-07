@@ -230,11 +230,11 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-func nu=alpha*(1+delta*cos(2*pi/eps*x));
-// func nu=alpha*(1+delta*cos(pi/eps)^2*sin(pi/eps)^2);
+// func nu=alpha*(1+delta*cos(2*pi/eps*x));
+func nu=alpha*(1+delta*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection coefficient
-real bx=cos(2*pi*theta);
-real by=sin(2*pi*theta);
+real bx=0; //cos(2*pi*theta);
+real by=0; //sin(2*pi*theta);
  
 macro adif(u,v,nu) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu)// EOM
 //bilinear form associated to diffusion
@@ -244,11 +244,11 @@ macro a(u,v,nu,bx,by) (adif(u,v,nu) + aadv(u,v,bx,by))// EOM
 //bilinear form for advection-diffusion PDE
 
 // RHS of the PDE to be solved
-func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
-string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+// func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
+// string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
 //string used to document the tests performed in the error file
-// func fRHS=sin(x)*sin(y);
-// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --"
+func fRHS=sin(x)*sin(y);
+string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
 // VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
 // string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
 

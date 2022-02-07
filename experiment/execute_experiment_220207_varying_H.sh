@@ -9,7 +9,7 @@
 
 
 # Number of processors to be used
-NUMBER_OF_PROC=2
+NUMBER_OF_PROC=10
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes

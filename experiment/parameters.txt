@@ -1,11 +1,11 @@
 L= 1.
-N= 100
+N= 1024
 n= 4
-eps= 0.0078125
-2logalpha= -2
-theta= 0.15
-cont= 7
-osCoef= 1.2
+eps= 0.020947
+2logalpha= 0
+theta= 0.125
+cont= 100
+osCoef= 3
 strong_Dirichlet= 0
 useB= 0
 treatB= out_system
