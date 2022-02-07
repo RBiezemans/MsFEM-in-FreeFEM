@@ -17,6 +17,7 @@
 //  fB -- integral of f against bubble functions
 //  Macroscopic variational forms:
 //  effectiveVar, rhsP1, rEffective, lEffective, the effective coefficient AB
+//  residue -- macro to write the residue of the global linear system solved
 //  
 // This file CREATES for later use in the MsFEM:
 //  uH -- the P1 solution to the effective macroscopic problem
@@ -26,7 +27,7 @@
 VH uH,vH; //the global problem is formulated on a standard FE P1-basis
 VH0 uB; //coefficients to be used for the bubble function per mesh element
 if (iproc==0) { //in case of parallel computing, only the main process solves the macroscopic problem
-    if (debug) cout << "-- Start of online phase" << endl;
+    cout << "-- Start of online phase" << endl;
     // BC need to be set depending on the type of FE used 
     // (conforming P1, non-conforming P1 Crouzeix-Raviart)
     varf bcLin(uH,vH) = int1d(TH)(tgv*uH*vH);
@@ -52,6 +53,9 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
     // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
     real[int] FH(VH.ndof); FH=rhsP1(0,VH); //RHS of the system for testing fRHS against P1
 
+    // output message for online phase
+    string writeGlobalRes="The global linear system was solved with residue = ";
+
     if (treatB == "out_system") {
         if (useB) {
             // Include bubbles in the equation for the nodal DOF for consistency
@@ -61,6 +65,8 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
         cout << "Solving macroscopic linear system" << endl;
         uH[]=A^-1*FH;  
         uB[]=fH[]; //bubble coefficients are not determined by the linear system
+        residue(A,FH,uH[],writeGlobalRes)
+        if (debug) cout << "-- End of online phase" << endl;
     } else {
         // Add unknowns and test equations for bubble functions to the linear system..
         // ..for nodal test functions
@@ -87,21 +93,20 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             // Build RHS for the system with nodal and bubble functions
             real[int] FHB(VH.ndof+VH0.ndof);
             FHB(0:VH.ndof-1) = FH; //RHS for testing against P1
-            FHB(VH.ndof:VH.ndof+VH0.ndof) = fB[]; //int2d(fRHS*B) computed in offline phase
+            FHB(VH.ndof:VH.ndof+VH0.ndof-1) = fB[]; //int2d(K)(fRHS*B) computed in offline phase
             // Solve for nodal and bubble DOF
             real[int] uHB(VH.ndof+VH0.ndof);
             //uHB=0;
             cout << "Solving macroscopic linear system" << endl;
             uHB=C^-1*FHB;
             if (debug) cout << "Inversion completed" << endl;
+            residue(C,FHB,uHB,writeGlobalRes)
             uH[]=uHB(0:VH.ndof-1);
             if (debug) cout << "Nodal DOF has been stored" << endl;
-            uB[]=uHB(VH.ndof:VH.ndof+VH0.ndof);
+            uB[]=uHB(VH.ndof:VH.ndof+VH0.ndof-1);
             if (debug) cout << "Bubble DOF has been stored" << endl;
         }
         if (debug) cout << "-- End of online phase" << endl;
     }
-    if (debug) cout << "-- End of online phase" << endl;
     if (plots) plot(uH,value=1,wait=1,cmm="HMM solution");
-    if (debug) cout << "-- End of online phase" << endl;
 }

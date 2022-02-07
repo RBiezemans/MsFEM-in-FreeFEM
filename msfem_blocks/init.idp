@@ -19,6 +19,7 @@
 //
 // This file CREATES
 // for external storage/loading of computations and results
+// - residue -- a macro to compute and write residues for the resolution of linear systems
 // - values for the numerical test:
 //   -- eps (microscale), alpha (diffusion minimum), cont (contrast)
 //   -- theta (angle of advection field) 
@@ -106,6 +107,17 @@ int plotBubbles=0; //show plots of numerical correctors and bubbles  //
 int plots=0; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
+
+
+//Macro for residue computation of the resolution of linear systems
+macro residue(mat,rhs,sol,message) {
+    real[int] res=mat*sol;
+    res=res-rhs;
+    real resNorm=sqrt(res'*res);
+    real rhsNorm=sqrt(rhs'*rhs);
+    resNorm=resNorm/rhsNorm;
+    cout << message << resNorm << endl;
+} // EOM
 
 
 ///////////////////////////////////////////////////////////////////////
