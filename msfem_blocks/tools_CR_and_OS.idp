@@ -29,6 +29,17 @@ func real[int,int] consNormals(real[int,int] & pp) {
 macro edgeIntegral(S,label,normS,edg,fnc) (int1d(S,label)( (ip(N.x,N.y,normS(edg,:))>0.99) *fnc))// EOM
 
 
+// Printing integrals of function over all edges of K for debugging/verification purposes
+macro printIntegralsK(uH) {
+    cout << "Integrals on K: ";
+    for (edg=0; edg<3; edg++) {
+        real toprint = edgeIntegral(K,1,normS,edg,uH) + edgeIntegral(K,-1,normS,edg,uH);
+        cout << toprint << "  ";
+    }
+    cout << endl;
+}
+
+
 // Related to inner products
 
 //inner product of (u,v) with a vector (w[0],w[1])

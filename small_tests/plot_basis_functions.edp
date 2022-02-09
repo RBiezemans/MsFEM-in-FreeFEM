@@ -1,0 +1,270 @@
+///////////////////////////////////////////////////////////////////////
+int debug=1; //display/hide intermediate output                      //
+int plotBubbles=0; //show plots of numerical correctors and bubbles  //
+int plots=0; //display/hide basic input and output plots             //
+int timing=0; //time certain steps in oversampling methods           //
+///////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////
+// Parameters                                                        //
+///////////////////////////////////////////////////////////////////////
+
+string FEtype="CR";
+
+// Parameters defining the coarse mesh
+int n=3, nx=n, ny=n;
+real L=n*0.0625, Lx=L, Ly=L;
+// Parameters defining the fine mesh
+int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
+// Parameters defining the PDE
+real eps=0.0078125, alpha=0.007625, theta=0.15, cont=7, osCoef=3;
+//theta: angle of the advection field
+//cont: contrast of the multiscale coefficient
+real osThr=0.5;
+//threshold to decide whether oversampling is to be employed
+// Parameters tuning the MsFEM method
+int strongDir=0, useB=1, advMS=1, testMS=1;
+string treatB="in_system";
+
+int nbproc=1;
+string basisDir="basis";
+real time=0;
+
+macro residue(mat,rhs,sol,message) {
+    real[int] res=mat*sol;
+    res=res-rhs;
+    real resNorm=sqrt(res'*res);
+    real rhsNorm=sqrt(rhs'*rhs);
+    resNorm=resNorm/rhsNorm;
+    cout << message << resNorm << endl;
+} // EOM
+
+
+///////////////////////////////////////////////////////////////////////
+// Define the global coarse and fine meshes and numerical parameters //
+///////////////////////////////////////////////////////////////////////
+
+// Coarse mesh TH
+real Hx=Lx/nx, Hy=Ly/ny;
+mesh TH=square(nx,ny,[Lx*x,Ly*y]);
+fespace VH0(TH,P0); //piecewise constant FE space on coarse mesh
+VH0 phi=0; //pw constant function to loop over coarse mesh elements
+VH0 xb,yb;
+xb=x; yb=y; //interpolate and stock the coordinates of the barycentre for each triangle
+
+// Fine mesh Th
+real hx=Lx/Nx, hy=Ly/Ny;
+int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements, but we do not use the global boundary now
+mesh Th=square(Nx,Ny,[Lx*x,Ly*y], label=labs);
+fespace Vh(Th,P1); //fine global FE space
+
+
+///////////////////////////////////////////////////////////////////////
+// Define the PDE                                                    //
+///////////////////////////////////////////////////////////////////////
+
+// Diffusion coefficient
+real delta = (cont-1.)/(cont+1.);
+func nu=alpha*(1+delta*cos(2*pi/eps*x));
+// func nu=alpha*(1+delta*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+// Advection coefficient
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
+ 
+macro adif(u,v,nu) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu)// EOM
+//bilinear form associated to diffusion
+macro aadv(u,v,bx,by) ( v*(  bx*dx(u)+by*dy(u) ) )// EOM
+//bilinear form associated to advection
+macro a(u,v,nu,bx,by) (adif(u,v,nu) + aadv(u,v,bx,by))// EOM
+//bilinear form for advection-diffusion PDE
+
+// RHS of the PDE to be solved
+func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
+// string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+//string used to document the tests performed in the error file
+// func fRHS=sin(x)*sin(y);
+// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+// VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
+// string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
+
+
+if (plots) { //plot of diffusion coefficient
+	Vh nuh = nu;
+	plot(nuh, cmm="Diffusion coefficient", wait=1, fill=1, value=1);
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// Define internal data structures                                   //
+///////////////////////////////////////////////////////////////////////
+
+int ndofOffline;
+{
+    //obtain the number of DOF for the discretization of each coarse element
+    phi[][0]=2;
+    mesh K=trunc(Th,phi>1,split=1);
+    fespace VK(K,P1);
+    ndofOffline=VK.ndof;
+	phi[][0]=0;
+}
+
+// Data structures to store offline computations, to be re-used in the reconstruction phase
+int storeLen = VH0.ndof/nbproc;
+if (VH0.ndof%nbproc>0) {
+	storeLen += 1; //correction for round-off
+}
+real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
+real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
+real[int,int] storeB(storeLen,ndofOffline); storeB=0;
+
+
+/*
+///////////////////////////////////////////////////////////////////////
+// Effective coefficients for the macroscopic problem                //
+///////////////////////////////////////////////////////////////////////
+
+// Effective coefficients for the main process (== only process for sequential code)
+VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0, AHB=0, BHx=0, BHy=0, 
+	rH=0, rHx=0, rHy=0, lHx=0, lHy=0, fH=0, fB=0;
+//
+// AH.. represent the 2x2 matrix that captures the effective (physical + upscaling) diffusion due to multiscale basis functions
+// BH.  represent the 2x1 vector that captures the effective (physical + upscaling) advection due to multiscale basis functions
+// AHB  represents the diagonal entries capturing advection + diffusion for bubble functions
+// 
+// rH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the trial space
+// lH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the test space
+// rH represents the numerical advection due to bubble functions in the trial space
+//    these terms can be moved to the RHS of the macro-scale scheme if bubble coefficients are predetermined
+//
+// fH contains the average of the RHS function on each mesh element (can be used as coefficients for the bubble functions)
+// fB contains the integral of the RHS function on each mesh element against the respective bubble function
+
+// Additional coefficients of the effective problem that are non-zero if multi-scale test functions are used
+VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, 
+	rHxTestMS=0, rHyTestMS=0, fHxTestMS=0, fHyTestMS=0;
+
+// Effective coefficients for the current process, to be sent to the main process later
+VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0, iAHB=0, iBHx=0, iBHy=0, 
+	irH=0, irHx=0, irHy=0, ilHx=0, ilHy=0, ifH=0, ifB=0;
+VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, 
+	irHxTestMS=0, irHyTestMS=0, ifHxTestMS=0, ifHyTestMS=0;
+ 
+// Effective variational formulation(s) in terms of the above coefficients (to be computed)
+varf rhsP1(unused,vH) = 
+	 int2d(TH)(fRHS*vH)
+	+int2d(TH,qft=qf1pT)(fHxTestMS*dx(vH) + fHyTestMS*dy(vH));
+varf effectiveVar(uH,vH) =
+	 int2d(TH,qft=qf1pT)( dx(vH)*AHxx*dx(uH) + dy(vH)*AHyx*dx(uH) + dx(vH)*AHxy*dy(uH) + dy(vH)*AHyy*dy(uH) + vH*BHx*dx(uH) + vH*BHy*dy(uH) )
+	+int2d(TH,qft=qf1pT)( dx(vH)*AHxxTestMS*dx(uH) + dy(vH)*AHyxTestMS*dx(uH) + dx(vH)*AHxyTestMS*dy(uH) + dy(vH)*AHyyTestMS*dy(uH) );
+varf rEffectiveOS(unused,vH) =
+	 int2d(TH,qft=qf1pT)( fH*(rH*vH+rHx*dx(vH)+rHy*dy(vH)) )
+	+int2d(TH,qft=qf1pT)( fH*(rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) );
+varf rEffective(u0,vH) = 
+	 int2d(TH,qft=qf1pT)( (rHx*dx(vH)+rHy*dy(vH)+rH*vH) * u0)
+	+int2d(TH,qft=qf1pT)( (rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) * u0);
+varf lEffective(uH,v0) = int2d(TH,qft=qf1pT)( v0 * (lHx*dx(uH)+lHy*dy(uH)) );
+// All piecewise constant coefficients are computed in such a way that the evaluation..
+// ..of the respective integrals at the barycentre corresponds to the exact integral..
+// ..to be computed for the effective problem
+*/
+
+
+///////////////////////////////////////////////////////////////////////
+// Construction of multiscale basis                                  //
+///////////////////////////////////////////////////////////////////////
+
+include "../msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+
+for(int i=0; i<VH0.ndof; i++) {
+    cout <<"construction ms coefficients on tri "<<i<<endl;
+    phi[][i]=2; 
+
+    if (osCoef < osThr) {  //compute numerical correctors, bubble functions on K
+        //osCoef is larger than osThr if oversampling should be used
+        if (FEtype=="Lin") {
+            include "../msfem_blocks/local_problems_LIN.idp"
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+        }
+        else if (FEtype=="CR") {
+            include "../msfem_blocks/local_problems_CR.idp"
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+        }
+        // Save (internally) the offline computations on K
+        // Compute effective coefficient on K
+        // include "msfem_blocks/offline_effective_tensors.idp"
+    } else { //OS case
+        if (FEtype=="Lin") {
+            include "../msfem_blocks/local_problems_LIN_OS.idp"
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+        }
+        else if (FEtype=="CR") {
+            include "../msfem_blocks/local_problems_CR_OS.idp"
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+
+        }
+        // Save (internally) the offline computations on K
+        // Compute effective coefficient on K
+        // include "msfem_blocks/offline_effective_tensors.idp"
+    }
+    
+
+    if (debug) if (i%(2*n)==0) cout << endl;
+    phi[][i]=0;
+}
+
+macro reconstruct(uH) {
+    plot(TH,uH,wait=1,cmm="Coarse basis function");
+    Vh uHh=0; /*for the reconstructed basis functions*/
+    Vh uHhB=0; /*reconstruction with a bubble function*/
+    VH0 uH0=uH; /*interpolation of uH at barycentres to facilitate local reconstructions*/
+    VH0 uHdx=dx(uH), uHdy=dy(uH); /*interpolation of derivatives of uH (which in fact are piecewise constant)*/
+
+    for(int i=0; i<VH0.ndof; i++) {
+        cout <<"reconstruction on tri "<<i<<endl;
+        phi[][i]=2;
+        int[int] n2o;
+        mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
+        fespace VKh(K,P1);
+        fespace VK0(K,P0);
+        
+        VKh uHK;
+        uHK=uH0[][i] + uHdx[][i]*(x-xb[][i]) + uHdy[][i]*(y-yb[][i]);
+        real[int] uHhK=uHK[];  /*array currently representing the coarse solution on K*/
+        uHhK+=uHdx[][i]*storeVx(i,:);
+        uHhK+=uHdy[][i]*storeVy(i,:);
+        int[int] R=restrict(VKh, Vh, n2o);
+        uHh[](R)=uHhK;
+
+        if (abs(uH0[][i]) > K.measure/100) uHhK+=storeB(i,:);
+        uHhB[](R)=uHhK;
+
+        phi[][i]=0;
+    }
+    plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1);
+    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1);
+} // EOM
+
+real basisValue=0.05;
+if (FEtype=="Lin") {
+    fespace VH(TH,P1); 
+    VH uH=0; 
+    for (int i=0; i<VH.ndof; i++) {
+        uH[][i]=basisValue;
+        reconstruct(uH)
+        uH[][i]=0;
+    }
+    uH=x*basisValue;
+    reconstruct(uH)
+}
+else if (FEtype=="CR") {
+    fespace VH(TH,P1nc); 
+    VH uH=0; 
+    for (int i=0; i<VH.ndof; i++) {
+        uH[][i]=basisValue;
+        reconstruct(uH)
+        uH[][i]=0;
+    }
+    uH=x*basisValue;
+    reconstruct(uH)
+}

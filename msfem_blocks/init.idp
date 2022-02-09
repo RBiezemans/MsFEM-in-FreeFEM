@@ -230,11 +230,11 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-// func nu=alpha*(1+delta*cos(2*pi/eps*x));
-func nu=alpha*(1+delta*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+func nu=alpha*(1+delta*cos(2*pi/eps*x));
+// func nu=alpha*(1+delta*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection coefficient
-real bx=0; //cos(2*pi*theta);
-real by=0; //sin(2*pi*theta);
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
  
 macro adif(u,v,nu) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu)// EOM
 //bilinear form associated to diffusion

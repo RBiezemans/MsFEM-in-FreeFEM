@@ -188,15 +188,23 @@ real[int] F(VS.ndof+nedges), X(VS.ndof+nedges); F=0;
 // F is used to set the RHS of the linear system for various problems
 // X is used to store the solutions to the linear systems. These contain the multi-scale basis functions..
 // ..and the Lagrange multipliers associated to the linear constraints
-
 varf pbRHS(unused,vh)=-int2d(S)(a(uH,vh,nu,bx,by));  //variational formulation of local problems -- linear form for the RHS of the numerical correctors
 varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
+
 // Resolution:
 uH[]=uHx[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VxS[]=X;
+if (debug) residue(CRmat,F,X,"Corrector 1 was computed with residue ")
+if (debug) printIntegralsK(VxS)
 //note that Vx[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
+
 uH[]=uHy[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
+if (debug) residue(CRmat,F,X,"Corrector 2 was computed with residue ")
+if (debug) printIntegralsK(VyS)
+
 if (useB) {
     F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X;
+    if (debug) residue(CRmat,F,X,"Bubble was computed with residue ")
+    if (debug) printIntegralsK(BS)
 }
 
 if (timing) {
