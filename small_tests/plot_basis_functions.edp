@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////
-int debug=1; //display/hide intermediate output                      //
+int debug=0; //display/hide intermediate output                      //
 int plotBubbles=0; //show plots of numerical correctors and bubbles  //
 int plots=0; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
@@ -18,7 +18,7 @@ real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.0078125, alpha=0.007625, theta=0.15, cont=7, osCoef=3;
+real eps=0.0078125, alpha=0.0078125, theta=0.15, cont=7, osCoef=3;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
@@ -213,7 +213,7 @@ for(int i=0; i<VH0.ndof; i++) {
     phi[][i]=0;
 }
 
-macro reconstruct(uH) {
+macro reconstruct(uH,bubbleValue) {
     plot(TH,uH,wait=1,cmm="Coarse basis function");
     Vh uHh=0; /*for the reconstructed basis functions*/
     Vh uHhB=0; /*reconstruction with a bubble function*/
@@ -236,7 +236,11 @@ macro reconstruct(uH) {
         int[int] R=restrict(VKh, Vh, n2o);
         uHh[](R)=uHhK;
 
-        if (abs(uH0[][i]) > K.measure/100) uHhK+=storeB(i,:);
+        if (abs(uH0[][i]) > K.measure/100) {
+            real[int] BKh = storeB(i,:);
+            BKh = bubbleValue*BKh;
+            uHhK+=BKh;
+        }
         uHhB[](R)=uHhK;
 
         phi[][i]=0;
@@ -250,21 +254,21 @@ if (FEtype=="Lin") {
     fespace VH(TH,P1); 
     VH uH=0; 
     for (int i=0; i<VH.ndof; i++) {
-        uH[][i]=basisValue;
-        reconstruct(uH)
+        uH[][i]=1;
+        reconstruct(uH,1./basisValue)
         uH[][i]=0;
     }
     uH=x*basisValue;
-    reconstruct(uH)
+    reconstruct(uH,1./basisValue)
 }
 else if (FEtype=="CR") {
     fespace VH(TH,P1nc); 
     VH uH=0; 
     for (int i=0; i<VH.ndof; i++) {
-        uH[][i]=basisValue;
-        reconstruct(uH)
+        uH[][i]=1;
+        reconstruct(uH,1./basisValue)
         uH[][i]=0;
     }
     uH=x*basisValue;
-    reconstruct(uH)
+    reconstruct(uH,1./basisValue)
 }
