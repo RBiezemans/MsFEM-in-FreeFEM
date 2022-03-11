@@ -106,7 +106,7 @@
 // Some additional parameters that are used during code development  //
 int debug=0; //display/hide intermediate output                      //
 int plotBubbles=0; //show plots of numerical correctors and bubbles  //
-int plots=0; //display/hide basic input and output plots             //
+int plots=1; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
 
@@ -231,7 +231,7 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
 func nu=alpha*(1+delta*cos(2*pi/eps*x));
-// func nu=alpha*(1+delta*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+// func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection coefficient
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);
