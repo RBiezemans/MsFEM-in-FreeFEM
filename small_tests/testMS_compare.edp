@@ -1,0 +1,52 @@
+// Small piece of code to compare the fine scale solutions of different testMS options
+
+int Ndiscr = 1024;
+mesh Th=square(Ndiscr,Ndiscr,[1*x,1*y]);
+fespace Vh(Th,P1);
+Vh solGal=0, solPG=0;
+
+real[int] nsteps(7); 
+nsteps = [4, 8, 16, 32, 64, 128, 256];
+
+macro computeDifference(i, type, os, diffNorm) {
+    string fileGal, filePG;
+    if (os == 0) {
+        fileGal = "sol_"+type+"_testMS_1_nB_alpha_1_cont_100_eps_0.020947_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
+        filePG  = "sol_"+type+"_testMS_0_nB_alpha_1_cont_100_eps_0.020947_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
+    } else {
+        fileGal = "sol_"+type+"_testMS_1_nB_alpha_1_cont_100_eps_0.020947_OS_"+os+"_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
+        filePG  = "sol_"+type+"_testMS_0_nB_alpha_1_cont_100_eps_0.020947_OS_"+os+"_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
+    }
+    cout << fileGal << " " << filePG << endl;
+    {
+        ifstream ff(fileGal);
+        ff >> solGal[];
+    }
+    {
+        ifstream ff(filePG);
+        ff >> solPG[];
+    }
+
+    Vh difference = solGal - solPG;
+    diffNorm = int2d(Th)(difference*difference + dx(difference)*dx(difference) + dy(difference)*dy(difference));
+    diffNorm = sqrt(diffNorm);
+} 
+// EOM
+
+{
+ofstream fout("MsFEM-GalvsPG.dat", append);
+    fout << "H\t" << "Lin\t" << "LinOS3\t" << "CR\t" << "CROS3" << endl;
+    for(int i=0; i<nsteps.n; i++) {
+        real diffLin=0;
+        computeDifference(i, "Lin_MPI", 0, diffLin)
+        real diffLinOS=0;
+        computeDifference(i, "LinOS_MPI", 3, diffLinOS)
+        real diffCR=0;
+        computeDifference(i, "CR_MPI_weakDir", 0, diffCR)
+        real diffCROS=0;
+        computeDifference(i, "CROS_MPI_weakDir", 3, diffCROS)
+
+        fout << 1./nsteps[i] << "\t" << diffLin << "\t" << diffLinOS << "\t" 
+                             << diffCR << "\t" << diffCROS << endl; 
+    }
+}
