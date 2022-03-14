@@ -26,6 +26,7 @@
 //          ..boundary of the patch container
 //
 // This file CREATES for later use in the MsFEM:
+//  Kx(i,[x/y]) -- [x/y]-coordinate of the ith vertex of K
 //  S -- the oversampling patch, a restriction of the global fine mesh 
 //  normS -- the normals of the original mesh element == those of the ideal oversampling patch 
 //  VS -- P1 finite element space on S

@@ -6,26 +6,28 @@ int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
 
 
+exec("mkdir -p basis");
+
 ///////////////////////////////////////////////////////////////////////
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="CR";
+string FEtype="Lin";
 
 // Parameters defining the coarse mesh
-int n=3, nx=n, ny=n;
+int n=2, nx=n, ny=n;
 real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.0078125, alpha=0.0078125, theta=0.15, cont=7, osCoef=3;
+real eps=0.0078125, alpha=0.0078125, theta=0.15, cont=7, osCoef=2;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
 int strongDir=0, useB=1, advMS=1, testMS=1;
-string treatB="in_system";
+string glue="restrict", treatB="in_system";
 
 int nbproc=1;
 string basisDir="basis";
@@ -216,6 +218,7 @@ for(int i=0; i<VH0.ndof; i++) {
 macro reconstruct(uH,bubbleValue) {
     plot(TH,uH,wait=1,cmm="Coarse basis function");
     Vh uHh=0; /*for the reconstructed basis functions*/
+    Vh uBh=0; /*reconstruction of bubble functions*/
     Vh uHhB=0; /*reconstruction with a bubble function*/
     VH0 uH0=uH; /*interpolation of uH at barycentres to facilitate local reconstructions*/
     VH0 uHdx=dx(uH), uHdy=dy(uH); /*interpolation of derivatives of uH (which in fact are piecewise constant)*/
@@ -240,13 +243,15 @@ macro reconstruct(uH,bubbleValue) {
             real[int] BKh = storeB(i,:);
             BKh = bubbleValue*BKh;
             uHhK+=BKh;
+            uBh[](R)=BKh;
         }
         uHhB[](R)=uHhK;
 
         phi[][i]=0;
     }
-    plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1);
-    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1);
+    plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);
+    plot(TH, uBh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);
+    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);
 } // EOM
 
 real basisValue=0.05;

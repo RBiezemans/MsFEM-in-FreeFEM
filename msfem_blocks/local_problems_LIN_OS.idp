@@ -8,6 +8,7 @@
 //  tools_oversampling_patch.idp -- construction of:
 //  - the oversampling patch [S]
 //  - the fine-scale P1 space on S [VS]
+//  - Kx(i,[x/y]) == [x/y]-coordinate of the ith vertex of K
 //  offline_save_basis.idp to save numerical correctors and bubble functions for.. 
 //  ..a single coarse mesh element
 //
@@ -24,6 +25,7 @@
 //  storeV[x/y] -- array to store numerical correctors associated..
 //                 ..to the .-direction for each coarse mesh element
 //  storeB -- array to store the bubble functions for each coarse mesh element
+//  glue -- string specifying the way in which the basis functions are glued around the DOF for OS
 //  
 // This file CREATES for later use in the MsFEM:
 //  Vx -- a P1 function on the fine mesh
@@ -72,6 +74,41 @@ VK Vx=0, Vy=0, B=0;
 // V[x/y] -- the numerical corrector associated to the [x/y]-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
 Vx[]=VxS[](RS2K);    Vy[]=VyS[](RS2K);  if(useB) B[]=BS[](RS2K);
+
+if (glue=="dof") {
+    // Impose continuity on the vertices of K if desired
+    // This is done by adding the functions W[x/y] = [x/y]+V[x/y] and W=1
+    real ndofK=3;
+    real[int,int] gval(ndofK,ndofK); //matrix for W-values at the vertices
+    real[int] Vxval(ndofK), Vyval(ndofK), Bval(ndofK);
+        //values to be corrected of the patch functions
+
+    for(int i=0; i<ndofK; i++) {
+        // Evaluation of 3 independent functions that solve the homogeneous PDE 
+        Vxval(i)=-Vx(Kx(i,0),Kx(i,1));
+        Vyval(i)=-Vy(Kx(i,0),Kx(i,1));
+        Bval(i)=-B(Kx(i,0),Kx(i,1));
+        gval(i,0)=Kx(i,0) - Vxval(i);
+        gval(i,1)=Kx(i,1) - Vyval(i);
+        gval(i,2)=1;
+    }
+    matrix gmat=gval;
+    set(gmat, solver=UMFPACK);
+    real[int] c(ndofK);
+
+    VK Wx=x, Wy=y;
+    Wx[]+=Vx[]; Wy[]+=Vy[];
+    real[int] ones(VK.ndof); ones=1;
+
+    c=gmat^-1 * Vxval;
+    Vx[]+=c[0]*Wx[];    Vx[]+=c[1]*Wy[];    Vx[]+=c[2]*ones;
+    c=gmat^-1 * Vyval;
+    Vy[]+=c[0]*Wx[];    Vy[]+=c[1]*Wy[];    Vy[]+=c[2]*ones;
+    c=gmat^-1 * Bval;
+    B[] +=c[0]*Wx[];    B[] +=c[1]*Wy[];    B[] +=c[2]*ones;
+} else {
+    assert(glue=="restrict");
+}
 
 if (plotBubbles) {
     plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");

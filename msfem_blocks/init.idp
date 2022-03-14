@@ -51,6 +51,9 @@
 //                    ..on the boundary of the global domain
 // - osCoef -- the homothety coefficient chosen for the oversampling patch
 //   for defining the PDE
+// - glue -- specify the way in which the basis functions are glued around the DOF for OS
+//        == dof : ensure continuity at the DOF
+//        == restrict : the restrictions of the patch functions are used directly
 // - osThr -- decide whether oversampling is to be employed:
 //     osCoef <  osThr : no oversampling
 //            => osThr : oversampling
@@ -158,7 +161,7 @@ real osThr=0.5;
 int logalpha, logeps;
 // Parameters tuning the MsFEM method
 int strongDir, useB, advMS, testMS;
-string treatB;
+string glue, treatB;
 
 // Reading parameters from external file "parameters.txt"
 {
@@ -173,6 +176,7 @@ string treatB;
 	f >> read >> theta;
 	f >> read >> cont;
     f >> read >> osCoef;
+	f >> read >> glue;
 	f >> read >> strongDir;
 	f >> read >> useB;
 	f >> read >> treatB;
@@ -186,18 +190,6 @@ if (!useB) assert(treatB=="out_system");
 //without bubbles, the routine for the small size linear system must be adopted
 assert(treatB=="out_system" || treatB=="in_system");
 
-if (osCoef > osThr) {
-	//osCoef should be 0 when no oversampling is applied and larger than 1 is it is applied
-	name = name + "OS";
-}
-
-if (name=="LinOS" || name=="CROS"){
-	assert(strongDir==0); 
-	//strong Dirichlet conditions for oversampling are not yet..
-	//..supported	[in progress]
-}
-
-name = name + nameMPI;
 
 ///////////////////////////////////////////////////////////////////////
 // Define the global coarse and fine meshes and numerical parameters //
@@ -271,14 +263,32 @@ string parametersFine = "_alpha_" + alpha + "_cont_" + cont + "_eps_" + eps;
 string parameters = parametersFine;
 parametersFine = parametersFine + "_N_" + Ndiscr;
 
-if (name=="CROS" || name=="CROS_MPI" || name=="LinOS" || name=="LinOS_MPI") {
+if (osCoef > osThr) {
     //add OS coefficient for OS methods
 	parameters = parameters + "_OS_" + osCoef;
 }
 parameters = parameters + "_N_" + Ndiscr + "_n_" + nx;
 
 // Update name string to characterize specific MsFEM options
-if (name=="CR" || name=="CR_MPI" || name=="CROS" || name=="CROS_MPI") {
+if (osCoef > osThr) {
+	//osCoef should be 0 when no oversampling is applied and larger than 1 is it is applied
+	name = name + "OS";
+	assert(strongDir==0); 
+	//strong Dirichlet conditions for oversampling are not yet..
+	//..supported	[in progress]
+	if (name=="LinOS") {
+		assert(glue=="dof"||name=="restrict");
+		if (glue=="dof") name = name + "gld";
+		else name = name + "glr";
+	}
+	if (name=="CROS") {
+		assert(glue=="dof");
+		if (glue=="dof") name = name + "gld";
+		else name = name + "glr";
+	}
+}
+name = name + nameMPI;
+if (bcType=="CR") {
 	//specify the use of weak or strong BC for CR methods
 	if (strongDir) name = name + "_strDir";
 	else name = name + "_weakDir";
