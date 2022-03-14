@@ -79,10 +79,10 @@ done done done done done done # end of loops over reference solution/physical pa
 
 # Compress results into zip files
 cd results/
-zip zip_Lin_short err_Lin_MPI* solCoarse_Lin_MPI*
-zip zip_LinOS_short err_LinOS_MPI* solCoarse_LinOS_MPI*
-zip zip_CR_short err_CR_MPI* solCoarse_CR_MPI*
-zip zip_CROS_short err_CROS_MPI* solCoarse_CROS_MPI*
+zip zip_Lin_short err_Lin_MPI* solCoarse*_Lin_MPI*
+zip zip_LinOS_short err_LinOS_MPI* solCoarse*_LinOS_MPI*
+zip zip_CR_short err_CR_MPI* solCoarse*_CR_MPI*
+zip zip_CROS_short err_CROS_MPI* solCoarse*_CROS_MPI*
 
 
 # zip -r zip_Lin_all *Lin_MPI*
