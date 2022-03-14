@@ -122,7 +122,7 @@ varf linF2(unused,vh) = edgeIntegral(K,1,normS,edg,vh) + edgeIntegral(K,-1,normS
 real[int,int] arrB2(VS.ndof,nedges); //constraint matrix (linear form 2, for integrations over the boundary of K)
 for(int k=0; k<nedges; k++) {
     edg=edges[k];
-    //integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions
+    //integrations over the edges of K that correspond to Crouzeix-Raviart boundary conditions
     //real meas=edgeIntegral(K,1,normS,edg,1) + edgeIntegral(K,-1,normS,edg,1);
     //normalization is unnecessary since we are only imposing homogeneous constraints in the local problems
     //if (debug) cout << "Measure of coarse element edge: " << meas << endl;
@@ -137,7 +137,9 @@ for(int k=0; k<nedges; k++) {
 }
 
 matrix B1 = arrB1;
-matrix B2 = arrB2;
+matrix B2;
+if (glue=="restrict") B2 = arrB1;
+if (glue=="dof") B2 = arrB2;
 
 matrix CRmat = [[A,B1],
                 [B2',0]]; /* matrix for local saddle-point problem on S */

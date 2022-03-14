@@ -12,10 +12,10 @@ exec("mkdir -p basis");
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="Lin";
+string FEtype="CR";
 
 // Parameters defining the coarse mesh
-int n=2, nx=n, ny=n;
+int n=3, nx=n, ny=n;
 real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
@@ -27,7 +27,7 @@ real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
 int strongDir=0, useB=1, advMS=1, testMS=1;
-string glue="restrict", treatB="in_system";
+string glue="dof", treatB="in_system";
 
 int nbproc=1;
 string basisDir="basis";
@@ -250,8 +250,8 @@ macro reconstruct(uH,bubbleValue) {
         phi[][i]=0;
     }
     plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);
-    plot(TH, uBh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);
-    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);
+    /*plot(TH, uBh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);*/
+    /*plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);*/
 } // EOM
 
 real basisValue=0.05;
