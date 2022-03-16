@@ -4,6 +4,7 @@ load "MUMPS"
 
 string name = "REF";
 string nameMPI = ""; //empty string for compatibility with init.idp
+string bcType = ""; //empty string for compatibility with init.idp
 
 int iproc=0, nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
 
