@@ -277,7 +277,7 @@ if (osCoef > osThr) {
 	//strong Dirichlet conditions for oversampling are not yet..
 	//..supported	[in progress]
 	if (name=="LinOS") {
-		assert(glue=="dof"||name=="restrict");
+		assert(glue=="dof"||glue=="restrict");
 		if (glue=="dof") name = name + "gld";
 		else name = name + "glr";
 	}
