@@ -78,7 +78,7 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
 
 
     done done done # end of loops that can all use the same basis functions
-    if (( TEST_OS > 0.1 ))
+    if (( $(echo "$TEST_OSCOEF < 0.1" | bc) )) # basic calculator is used for decimal arithmetic
         then break # exit the loop over continuity options for OS
     fi
     done done done done done # end of loops over numerical parameters
@@ -87,9 +87,9 @@ done done done done done done # end of loops over reference solution/physical pa
 # Compress results into zip files
 cd results/
 zip zip_Lin_short err_Lin_MPI* solCoarse*_Lin_MPI*
-zip zip_LinOS_short err_LinOS_MPI* solCoarse*_LinOS_MPI*
+zip zip_LinOS_short err_LinOS*_MPI* solCoarse*_LinOS*_MPI*
 zip zip_CR_short err_CR_MPI* solCoarse*_CR_MPI*
-zip zip_CROS_short err_CROS_MPI* solCoarse*_CROS_MPI*
+zip zip_CROS_short err_CROS*_MPI* solCoarse*_CROS*_MPI*
 
 
 # zip -r zip_Lin_all *Lin_MPI*
