@@ -45,6 +45,9 @@
 // -             == "in_system"  : the system is enlarged to determined bubble DOF
 // - testMS == 0 : test space is the coarse P1 space
 //          == 1 : test space is equal to the multiscale trial space
+//          == 2 : matrix is constructed with test space equal to the multiscale trial space
+//                 RHS is constructed with test functions of the P1 space
+//                 Note that bubbles are always tested against multiscale bubbles
 // - strongDir == 0 : CR elements are defined with weak boundary conditions..
 //                    ..on the boundary of the global domain (average sense)
 //             == 1 : CR elements are defined with strong boundary conditions..

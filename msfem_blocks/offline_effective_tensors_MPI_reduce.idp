@@ -32,6 +32,8 @@ if (testMS) {
         mpiReduce(irHxTestMS[], rHxTestMS[], processor(0,comm), mpiSUM);
         mpiReduce(irHyTestMS[], rHyTestMS[], processor(0,comm), mpiSUM);
     }
-    mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
-    mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
+    if (testMS==1) {
+        mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
+        mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
+    }
 }

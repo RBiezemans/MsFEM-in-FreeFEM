@@ -112,7 +112,7 @@ for(int i=0; i<VH0.ndof; i++) {
             if (treatB=="out_system") fH[][i]=int2d(K)(fRHS)/K.measure;
             else fB[][i]=int2d(K)(fRHS*B)/K.measure;
         }
-        if (testMS) {
+        if (testMS==1) {
             fHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
             fHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
         }

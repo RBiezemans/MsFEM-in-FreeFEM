@@ -120,7 +120,7 @@ if (iproc == i%nbproc) {
             if (treatB=="out_system") ifH[][i]=int2d(K)(fRHS)/K.measure;
             else ifB[][i]=int2d(K)(fRHS*B)/K.measure;
         }
-        if (testMS) {
+        if (testMS==1) {
             ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
             ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
         }
@@ -149,7 +149,7 @@ else {
 // The unavoidable reduction of quantities related to the RHS of the PDE
     if (treatB=="out_system") mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
     else mpiReduce(ifB[], fB[], processor(0,comm), mpiSUM);
-    if (testMS) {
+    if (testMS==1) {
         mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
         mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
     }
