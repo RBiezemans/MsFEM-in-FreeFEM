@@ -1,9 +1,24 @@
-// tools_CR_and_OS.idp
+// tools.idp
 //
-// Some (geometric) tools that are used when working with CR and oversampling methods
+// Some (geometric) tools that are used when working with CR and oversampling methods and writing tools to provide output
+//
+// Variables not defined in this script /////////////////////////////////
+// - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
+// - time -- (real) CPU time since last clocked
+//
+//
+// Global variables declared in this script ////////////////////////////
+// - (macro) residue[4] -- compute and write residues for the resolution of linear systems
+// - (macro) printTime[1] -- print a message follows by the time since last clocking time (and clocks automatically)
+// - (func)  consNormals[1] -- construct outward unit normals on the three edges of the argument passed
+// - (macro) edgeIntegral[5] -- integration over a specific edge, one can choose to only integrate for specific labels
+// - (macro) printIntegralsTri[2] -- write integrals of a function over all edges of the specified triangle to command line
+// - (macro) ip[3] -- inner product between two components and a vector
+// - (macro) ipcheck[2] -- compute the inner product of (x,y)-#2 and #1
+////////////////////////////////////////////////////////////////////////
 
-// - residue -- a macro to compute and write residues for the resolution of linear systems
-// - printTime -- a macro that prints a message followed by the time since the last clocking of the time variable
+
+
 
 
 // Macro for residue computation of the resolution of linear systems
@@ -17,7 +32,7 @@ macro residue(mat,rhs,sol,message) {
 	ffLog << message << resNorm << endl;
 } // EOM
 
-
+// Print a message follows by the time since last clocking time (and clocks automatically)
 macro printTime(message) {
 	real timeLapse = clock()-time;
 	ffLog << message << timeLapse << "s" << endl;
@@ -25,8 +40,8 @@ macro printTime(message) {
 }
 // EOM
 
-// Constructing normals
 
+// Constructing normals
 func real[int,int] consNormals(real[int,int] & pp) {
     // construct unit outward normals for a triangle of nodes pp (given with positive orientation)
     // if p_0 = (x_0, y_0) and p_1 = (x_1, y_1), 
@@ -46,26 +61,28 @@ func real[int,int] consNormals(real[int,int] & pp) {
 
 
 // Integrals over edges 
-// In the use, we respect the following conventions;
-//   label==-1 -> boundary of global domain,  label==1 -> only interior edges are considered
+// In its use, we mostly adopt the following conventions:
+// - label==-1  =>  boundary of global domain
+// - label== 1  =>  only interior edges are considered
 macro edgeIntegral(S,label,normS,edg,fnc) (int1d(S,label)( (ip(N.x,N.y,normS(edg,:))>0.99) *fnc))// EOM
 
 
-// Printing integrals of function over all edges of K for debugging/verification purposes
-macro printIntegralsTri(uH) {
+// writing integrals of a function over all edges of K to command line
+macro printIntegralsTri(K,uH) {
     cout << "Integrals on K: ";
     for (edg=0; edg<3; edg++) {
         real toprint = edgeIntegral(K,1,normS,edg,uH) + edgeIntegral(K,-1,normS,edg,uH);
         cout << toprint << "  ";
     }
     cout << endl;
-}
+} // EOM
 
 
 // Related to inner products
 
 //inner product of (u,v) with a vector (w[0],w[1])
 macro ip(u,v,w) (u*w[0] + v*w[1])// //EOM 
+
 
 // Check if (x,y) - u2 points in the same direction as a normal vector u1
 // A positive value means that this condition is indeed satisfied

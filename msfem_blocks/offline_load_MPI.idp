@@ -1,39 +1,51 @@
 // offline_load_MPI.idp
 //
-// Read numerical correctors, bubble functions, and effective coefficients (if..
-// ..available) from earlier computations. 
+// Load numerical correctors, bubble functions, and effective coefficients (if available) from earlier computations
 // Compute and save effective coefficients if they were not available for the method used
-// Compute coefficients ifH[x/y]]TestMS related to the RHS of the PDE
-// 
-// Compatible only with parallelized version
+// Compute effective coefficients related to the RHS of the PDE
 //
-// This file INCLUDES:
-// - offline_effective_tensors_MPI.idp to compute the effective coefficients on a..
-//   ..single coarse mesh element
-// - offline_effective_tensors_MPI_reduce.idp to send all effective tensor..
-//   ..computations to the main process
-// - offline_save_effective_tensors.idp to save the effective coefficient
 //
-// This file USES:
-// - basisDir -- name of the directory that will be used for reading the..
-//               ..numerical correctors and bubbles
-// - coeffDir -- name of the directory that will be used/created for reading/..
-//               ..saving the effective coefficients associated to the MsFEM
-//  storeV[x/y] -- the numerical correctors associated to the [x/y] direction relevant..
-//                 ..to the current process are stored here
-//  storeB -- the bubble functions associated to the [x/y] direction relevant to the..
-//            ..current process are stored here
-//  countOffline -- counter for the number of triangles associated to the current process
-//  phi -- a P0 function on the coarse mesh that is used to partition the global domain
-// - effective coefficients, the following P0 elements on the coarse mesh (possibly not all needed):
-//   -- AHxx, AHxy, AHyx, AHyy, BHx, BHy, AHB, rHx, rHy, rH, lHx, lHy, fH, fB;
-//   -- AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS;
-//   -- rHxTestMS, rHyTestMS, fHxTestMS, fHyTestMS;
-//   -- iAHxx, iAHxy, iAHyx, iAHyy, iBHx, iBHy, irHx, irHy, irH, ilHx, ilHy, ifH, ifB;
-//   -- iAHxxTestMS, iAHxyTestMS, iAHyxTestMS, iAHyyTestMS;
-//   -- irHxTestMS, irHyTestMS, ifHxTestMS, ifHyTestMS;
+// Compatible only with parallel version
+//
+//
+// Scripts loaded ////////////////////////////////////////////////////////
+// - offline_effective_tensors_MPI.idp
+//   -- compute effective tensors on a single triangle
+// - offline_save_effective_tensors.idp
+//   -- save effective coefficients (once computed on the entire mesh)
+// - offline_effective_tensors_MPI_reduce.idp
+// - msfem_blocks/offline_effective_RHS_MPI.idp
+//   -- compute all terms of the macroscopic problem envolving fRHS
+// - offline_effective_RHS_MPI_reduce.idp
+//
+//
+// Variables not defined in this script /////////////////////////////////
+// - basisDir -- (string) name of directory where basis functions are stored
+// - ndofOffline -- (int) number of DOF for each numerical corrector/bubble
+// - coeffDir -- (string) name of directory where effective coefficients are stored
+// - storeV[c/x/y], storeB -- (real[int,int]) structures to store the DOF of numerical correctors and bubbles
+// - phi -- (VH0) function used to loop over TH
+// - iproc -- (int) local index of the current process
+// - countOffline -- (int) counter for the number of triangles associated to the current process
+// - V[c/x/y] -- (VK) numerical correctors on K
+// - B -- (VK) bubble function on K
+// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useB -- (int) indicates whether bubbles are to be used
+// - testMS -- (int) indicates whether test functions are multiscale or P1
+// - AHxx, AHxy, AHyx, AHyy, BHx, BHy, BAHx, BAHy, MH, AHB, rHx, rHy, rH, lHx, lHy, lH, ..
+//   AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS, BHxTestMS, BHyTestMS, ..
+//   BAHxTestMS, BAHyTestMS, MHTestMS, rHxTestMS, rHyTestMS, rHTestMS -- (VH0) effective tensors are loaded if possible (by the main process only)
+////////////////////////////////////////////////////////////////////////
 
 
+// Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
+macro readBasis(filename,storage) {
+    string basisFile = basisDir + filename; 
+    ifstream ffbasis (basisFile); 
+    real[int] vec(ndofOffline);
+    ffbasis >> vec;
+    storage=vec;
+} // EOM
 // Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
 macro readFile2Vec(filename,vec) {string matrixFile = coeffDir + filename; ifstream ffmat (matrixFile); ffmat >> vec;} // EOM
 
@@ -41,34 +53,31 @@ int computeCoeff=0; //variable to indicate whether or not the effective coeffici
     //this is indeed possible when the basis was computed but the coefficients were determined
     //with another type of test functions
 
-
-// Try to open a file from the directory with effective coefficients
+// Try to open typical files from the directory with effective coefficients
 try {
     string matrixFile = coeffDir + "/AHxx.txt";
     ifstream ff(matrixFile);
+    if (fullVF) {
+            matrixFile = coeffDir + "/BAHx.txt";  {ifstream ff(matrixFile);}
+        }
     if (testMS==1) {
-        string matrixFile = coeffDir + "/AHxxTestMS.txt";
-        ifstream ff(matrixFile);
+        string matrixFile = coeffDir + "/AHxxTestMS.txt";  {ifstream ff(matrixFile);}
     }
     if (useB) {
-        string matrixFile = coeffDir + "/rHx.txt";
-        {ifstream ff(matrixFile);}
+        string matrixFile = coeffDir + "/rHx.txt";  {ifstream ff(matrixFile);}
         if (testMS==1) {
-            matrixFile = coeffDir + "/rHxTestMS.txt";
-            ifstream ff(matrixFile);
+            matrixFile = coeffDir + "/rHxTestMS.txt";  {ifstream ff(matrixFile);}
         }
         if (treatB=="in_system") {
-            matrixFile = coeffDir + "/lHx.txt";
-            ifstream ff(matrixFile);
+            matrixFile = coeffDir + "/lHx.txt";  {ifstream ff(matrixFile);}
         }
     }
 }
 catch (...) {
-    computeCoeff=1; // compute effective coefficients below if the correct version does not exist yet
+    computeCoeff=1; //compute effective coefficients below if the correct version does not exist yet
 }
 
-
-// Load and store the basis for the current process in storeV[x/y] and storeB
+// Load and store the basis for the current process in storeV[c/x/y] and storeB
 // Compute effective coefficients per coarse mesh element if needed
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
@@ -77,53 +86,41 @@ if (iproc == i%nbproc) {
         if (iproc==0) ffLog << "loading offline phase for tri " << i << endl;
     }
     phi[][i]=2;
+    if (useVc) { //store numerical correctors associated to constants
+        string basisname = "/tri_" + i + "_Vc.txt";
+        readBasis(basisname,storeVc(countOffline,:))
+    }
     { //store numerical correctors associated to the x-direction
-        string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
-        ifstream readVx(basisname);
-        real[int] vec(ndofOffline);
-        readVx >> vec;
-        storeVx(countOffline,:) = vec;
+        string basisname = "/tri_" + i + "_Vx.txt";
+        readBasis(basisname,storeVx(countOffline,:))
     }
     { //store numerical correctors associated to the y-direction
-        string basisname = basisDir + "/tri_" + i + "_Vy" + ".txt";
-        ifstream readVy(basisname);
-        real[int] vec(ndofOffline);
-        readVy >> vec;
-        storeVy(countOffline,:) = vec;
+        string basisname = "/tri_" + i + "_Vy.txt";
+        readBasis(basisname,storeVy(countOffline,:))
     }
     if (useB) { //store bubble functions for the FE space
-        string basisname = basisDir + "/tri_" + i + "_B" + ".txt";
-        ifstream readB(basisname);
-        real[int] vec(ndofOffline);
-        readB >> vec;
-        storeB(countOffline,:) = vec;
+        string basisname = "/tri_" + i + "_B.txt";
+        readBasis(basisname,storeB(countOffline,:))
     }
 
     // Define the numerical correctors on the current triangle in order to..
     // ..compute the necessary effective quantities
     mesh K=trunc(Th,phi>1,split=1); 
     fespace VK(K, P1);
-    VK Vx, Vy, B;
+    VK Vc=0, Vx, Vy, B=0;
+    if (useVc) Vc[]=storeVc(countOffline,:);
     Vx[]=storeVx(countOffline,:);
     Vy[]=storeVy(countOffline,:);
-    B[]=storeB(countOffline,:);
-    
+    if (useB) B[]=storeB(countOffline,:);
+ 
     // Compute effective coefficients (if needed)
     if (computeCoeff) {
         VK uHx=x-xb[][i], uHy=y-yb[][i];
         include "offline_effective_tensors_MPI.idp"
     } else {
-    // Anything related to the right-hand side cannot be loaded from the previous..
-    // ..offline phase and must be computed regardless of the availability of the..
-    // ..coefficients
-        if (useB) {
-            if (treatB=="out_system") ifH[][i]=int2d(K)(fRHS)/K.measure;
-            else ifB[][i]=int2d(K)(fRHS*B)/K.measure;
-        }
-        if (testMS==1) {
-            ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
-            ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
-        }
+    // Anything related to the right-hand side cannot be loaded from the offline phase 
+    // It must be computed regardless of the availability of the coefficients
+        include "offline_effective_RHS_MPI.idp"
     }
 
     phi[][i]=0;
@@ -131,28 +128,18 @@ if (iproc == i%nbproc) {
 }
 }
 
-//ffLog << "process " + iproc + " is done loading" + endl;
-
-// Reduction of effective quantities to the main process
-// Storage of effective quantities if newly computed
+// Reduction of effective quantities to the main process, storage of effective quantities if newly computed
 if (computeCoeff) {
     cout << "reduce effective coefficients to main process" << endl;
     include "offline_effective_tensors_MPI_reduce.idp"
-    // store the effective coefficients for the coarse-scale model
     if (iproc==0) {
-        //if nonexistent, the directory to store the effective coefficient was..
-        //..created by the main file
+        //if nonexistent, the directory to store the effective coefficient was created by the main file
         include "offline_save_effective_tensors.idp"
     }
 }
 else {
 // The unavoidable reduction of quantities related to the RHS of the PDE
-    if (treatB=="out_system") mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
-    else mpiReduce(ifB[], fB[], processor(0,comm), mpiSUM);
-    if (testMS==1) {
-        mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
-        mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
-    }
+    include "offline_effective_RHS_MPI_reduce.idp"
 }
 mpiBarrier(comm);
 
@@ -169,13 +156,12 @@ if (computeCoeff==0 && iproc==0) {
     readFile2Vec("/AHyy.txt", AHyy[])
     readFile2Vec("/BHx.txt", BHx[])
     readFile2Vec("/BHy.txt", BHy[])
-    if (testMS) {
-        readFile2Vec("/AHxxTestMS.txt", AHxxTestMS[])
-        readFile2Vec("/AHyxTestMS.txt", AHyxTestMS[])
-        readFile2Vec("/AHxyTestMS.txt", AHxyTestMS[])
-        readFile2Vec("/AHyyTestMS.txt", AHyyTestMS[])
+    if (fullVF) {
+        readFile2Vec("/BAHx.txt", BAHx[])
+        readFile2Vec("/BAHy.txt", BAHy[])
+        readFile2Vec("/MH.txt", MH[])
     }
-    if(useB) {
+    if (useB) {
         readFile2Vec("/rH.txt",  rH[])
         readFile2Vec("/rHx.txt", rHx[])
         readFile2Vec("/rHy.txt", rHy[])
@@ -183,8 +169,26 @@ if (computeCoeff==0 && iproc==0) {
             readFile2Vec("/AHB.txt", AHB[])
             readFile2Vec("/lHx.txt", lHx[])
             readFile2Vec("/lHy.txt", lHy[])
+            if (fullVF) readFile2Vec("/lH.txt", lH[])
+        } 
+    }
+
+    if (testMS) {
+        readFile2Vec("/AHxxTestMS.txt", AHxxTestMS[])
+        readFile2Vec("/AHyxTestMS.txt", AHyxTestMS[])
+        readFile2Vec("/AHxyTestMS.txt", AHxyTestMS[])
+        readFile2Vec("/AHyyTestMS.txt", AHyyTestMS[])
+        if (useVc) {
+            readFile2Vec("/BHxTestMS.txt", BHxTestMS[])
+            readFile2Vec("/BHyTestMS.txt", BHyTestMS[])
         }
-        if(testMS) {
+        if (fullVF) {
+            readFile2Vec("/BAHxTestMS.txt", BAHxTestMS[])
+            readFile2Vec("/BAHyTestMS.txt", BAHyTestMS[])
+            if (useVc) readFile2Vec("/MHTestMS.txt", MHTestMS[])
+        }
+        if(useB) {
+            if (useVc) readFile2Vec("/rHTestMS.txt",  rHTestMS[])
             readFile2Vec("/rHxTestMS.txt", rHxTestMS[])
             readFile2Vec("/rHyTestMS.txt", rHyTestMS[])
         }
@@ -192,4 +196,4 @@ if (computeCoeff==0 && iproc==0) {
 }
 
 mpiBarrier(comm);
-if (iproc==0) printTime("Offline phase (computing + storing, measure by main process) lasted ")
+if (iproc==0) printTime("Offline phase (computing + storing, measured by main process) lasted ")

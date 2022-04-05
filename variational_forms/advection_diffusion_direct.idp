@@ -1,0 +1,12 @@
+vfname = "adv_diffusion_direct";
+
+macro aComplete(u,v) (adif(u,v) + aadv(u,v))// EOM
+macro aBasis(u,v) aComplete(u,v)// EOM
+
+//macro aEffDif(u,v) aComplete(u,v)// EOM
+//bilinear form collecting all terms for the effective diffusion
+macro aTest1(u,v) aadv(u,v)// EOM
+//bilinear form collecting all terms for the effective advection
+
+useVc=0;
+fullVF=0;

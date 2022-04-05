@@ -176,7 +176,7 @@ varf lEffective(uH,v0) = int2d(TH,qft=qf1pT)( v0 * (lHx*dx(uH)+lHy*dy(uH)) );
 // Construction of multiscale basis                                  //
 ///////////////////////////////////////////////////////////////////////
 
-include "../msfem_blocks/tools_CR_and_OS.idp" //load some functions and macros for OS
+include "../msfem_blocks/tools.idp" //load some functions and macros for OS
 
 for(int i=0; i<VH0.ndof; i++) {
     cout <<"construction ms coefficients on tri "<<i<<endl;
@@ -228,15 +228,15 @@ macro reconstruct(uH,bubbleValue) {
         phi[][i]=2;
         int[int] n2o;
         mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
-        fespace VKh(K,P1);
+        fespace VK(K,P1);
         fespace VK0(K,P0);
         
-        VKh uHK;
+        VK uHK;
         uHK=uH0[][i] + uHdx[][i]*(x-xb[][i]) + uHdy[][i]*(y-yb[][i]);
         real[int] uHhK=uHK[];  /*array currently representing the coarse solution on K*/
         uHhK+=uHdx[][i]*storeVx(i,:);
         uHhK+=uHdy[][i]*storeVy(i,:);
-        int[int] R=restrict(VKh, Vh, n2o);
+        int[int] R=restrict(VK, Vh, n2o);
         uHh[](R)=uHhK;
 
         if (abs(uH0[][i]) > K.measure/100) {

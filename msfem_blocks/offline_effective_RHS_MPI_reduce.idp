@@ -1,0 +1,23 @@
+// offline_save_effective_tensors_MPI_reduce.idp
+// 
+// Send contributions to the effective coefficients computed by the current process to the main process
+//
+//
+// Variables not defined in this script /////////////////////////////////
+// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useB -- (int) indicates whether bubbles are to be used
+// - testMS -- (int) indicates whether test functions are multiscale or P1
+// - [/i]fH, [/i]fB, [/i]fHxTestMS, [/i]fHyTestMS, [/i]fHTestMS -- (VH0) effective terms
+////////////////////////////////////////////////////////////////////////
+
+
+if (useB) { 
+    if (treatB=="out_system") mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
+    else mpiReduce(ifB[], fB[], processor(0,comm), mpiSUM);
+}
+
+if(testMS==1) {
+    mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
+    mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
+    if (useVc) mpiReduce(ifHTestMS[], fHTestMS[], processor(0,comm), mpiSUM);
+}

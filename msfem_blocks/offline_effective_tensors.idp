@@ -1,48 +1,91 @@
 // offline_effective_tensors.idp
 //
-// Computation for the effective tensors for advection-diffusion based on pre-computed bubbles Vx, Vy and B
+// Computation of the effective tensors based on pre-computed numerical correctors Vc, Vx, Vy and possibly a bubble B
+//
 //
 // Compatible only with sequential version
+//
+//
+// Scripts loaded ////////////////////////////////////////////////////////
+// - msfem_blocks/offline_effective_RHS.idp
+//   -- compute all terms of the macroscopic problem envolving fRHS
+//
+//
+// Variables not defined in this script /////////////////////////////////
+// - AHxx, AHxy, AHyx, AHyy, BHx, BHy, BAHx, BAHy, MH, AHB, rHx, rHy, rH, lHx, lHy, lH, ..
+//   AHxxTestMS, AHxyTestMS, AHyxTestMS, AHyyTestMS, BHxTestMS, BHyTestMS, ..
+//   BAHxTestMS, BAHyTestMS, MHTestMS, rHxTestMS, rHyTestMS, rHTestMS -- (VH0) effective tensors
+// - K -- (mesh)
+// - V[c/x/y] -- (VK) numerical correctors on K
+// - B -- (VK) bubble function on K
+// - aComplete -- bilinear form of the global problem
+// - aTest1 -- bilinear form of the global problem suitable for testing against a constant
+// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useB -- (int) indicates whether bubbles are to be used
+// - testMS -- (int) indicates whether test functions are multiscale or P1
+// - fullVF -- (int) indicates whether the BAH[x/y] and MH vanish in the effective problem
+////////////////////////////////////////////////////////////////////////
 
 
-AHxx[][i]=int2d(K)(a(uHx,uHx,nu,bx,by) + a(Vx,uHx,nu,bx,by))/K.measure;
-AHyx[][i]=int2d(K)(a(uHx,uHy,nu,bx,by) + a(Vx,uHy,nu,bx,by))/K.measure; 
-AHxy[][i]=int2d(K)(a(uHy,uHx,nu,bx,by) + a(Vy,uHx,nu,bx,by))/K.measure; 
-AHyy[][i]=int2d(K)(a(uHy,uHy,nu,bx,by) + a(Vy,uHy,nu,bx,by))/K.measure;
-/* pay attention, AH.. is not symmetric when a is not */
+VK phi0=1, phix, phiy; //sums of affine functions and numerical correctors
+if (useVc) {
+    phi0[]+=Vc[];
+}
+phix[]=uHx[]+Vx[]; 
+phiy[]=uHy[]+Vy[];
 
-BHx[][i]=int2d(K)(aadv(uHx,1,bx,by) + aadv(Vx,1,bx,by))/K.measure;
-BHy[][i]=int2d(K)(aadv(uHy,1,bx,by) + aadv(Vy,1,bx,by))/K.measure;
+AHxx[][i]=int2d(K)(aComplete(phix,uHx))/K.measure;
+AHyx[][i]=int2d(K)(aComplete(phix,uHy))/K.measure; 
+AHxy[][i]=int2d(K)(aComplete(phiy,uHx))/K.measure; 
+AHyy[][i]=int2d(K)(aComplete(phiy,uHy))/K.measure;
+// pay attention, AH.. is not symmetric when a is not
+
+BHx[][i]=int2d(K)(aTest1(phix,1))/K.measure;
+BHy[][i]=int2d(K)(aTest1(phiy,1))/K.measure;
+
+if (fullVF) {
+    BAHx[][i]=int2d(K)(aComplete(phi0,uHx))/K.measure;
+    BAHy[][i]=int2d(K)(aComplete(phi0,uHy))/K.measure;
+    MH[][i]=int2d(K)(aTest1(phi0,1))/K.measure;
+}
 
 if (useB) {
-    AHB[][i]=int2d(K)(a(B,B,nu,bx,by))/K.measure;
-
-    rH[][i] =int2d(K)(aadv(B,1,bx,by))/K.measure;
-    rHx[][i]=int2d(K)(a(B,uHx,nu,bx,by))/K.measure;
-    rHy[][i]=int2d(K)(a(B,uHy,nu,bx,by))/K.measure;
-
-    if (treatB=="out_system") fH[][i]=int2d(K)(fRHS)/K.measure;
-    else {
-        lHx[][i]=int2d(K)(a(uHx,B,nu,bx,by) + a(Vx,B,nu,bx,by))/K.measure;;
-        lHy[][i]=int2d(K)(a(uHy,B,nu,bx,by) + a(Vy,B,nu,bx,by))/K.measure;;
-        fB[][i]=int2d(K)(fRHS*B)/K.measure;
+    rHx[][i]=int2d(K)(aComplete(B,uHx))/K.measure;
+    rHy[][i]=int2d(K)(aComplete(B,uHy))/K.measure;
+    rH[][i] =int2d(K)(aTest1(B,1))/K.measure;   
+    if (treatB=="in_system") {
+        AHB[][i]=int2d(K)(aComplete(B,B)); //no division by K.measure because this term does not appear in any effective varf
+        lHx[][i]=int2d(K)(aComplete(phix,B))/K.measure;
+        lHy[][i]=int2d(K)(aComplete(phiy,B))/K.measure;
+        if (fullVF) lH[][i]=int2d(K)(aComplete(phi0,B))/K.measure;
     }
 }
 
 if(testMS) {
-    // One might also exclude this loop for certain methods since it will not yield any contributions, but let us test this first!
-    AHxxTestMS[][i]=int2d(K)(a(uHx,Vx,nu,bx,by) + a(Vx,Vx,nu,bx,by))/K.measure;
-    AHyxTestMS[][i]=int2d(K)(a(uHx,Vy,nu,bx,by) + a(Vx,Vy,nu,bx,by))/K.measure; 
-    AHxyTestMS[][i]=int2d(K)(a(uHy,Vx,nu,bx,by) + a(Vy,Vx,nu,bx,by))/K.measure; 
-    AHyyTestMS[][i]=int2d(K)(a(uHy,Vy,nu,bx,by) + a(Vy,Vy,nu,bx,by))/K.measure;
-    // No AHB -- we always use the (multiscale) precomputed bubbles B
-
-    if(useB) {
-        rHxTestMS[][i]=int2d(K)(a(B,Vx,nu,bx,by))/K.measure;
-        rHyTestMS[][i]=int2d(K)(a(B,Vy,nu,bx,by))/K.measure;
+    // One might also exclude part of this loop for certain methods since it will not yield any contributions, but let us test this first!
+    AHxxTestMS[][i]=int2d(K)(aComplete(phix,Vx))/K.measure;
+    AHyxTestMS[][i]=int2d(K)(aComplete(phix,Vy))/K.measure; 
+    AHxyTestMS[][i]=int2d(K)(aComplete(phiy,Vx))/K.measure; 
+    AHyyTestMS[][i]=int2d(K)(aComplete(phiy,Vy))/K.measure;
+    
+    if (useVc) {
+        BHxTestMS[][i]=int2d(K)(aComplete(phix,Vc))/K.measure;
+        BHyTestMS[][i]=int2d(K)(aComplete(phiy,Vc))/K.measure;
     }
-    if(testMS==1) {
-        fHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
-        fHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
+
+    if (fullVF) {
+        BAHxTestMS[][i]=int2d(K)(aComplete(phi0,Vx))/K.measure;
+        BAHyTestMS[][i]=int2d(K)(aComplete(phi0,Vy))/K.measure;
+        if (useVc) MHTestMS[][i]=int2d(K)(aComplete(phi0,Vc))/K.measure;
+    }
+
+    if (useB) {
+        // No "AHBTestMS" -- we always use the (multiscale) precomputed bubbles B
+        rHxTestMS[][i]=int2d(K)(aComplete(B,Vx))/K.measure;
+        rHyTestMS[][i]=int2d(K)(aComplete(B,Vy))/K.measure;
+        if (useVc) rHTestMS[][i] =int2d(K)(aComplete(B,Vc))/K.measure;   
+        // No "lH[x/y]TestMS" -- we always use the (multiscale) precomputed bubbles B
     }
 }
+
+include "msfem_blocks/offline_effective_RHS.idp"

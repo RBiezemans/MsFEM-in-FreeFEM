@@ -2,34 +2,30 @@
 //
 // Construction of an oversampling patch for a triangular coarse mesh element
 // This construction has only been verified for meshes with the option flag==0
-//  For flag==2, it probably suffices to changes the flag type of the patch container C defined below
+// For flag==2, it probably suffices to changes the flag type of the patch container C defined below
 //
 //
-// This file REQUIRES
-//  tools_CR_and_OS.idp  for:
-//  - consNormals -- function to construct normal vectors 
-//  - ipcheck -- a macro to check if two vectors point in the same direction
+// Variables not defined in this script /////////////////////////////////
+// - debug -- (int) provide helpful debugging output
+// - timing -- (int) do performance measurement
+// - TH -- (square) the coarse mesh of the global domain
+// - Th -- (square) the fine mesh of the global domain
+// - i -- (int) global index of the coarse mesh element K to be treated
+// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
+// - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
+// - hx, hy -- (real) size of the legs of the fine mesh elements
+// - time -- (real) to clock CPU time clocked  
+// - labs -- (real[int]) labels associated to the sides of the global (square) domain
+// - consNormals -- (func[1]) constructs outward unit normals on the three edges of the argument passed
+// - ipcheck -- (macro[2]) compute the inner product of (x,y)-#2 and #1
 //
-// This file USES:
-//  TH -- the coarse mesh of the global domain
-//  Th -- the fine mesh of the global domain
-//  i -- the integer associated to the triangle selected for oversampling
-//    -- this triangle will be denoted by K in all comments below
-//  osCoef -- the homothety coefficient chosen for the oversampling patch
-//  xb -- a P0 function on the coarse mesh 
-//        associates to each triangle the x-coordinate of its barycentre
-//  yb -- a P0 function on the coarse mesh
-//        associates to each triangle the y-coordinate of its barycentre
-//  h[x/y] -- the fine mesh length scale in the .-direction
-//  time -- a real number representing the cpu time, used for performance assessment
-//  labs -- labels used for the boundary of the global domain, copied here to the..
-//          ..boundary of the patch container
 //
-// This file CREATES for later use in the MsFEM:
-//  Kx(i,[x/y]) -- [x/y]-coordinate of the ith vertex of K
-//  S -- the oversampling patch, a restriction of the global fine mesh 
-//  normS -- the normals of the original mesh element == those of the ideal oversampling patch 
-//  VS -- P1 finite element space on S
+// Global variables declared in this script ////////////////////////////
+// - (mesh)          Kx(i,[x/y]) -- [x/y]-coordinate of the ith vertex of K
+// - (mesh)          S -- the oversampling patch, a restriction of the global fine mesh 
+// - (real[int,int]) normS -- the normals of the original mesh element == those of the ideal oversampling patch 
+// - (fespace)       VS -- P1 finite element space on S
+////////////////////////////////////////////////////////////////////////
 
 
 // Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain)
@@ -49,8 +45,7 @@ if (timing) {
     time=clock();
 }
 
-
-// Definition of a patch-container C around S that is (much) smaller than Omega
+// Construction of a patch-container C around S that is (much) smaller than Omega
 int NxC = Nx/nx;
 int NyC = Ny/ny;
 
@@ -72,9 +67,9 @@ mesh C=square(dxCn, dyCn, [xCL + dxC*x, yCL + dyC*y], label=labs);
 fespace VC(C, P1);
 
 
-// Defining the ideal oversampling patch by 3 conditions: lying at the correct side of all three normals associated to S
-real[int,int] normS(3,2); normS=consNormals(Sx); //normals to each of the boundaries of S
-/* 3 conditions that together define S */
+// The the ideal oversampling patch is defined by 3 conditions: 
+// Lying at the correct side of all three normals associated to S
+real[int,int] normS(3,2); normS=consNormals(Sx); // normals to each of the boundaries of S
 func cond1 = ( ipcheck(normS(2,:), Sx(0,:) ) < -1E-8 );
 func cond2 = ( ipcheck(normS(0,:), Sx(1,:) ) < -1E-8 );
 func cond3 = ( ipcheck(normS(1,:), Sx(2,:) ) < -1E-8 );
@@ -91,9 +86,7 @@ if (timing) {
     cout << "Building the indicator function for the (real) patch lasted " << clock()-time << " s" << endl;
     time=clock();
 }
-
-
-// Build the real oversampling patch S with the help of the function patch
+// Build the real oversampling patch S
 mesh S = trunc(C, patch>0.9, split=1, label=1);//, new2old=Th2S);
 fespace VS(S,P1);
 

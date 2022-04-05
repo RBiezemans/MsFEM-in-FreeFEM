@@ -1,27 +1,39 @@
 // online.idp
 //
-// Resolution of the macroscopic problem with LIN boundary conditions
+//
+// Resolution of the macroscopic problem
+//
 //
 // Compatible with sequential and parallel versions
 //
 //
-// This file USES:
-//  bcType -- string determining the implementation of boundary conditions for the effective problem
-//  TH -- coarse mesh
-//  VH -- the relevant P1 space for the macroscopic problem
-//  VH0 -- P0 space on TH
-//  treatB == out_system : bubble coefficients are predetermined by the average of fRHS
-//         == in_system  : test equations are added to determined bubble coefficients
-//   NOTE in_system methods without oversampling first solve the diagonal block for..
-//        ..bubble coefficients independently
-//  fB -- integral of f against bubble functions
-//  Macroscopic variational forms:
-//  effectiveVar, rhsP1, rEffective, lEffective, the effective coefficient AB
-//  residue -- macro to write the residue of the global linear system solved
-//  
-// This file CREATES for later use in the MsFEM:
-//  uH -- the P1 solution to the effective macroscopic problem
-//  uB -- (solution for) the coefficients in front of the bubble functions
+// Variables not defined in this script /////////////////////////////////
+// - iproc -- (int) local index of the current process
+// - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
+// - plots -- (int) indicates whether the P1 solution should be plotted
+// - debug -- (int) provide helpful debugging output
+// - residue -- (macro[4]) compute and write residues for the resolution of linear systems
+// - bcType -- (string) indicates the type of global P1 space
+// - TH -- (square) the coarse mesh of the global domain
+// - VH -- (fespace) the relevant P1 space for the macroscopic problem
+// - VH0 -- (fespace) P0 space on TH
+// - useB -- (int) indicates whether bubbles are to be used
+// - treatB -- (string) indicates whether bubble terms are to appear in the matrix of the linear system
+// - osThr -- (real) threshold value above which sampling patches are used
+// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
+// - fH -- (VH0) average of the RHS function on each mesh element if treatB == out_system
+// - fB -- (VH0) integral of the RHS function on each mesh element against the respective bubble function if treatB == in_system
+// - effectiveVar -- (varf) effective bilinear form without bubble functions
+// - rhsP1 -- (varf) right-hand side of the effective problem
+// - rEffective -- (varf) effective form for bubbles tested against P1
+// - rEffectiveOS -- (varf) effective form for predetermined bubbles tested against P1
+// - lEffective -- (varf) effective form for P1 tested against bubbles
+//
+//
+// Global variables declared in this script ////////////////////////////
+// - (VH)  uH -- P1 solution of the effective problem
+// - (VH0) uB -- bubble coefficients from the macroscopic problem
+////////////////////////////////////////////////////////////////////////
 
 
 VH uH,vH; //the global problem is formulated on a standard FE P1-basis
@@ -62,10 +74,10 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             // Include bubbles in the equation for the nodal DOF for consistency
             real[int] FHlhs(VH.ndof); FHlhs=rEffectiveOS(0,VH);
             FH = FH - FHlhs;
+            uB[]=fH[]; //bubble coefficients are not determined by the linear system
         }
         if (debug) cout << "Solving macroscopic linear system" << endl;
         uH[]=A^-1*FH;  
-        uB[]=fH[]; //bubble coefficients are not determined by the linear system
         residue(A,FH,uH[],writeGlobalRes)
         if (debug) cout << "-- End of online phase" << endl;
     } else {

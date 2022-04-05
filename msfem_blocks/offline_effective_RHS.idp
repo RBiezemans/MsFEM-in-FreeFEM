@@ -1,0 +1,31 @@
+// offline_effective_RHS.idp
+//
+// Computation for the effective terms that appear in the RHS for some methods
+//
+//
+// Compatible only with sequential version
+//
+//
+// Variables not defined in this script /////////////////////////////////
+// - fH -- (VH0) is to hold the average of the RHS function on each mesh element if treatB == out_system
+// - fB -- (VH0) is to hold the integral of the RHS function on each mesh element against the respective bubble function if treatB == in_system
+// - fHxTestMS, fHyTestMS, fHTestMS -- (VH0) effective terms
+// - V[c/x/y] -- (VK) numerical correctors on K
+// - B -- (VK) bubble function on K
+// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useB -- (int) indicates whether bubbles are to be used
+// - testMS -- (int) indicates whether test functions are multiscale or P1
+////////////////////////////////////////////////////////////////////////
+
+
+
+if (useB) { 
+    if (treatB=="out_system") fH[][i]=int2d(K)(fRHS)/K.measure; //average of fRHS per element
+    else fB[][i]=int2d(K)(fRHS*B); //no division by K.measure because this term does not appear in any effective varf
+}
+
+if(testMS==1) {
+    fHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
+    fHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
+    if (useVc) fHTestMS[][i]=int2d(K)(fRHS*Vc)/K.measure;
+}
