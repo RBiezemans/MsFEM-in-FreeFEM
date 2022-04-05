@@ -41,7 +41,8 @@ if(testMS) {
         irHxTestMS[][i]=int2d(K)(a(B,Vx,nu,bx,by))/K.measure;
         irHyTestMS[][i]=int2d(K)(a(B,Vy,nu,bx,by))/K.measure;
     }
-
-    ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
-    ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
+    if(testMS==1) {
+        ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
+        ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
+    }
 }
