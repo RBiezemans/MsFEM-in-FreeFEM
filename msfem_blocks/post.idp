@@ -188,7 +188,7 @@ printTime("Reconstruction + error computation lasted ")
 if (treatB == "in_system") {// Saving bubble coefficients
     string solBname = output+"solCoarseB_" + name + parameters;
     solBname = solBname + ".txt";
-    ffLog << "Writing oefficients for the bubble functions to " << solBname << endl; 
+    ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
     ofstream ff(solBname, append);
     ff << uB[] << endl;
     ff << endl;

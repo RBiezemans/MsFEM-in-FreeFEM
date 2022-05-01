@@ -287,8 +287,8 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-// func nu=alpha*(1+delta*cos(2*pi/eps*x));
-func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+func nu=alpha*(1+delta*cos(2*pi/eps*x));
+// func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);
@@ -390,7 +390,9 @@ if (iproc==0) {
 		ffLog << "// Computing reference solution with parameters " + parametersFine << endl;
 	} else {
 		cout << "// Performing " + name + " with parameters " + parameters << endl;
+		cout << "// Variational forms used: " + vfname << endl;
 		ffLog << "// Performing " + name + " with parameters " + parameters << endl;
+		ffLog << "// Variational forms used: " + vfname << endl;
 	}
 }
 

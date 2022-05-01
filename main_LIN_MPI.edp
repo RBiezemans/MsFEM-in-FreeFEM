@@ -97,14 +97,13 @@ if (offlineMode == "compute")
         include "msfem_blocks/offline_save_effective_tensors.idp" 
     }
     mpiBarrier(comm);
+    if (iproc==0) printTime("Offline phase (computing + storing) lasted ")
 } 
 else if (offlineMode == "load") 
 {
     include "msfem_blocks/offline_load_MPI.idp"
 }
 
-
-if (iproc==0) printTime("Offline phase (computing + storing) lasted ")
 
 ///////////////////////////////////////////////////////////////////////
 // ONLINE STAGE                                                      //

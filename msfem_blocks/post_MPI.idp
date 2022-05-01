@@ -85,9 +85,6 @@ if (iproc>0) { //receive reference solution from main process
 real[int] eL1(1),  eL2(1),  eH1(1),  eMax(1); //errors on the entire domain
 real[int] eML1(1), eML2(1), eMH1(1), eMMax(1); //errors OBL according to the definition of Madiot
 real[int] eOL1(1), eOL2(1), eOH1(1), eOMax(1); //errors outside the mesh elements at the outflow
-//real[int] erL1(1), erL2(1), erH1(1), erMax(1); //relative errors on the entire domain
-//real[int] erML1(1), erML2(1), erMH1(1), erMMax(1); //relative errors OBL according to the definition of Madiot
-//real[int] erOL1(1), erOL2(1), erOH1(1), erOMax(1); //relative errors outside the mesh elements at the outflow
 
 // Initialize data structures to reduce error computations to the main process
 real[int] eL1Gl(1),   eL2Gl(1),   eH1Gl(1),   eMaxGl(1); //errors on the entire domain
@@ -110,7 +107,7 @@ erOL1Gl=0; erOL2Gl=0; erOH1Gl=0; erOMaxGl=0; //relative errors outside the mesh 
 // ..everyhing is reduced and added on the main process
 countOffline=0; //counter used to retrieve the result from the local computations per triangle
 real[int] correctReduce(Vh.ndof); correctReduce=0;
-//correctReduce will be set to 1 on each triangle associated to the current process
+//correctReduce will be increased by 1 on each triangle associated to the current process
 //it will be used below to correct for mpiReduce on repeated edges
 if (timing) time=clock();
 for(int i=0; i<VH0.ndof; i++) {
@@ -248,7 +245,7 @@ if (iproc==0) {
     printTime("Reconstruction + error computation lasted ")
 
     {// Saving coarse scale solution
-        string solCname = output + "solCoarse_" + name + parameters;
+        string solCname = output+"solCoarse_" + name + parameters;
         solCname = solCname + ".txt";
         ffLog << "Writing solution in P1 basis to " << solCname << endl; 
         ofstream ff(solCname, append);
@@ -256,15 +253,15 @@ if (iproc==0) {
         ff << endl;
     }
     if (treatB == "in_system") {// Saving bubble coefficients
-        string solBname = "results/solCoarseB_" + name + parameters;
+        string solBname = output+"solCoarseB_" + name + parameters;
         solBname = solBname + ".txt";
-        ffLog << "Writing oefficients for the bubble functions to " << solBname << endl; 
+        ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
         ofstream ff(solBname, append);
         ff << uB[] << endl;
         ff << endl;
     }
     {// Saving reconstructed micro-scale solution
-        string solname = output + "sol_" + name + parameters;
+        string solname = output+"sol_" + name + parameters;
         solname = solname + ".txt";
         ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
         ofstream ff(solname, append);

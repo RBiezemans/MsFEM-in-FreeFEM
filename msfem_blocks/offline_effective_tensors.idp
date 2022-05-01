@@ -83,7 +83,7 @@ if(testMS) {
         // No "AHBTestMS" -- we always use the (multiscale) precomputed bubbles B
         rHxTestMS[][i]=int2d(K)(aComplete(B,Vx))/K.measure;
         rHyTestMS[][i]=int2d(K)(aComplete(B,Vy))/K.measure;
-        if (useVc) rHTestMS[][i] =int2d(K)(aComplete(B,Vc))/K.measure;   
+        if (useVc) rHTestMS[][i]=int2d(K)(aComplete(B,Vc))/K.measure;   
         // No "lH[x/y]TestMS" -- we always use the (multiscale) precomputed bubbles B
     }
 }

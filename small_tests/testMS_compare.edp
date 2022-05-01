@@ -3,38 +3,38 @@
 int Ndiscr = 1024;
 mesh Th=square(Ndiscr,Ndiscr,[1*x,1*y]);
 fespace Vh(Th,P1);
-Vh solGal=0, solPG=0;
+Vh solGal=0, solGni=0;
 
 real[int] nsteps(7); 
 nsteps = [4, 8, 16, 32, 64, 128, 256];
 
 macro computeDifference(i, type, os, diffNorm) {
-    string fileGal, filePG;
+    string fileGal, fileGni;
     if (os == 0) {
         fileGal = "sol_"+type+"_testMS_1_nB_alpha_1_cont_100_eps_0.020947_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
-        filePG  = "sol_"+type+"_testMS_0_nB_alpha_1_cont_100_eps_0.020947_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
+        fileGni  = "sol_"+type+"_testMS_2_nB_alpha_1_cont_100_eps_0.020947_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
     } else {
         fileGal = "sol_"+type+"_testMS_1_nB_alpha_1_cont_100_eps_0.020947_OS_"+os+"_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
-        filePG  = "sol_"+type+"_testMS_0_nB_alpha_1_cont_100_eps_0.020947_OS_"+os+"_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
+        fileGni  = "sol_"+type+"_testMS_2_nB_alpha_1_cont_100_eps_0.020947_OS_"+os+"_N_"+Ndiscr+"_n_"+nsteps[i]+".txt";
     }
-    cout << fileGal << " " << filePG << endl;
+    cout << fileGal << " " << fileGni << endl;
     {
         ifstream ff(fileGal);
         ff >> solGal[];
     }
     {
         ifstream ff(filePG);
-        ff >> solPG[];
+        ff >> solGni[];
     }
 
-    Vh difference = solGal - solPG;
+    Vh difference = solGal - solGni;
     diffNorm = int2d(Th)(difference*difference + dx(difference)*dx(difference) + dy(difference)*dy(difference));
     diffNorm = sqrt(diffNorm);
 } 
 // EOM
 
 {
-ofstream fout("MsFEM-GalvsPG.dat", append);
+ofstream fout("MsFEM-GalvsGni.dat", append);
     fout << "H\t" << "Lin\t" << "LinOS3\t" << "CR\t" << "CROS3" << endl;
     for(int i=0; i<nsteps.n; i++) {
         real diffLin=0;
