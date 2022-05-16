@@ -116,6 +116,7 @@
 // - (macro)  aadv[2] -- bilinear form for advection term
 // - (macro)  aadvAdj[2] -- bilinear form for an adjoint advection term
 // - (macro)  amass[2] -- bilinear form for reaction term
+// - (string) stabExpression -- description of the formula used to determine the stabilization coefficient
 // - (func)   fRHS -- right-hand side function of the variational formulation
 // - (string) rhsDescription -- description of the function fRHS
 // - (int)    useVc [default == 1]
@@ -308,6 +309,7 @@ macro amass(u,v) (u*v*sigma)// EOM
 // (macros must be called aComplete and aBasis, respectively)
 int useVc=1; //can be set to zero if aBasis(1,w)==0 for all test functions w
 int fullVF=1; //can be set to zero if all terms with gradients on u vanish from the effective VF
+string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "vffile.idp"
 if (fullVF==0) assert(useVc==0);

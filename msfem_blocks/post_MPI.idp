@@ -20,6 +20,8 @@
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - useB -- (int) indicates whether bubbles are to be used
 // - useVc -- (int) indicates whether the correctors for constants are to be used
+// - rhsDescription -- (string) description of the function fRHS
+// - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
 // - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
 // - uH -- (VH) P1 solution of the effective problem
 // - uB -- (VH0) bubble coefficients computed from the effective problem
@@ -58,7 +60,7 @@ Vh uHhGl=0; //global reconstructed solution, contributions will be reduced to th
 
 if(iproc==0) { //on the main process, load reference solution on Th
     try {
-        string refname = output + "sol_REF" + parametersFine + ".txt";
+        string refname = "sol_REF" + parametersFine + ".txt";
         ifstream ff(refname);
         ff>>uref[];
     }
@@ -274,6 +276,8 @@ if (iproc==0) {
         ffLog << "Writing errors to " << errname << endl;
         ofstream ff(errname, append);
         ff  << rhsDescription
+            << endl
+            << stabExpression
             << endl
             << "\t\t"
             << "n    " << n << "\t\t"

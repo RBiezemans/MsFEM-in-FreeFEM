@@ -18,15 +18,15 @@ TOTEST_LARGE_N="2048"
 TOTEST_LARGER_N="4096" # unused in this experiment 
 TOTEST_SMALL_N="16"
 TOTEST_EPS="0.0078125" # 2^-7
-TOTEST_2LOGALP="-2 -3 -4 -5 -6 -7" # -8" # 2^-2 ... 2^-8
+TOTEST_2LOGALP="-2 -3 -4 -5 -6 -7 -8" # alpha = 2^-2 ... 2^-8
 TOTEST_THETA="0.15"
 TOTEST_CONT="7"
-TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_skew_symmetric.idp"
-TOTEST_OSCOEF="0"
+TOTEST_VFFILE="advection_diffusion_msfem_supg.idp"
+TOTEST_OSCOEF="0 3"
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
 TOTEST_STR_DIR="0"
-TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
-TOTEST_TREAT_B="in_system out_system"
+TOTEST_USE_B="0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
+TOTEST_TREAT_B="out_system"
 ## TOTEST_ADV_MS="1" # has become irrelevant
 TOTEST_MS="1 0 2"
 
@@ -76,11 +76,11 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
             if [ $COMPUTE_BASIS == 0 ]
             then 
                 /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o compute
-                /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o compute
+                # /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o compute
                 COMPUTE_BASIS=1
             else
                 /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o load
-                /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o load
+                # /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o load
             fi
             rm parameters.txt
         fi
@@ -93,19 +93,12 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
 done done done done done done # end of loops over reference solution/physical parameters + fine mesh + vf form used
 
 # Remove resolution files from main directory
-cp sol_REF_* results_adv_diffusion_direct/
-cp sol_REF_* results_adv_diffusion_SkewSym/
+cp sol_REF_* results_adv_diffusion_MsFEM_SUPG/
 rm sol_REF_*
 
 # Compress results into zip files
-cd results_adv_diffusion_direct/
+cd results_adv_diffusion_MsFEM_SUPG/
 zip zip_direct_Lin_short err_Lin_MPI* solCoarse*_Lin_MPI*
 zip zip_direct_LinOS_short err_LinOS*_MPI* solCoarse*_LinOS*_MPI*
-zip zip_direct_CR_short err_CR_MPI* solCoarse*_CR_MPI*
-zip zip_direct_CROS_short err_CROS*_MPI* solCoarse*_CROS*_MPI*
-
-cd ../results_adv_diffusion_SkewSym/
-zip zip_SkewSym_Lin_short err_Lin_MPI* solCoarse*_Lin_MPI*
-zip zip_SkewSym_LinOS_short err_LinOS*_MPI* solCoarse*_LinOS*_MPI*
-zip zip_SkewSym_CR_short err_CR_MPI* solCoarse*_CR_MPI*
-zip zip_SkewSym_CROS_short err_CROS*_MPI* solCoarse*_CROS*_MPI*
+# zip zip_direct_CR_short err_CR_MPI* solCoarse*_CR_MPI*
+# zip zip_direct_CROS_short err_CROS*_MPI* solCoarse*_CROS*_MPI*
