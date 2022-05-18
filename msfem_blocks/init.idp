@@ -322,6 +322,9 @@ string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
 // string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
 // VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
 // string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
+// func fRHS=1;
+// string rhsDescription = "-- Tests for RHS f = 1 --";
+
 
 if (plots) { //plot of diffusion coefficient
 	Vh nuh = nu;

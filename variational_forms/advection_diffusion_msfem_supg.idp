@@ -2,11 +2,26 @@ vfname = "adv_diffusion_MsFEM_SUPG";
 
 VH0 tau=0;
 for (int i=0; i<VH0.ndof; i++) {
-    real tauK = cosh(PeLoc)/sinh(PeLoc) - 1./PeLoc; 
-    // NOTE: PeLoc is only computed correctly for |b(x)|=1 throughout the domain
-    tauK = tauK/(4.*Nx*Ny); 
-    // the area is the same for all triangles -- division by |b(x)|=1 is implicit here
+    phi[][i]=2;
+
+    mesh K = trunc(TH,phi>1,split=1,label=1);
+    fespace VK(K,P1);
+    VK psi=0;
+    real sumdphi=0;
+    for(int j=0; j<VK.ndof; j++) {
+        psi[][j]=1.;
+        sumdphi += abs(bx*dx(psi) + by*dy(psi));
+        psi[][j]=0.;
+    }
+    real diamK = 2./sumdphi;
+    real PeK = diamK*0.5/alpha;
+    // NOTE: PeK is only computed correctly for |b(x)|=1 throughout the domain
+    real tauK = cosh(PeK)/sinh(PeK) - 1./PeK; 
+    tauK = tauK*0.5*diamK; 
+    // still, division by |b(x)|=1 is implicit here
     tau[][i] = tauK;
+
+    phi[][i]=0;
 }
 
 stabExpression = "tau = cotangent formula";

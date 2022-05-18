@@ -1,0 +1,27 @@
+real theta=0.15;
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
+
+mesh TH=square(2,2,[1.*x,1.*y]);
+fespace VH0(TH,P0);
+fespace VH(TH,P1);
+VH0 phi=0;
+cout << "Number of mesh elements = " << VH0.ndof << endl;
+for (int i=0; i<VH0.ndof; i++) {
+    pphi[][i]=2;
+    mesh K = trunc(TH,pphi>1,split=1,label=1);
+    fespace VK(K,P1);
+    // cout << "   Number of DOF on mesh element = " << VK.ndof << endl;
+    VK psi=0;
+    real sumdphi=0;
+    for(int j=0; j<VK.ndof; j++) {
+        psi[][j]=1.;
+        sumdphi += abs(bx*dx(psi) + by*dy(psi));
+        psi[][j]=0.;
+    }
+    real HKb = 2./sumdphi;
+    // cout << "b-diameter of mesh element " << i << " is " << HKb << endl;
+    pphi[][i]=0;
+}
+real bdiam = 0.5*(bx+by);
+cout << "The diameters obtained should all be equal to " << bdiam << endl;
