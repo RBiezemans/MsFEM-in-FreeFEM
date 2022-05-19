@@ -1,6 +1,7 @@
 vfname = "adv_diffusion_MsFEM_SUPG";
 
-VH0 tau=0;
+stabilization=1;
+// Specification of the stabilization parameter
 for (int i=0; i<VH0.ndof; i++) {
     phi[][i]=2;
 
@@ -13,7 +14,7 @@ for (int i=0; i<VH0.ndof; i++) {
         sumdphi += abs(bx*dx(psi) + by*dy(psi));
         psi[][j]=0.;
     }
-    real diamK = 2./sumdphi;
+    real diamK = 2./sumdphi; //should be multiplied by |b(x)| if it is different from 1
     real PeK = diamK*0.5/alpha;
     // NOTE: PeK is only computed correctly for |b(x)|=1 throughout the domain
     real tauK = cosh(PeK)/sinh(PeK) - 1./PeK; 
@@ -24,9 +25,9 @@ for (int i=0; i<VH0.ndof; i++) {
     phi[][i]=0;
 }
 
-stabExpression = "tau = cotangent formula";
-macro astab(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
-macro aComplete(u,v) (adif(u,v) + aadv(u,v) + astab(u,v))// EOM
+stabExpression = "-- Stabilization parameter = cotangent formula + b-diameter of K --";
+
+macro aComplete(u,v) (adif(u,v) + aadv(u,v) + asupg(u,v))// EOM
 macro aBasis(u,v) adif(u,v)// EOM
 
 //macro aEffDif(u,v,nu,bx,by) aComplete(u,v,nu,bx,by)// EOM
