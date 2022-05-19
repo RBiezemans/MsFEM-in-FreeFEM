@@ -7,7 +7,8 @@
 // - useVc -- (int) indicates whether the correctors for constants are to be used
 // - useB -- (int) indicates whether bubbles are to be used
 // - testMS -- (int) indicates whether test functions are multiscale or P1
-// - [/i]fH, [/i]fB, [/i]fHxTestMS, [/i]fHyTestMS, [/i]fHTestMS -- (VH0) effective terms
+// - [/i]fH, [/i]fB, [/i]fH[/x/y]TestMS[/supg] -- (VH0) effective terms
+// - stabilization -- (int) indicates whether or not stabilization terms are used
 ////////////////////////////////////////////////////////////////////////
 
 
@@ -20,4 +21,9 @@ if(testMS==1) {
     mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
     mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
     if (useVc) mpiReduce(ifHTestMS[], fHTestMS[], processor(0,comm), mpiSUM);
+    if (stabilization==1) {
+        mpiReduce(ifHxTestMSsupg[], fHxTestMSsupg[], processor(0,comm), mpiSUM);
+        mpiReduce(ifHyTestMSsupg[], fHyTestMSsupg[], processor(0,comm), mpiSUM);
+        if (useVc) mpiReduce(ifHTestMSsupg[], fHTestMSsupg[], processor(0,comm), mpiSUM);
+    }
 }

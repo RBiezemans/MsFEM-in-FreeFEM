@@ -9,7 +9,7 @@
 
 
 # Number of processors to be used
-NUMBER_OF_PROC=2 #10
+NUMBER_OF_PROC=10
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
@@ -64,7 +64,8 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     for TEST_GLUE in $TOTEST_GLUE; do sed -i "s/glue=.*/glue= $TEST_GLUE/" "experiment/parameters.txt"
     ## has become irrelevant for TEST_ADV_MS in $TOTEST_ADV_MS; do sed -i "s/advMS=.*/advMS= $TEST_ADV_MS/" "experiment/parameters.txt" 
     # The above loops contain all parameters that require the computation of a new basis
-    COMPUTE_BASIS=0
+    COMPUTE_BASIS=1
+    # Basis has already been pre-computed
     for TEST_MS in $TOTEST_MS; do sed -i "s/testMS=.*/testMS= $TEST_MS/" "experiment/parameters.txt" 
     for TEST_USE_B in $TOTEST_USE_B; do sed -i "s/useB=.*/useB= $TEST_USE_B/" "experiment/parameters.txt" 
     for TEST_TREAT_B in $TOTEST_TREAT_B; do sed -i "s/treatB=.*/treatB= $TEST_TREAT_B/" "experiment/parameters.txt" 

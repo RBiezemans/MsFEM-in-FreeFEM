@@ -25,6 +25,7 @@
 // - fB -- (VH0) integral of the RHS function on each mesh element against the respective bubble function if treatB == in_system
 // - effectiveVar -- (varf) effective bilinear form without bubble functions
 // - rhsP1 -- (varf) right-hand side of the effective problem
+// - rhsP1supg -- (varf) supg stabilization terms for the right-hand side of the effective problem
 // - rEffective -- (varf) effective form for bubbles tested against P1
 // - rEffectiveOS -- (varf) effective form for predetermined bubbles tested against P1
 // - lEffective -- (varf) effective form for P1 tested against bubbles
@@ -65,6 +66,11 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
     set(A, solver=UMFPACK);
     // effectiveVar is defined in init.idp in terms of the effective coefficients determined in the offline phase
     real[int] FH(VH.ndof); FH=rhsP1(0,VH); //RHS of the system for testing fRHS against P1
+    if (stabilization) {
+        real[int] FHsupg(VH.ndof);
+        FHsupg=rhsP1supg(0,VH);
+        FH+=FHsupg;
+    }
 
     // output message for online phase
     string writeGlobalRes="The global linear system was solved with residue = ";

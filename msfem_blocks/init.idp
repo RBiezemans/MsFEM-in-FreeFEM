@@ -1,5 +1,14 @@
 // init.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// author: Rutger Biezemans
+//
+//
 // Problem and MsFEM definition, declaration of global variables
 // Definition of internal and external storage infrastructure
 //
@@ -107,7 +116,7 @@
 // - (int[int]) labs -- labels associated to the sides of the global (square) domain
 // - (real)     PeGlob, PeLoc, PeFine, widthMadiot
 //
-// Define the PDE /////////////////////////////////////////////////////
+// Define the PDE and the MsFEM ///////////////////////////////////////
 // - (real)   delta -- convert contrast to coefficient in front of a cosine
 // - (func)   nu -- diffusion field
 // - (real)   bx, by -- constant advection field
@@ -116,6 +125,9 @@
 // - (macro)  aadv[2] -- bilinear form for advection term
 // - (macro)  aadvAdj[2] -- bilinear form for an adjoint advection term
 // - (macro)  amass[2] -- bilinear form for reaction term
+// - (macro)  asupg[2] -- bilinear form adding supg stabilization to the bilinear form in the discrete problem
+// - (macro)  rhssupg[1] -- linear form adding supg stabilization to the linear form in the discrete problem (consistency terms)
+// - (VH0)    tau -- stabilization parameter that can be tuned element-by-element
 // - (string) stabExpression -- description of the formula used to determine the stabilization coefficient
 // - (func)   fRHS -- right-hand side function of the variational formulation
 // - (string) rhsDescription -- description of the function fRHS
@@ -129,6 +141,11 @@
 //            Compute all possible coefficients of the effective schemes
 //            == 0
 //            Deactivate computation of effective coefficients that vanish if aComplete(1,.) vanishes
+// - (int)    stabilization [default == 0]
+//            == 0
+//            Add supg stabilization terms to LHS and RHS of the discrete problem
+//            == 1
+//            No stabilization terms are used (equivalently, set tau=0)
 // - (string) vfname [default == "no_VF_provided"] -- description of (global and local) VF used
 //
 //
@@ -159,13 +176,14 @@
 // - (VH0) fB       -- will hold the integral of the RHS function on each mesh element against the respective bubble function if treatB == in_system
 //                  ** Note that the quantities fH and fB are computed on the fine mesh, contrary to what a traditional FEM code might do **
 // - (VH0)  AH[xx/xy/yx/yy]TestMS, BH[x/y]TestMS, BAH[x/y]TestMS, MHTestMS, rH[x/y]TestMS, rHTestMS,
-//          fHxTestMS, fHyTestMS, fHTestMS 
-//          ** In fH[/x/y]TestMS, fRHS is again integrated more accurately than a P1 method may do **
+//          fHxTestMS, fHyTestMS, fHTestMS, fHxTestMSsupg, fHyTestMSsupg, fHTestMSsupg,
+//          ** In fH[/x/y]TestMS[/supg], fRHS is again integrated more accurately than a P1 method may do **
 // - (VH0)  iAH[xx/xy/yx/yy], iBH[x/y], iBAH[x/y], iMH, iAHB, irH[x/y], irH,
 //          ilH[x/y], ilH, ifH, ifHB
 // - (VH0)  iAH[xx/xy/yx/yy]TestMS, iBH[x/y]TestMS, iBAH[x/y]TestMS, iMHTestMS, irH[x/y]TestMS, irHTestMS,
 //          fHxTestMS, fHyTestMS, fHTestMS
 // - (varf) rhsP1 -- right-hand side of the effective problem
+// - (varf) rhsP1supg -- supg stabilization terms for the right-hand side of the effective problem
 // - (varf) effectiveVar -- effective bilinear form without bubble functions
 // - (varf) rEffective -- effective form for bubbles tested against P1
 // - (varf) rEffectiveOS -- effective form for predetermined bubbles tested against P1
@@ -283,7 +301,7 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 
 ///////////////////////////////////////////////////////////////////////
-// Define the PDE                                                    //
+// Define the PDE and the MsFEM                                      //
 ///////////////////////////////////////////////////////////////////////
 
 // Diffusion coefficient
@@ -309,22 +327,29 @@ macro amass(u,v) (u*v*sigma)// EOM
 // (macros must be called aComplete and aBasis, respectively)
 int useVc=1; //can be set to zero if aBasis(1,w)==0 for all test functions w
 int fullVF=1; //can be set to zero if all terms with gradients on u vanish from the effective VF
+VH0 tau=0; //a stabilization parameter can be defined in the vffile
+int stabilization=0; //to be set to 1 if stabilization terms are to be used in the RHS
+macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
+//bilinear form for supg stabilization
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "vffile.idp"
 if (fullVF==0) assert(useVc==0);
+if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
 
 // RHS of the PDE to be solved
-func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
-string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+// func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
+// string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
   //string used to document the tests performed in the error file
 // func fRHS=sin(x)*sin(y);
 // string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
 // VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
 // string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
-// func fRHS=1;
-// string rhsDescription = "-- Tests for RHS f = 1 --";
+func fRHS=1;
+string rhsDescription = "-- Tests for RHS f = 1 --";
 
+// Stabilization to be used at the RHS of the variational problem
+macro rhssupg(v) (fRHS * tau * (bx*dx(v)+by*dy(v)))// EOM
 
 if (plots) { //plot of diffusion coefficient
 	Vh nuh = nu;
@@ -441,6 +466,7 @@ VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0,
 VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, 
 	BHxTestMS=0, BHyTestMS=0, BAHxTestMS=0, BAHyTestMS=0, MHTestMS=0, 
 	fHxTestMS=0, fHyTestMS=0, fHTestMS=0,
+	fHxTestMSsupg=0, fHyTestMSsupg=0, fHTestMSsupg=0,
 	rHTestMS=0, rHxTestMS=0, rHyTestMS=0;
 // There is no AHBTestMS/lH[/x/y]TestMS because we always test against the computed multiscale bubbles
 
@@ -452,6 +478,7 @@ VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0,
 VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, 
 	iBHxTestMS=0, iBHyTestMS=0, iBAHxTestMS=0, iBAHyTestMS=0, iMHTestMS=0, 
 	ifHxTestMS=0, ifHyTestMS=0, ifHTestMS=0,
+	ifHxTestMSsupg=0, ifHyTestMSsupg=0, ifHTestMSsupg=0,
 	irHTestMS=0, irHxTestMS=0, irHyTestMS=0;
  
 // Effective variational forms in terms of the above coefficients (that are to be computed)
@@ -461,6 +488,9 @@ VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0,
 varf rhsP1(unused,vH) = // Right-hand side of the effective problem
 	 int2d(TH)(fRHS*vH) 
 	+int2d(TH,qft=qf1pT)(fHTestMS*vH + fHxTestMS*dx(vH) + fHyTestMS*dy(vH));
+varf rhsP1supg(unsued,vH) = // Right-hand side contribution for the SUPG method
+	 int2d(TH)(rhssupg(vH))
+	+int2d(TH,qft=qf1pT)(fHTestMSsupg*vH + fHxTestMSsupg*dx(vH) + fHyTestMSsupg*dy(vH));
 varf effectiveVar(uH,vH) = // Effective bilinear form without bubble functions
 	 int2d(TH,qft=qf1pT)( dx(vH)*(AHxx+AHxxTestMS)*dx(uH) + dy(vH)*(AHyx+AHyxTestMS)*dx(uH) 
 	                    + dx(vH)*(AHxy+AHxyTestMS)*dy(uH) + dy(vH)*(AHyy+AHyyTestMS)*dy(uH) 
