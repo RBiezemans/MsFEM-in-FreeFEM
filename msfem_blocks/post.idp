@@ -63,7 +63,7 @@ catch (...) { //or compute the referece solution if the file is not found
     cout << "WARNING: No reference solution was found and it is recomputed" << endl;
     ffLog << "WARNING: No reference solution was found and it is recomputed" << endl;
     Vh vh;
-    solve pb(uref,vh)=int2d(Th)(aComplete(uref,vh)) +int1d(Th)(tgv*uref*vh)
+    solve pb(uref,vh)=int2d(Th)(aref(uref,vh)) +int1d(Th)(tgv*uref*vh)
             -int2d(Th)(fRHS*vh);
 }
 if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");

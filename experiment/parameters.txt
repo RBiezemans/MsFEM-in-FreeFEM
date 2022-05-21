@@ -1,8 +1,8 @@
 L= 1.
-N= 2048
-n= 16
-eps= 0.0078125
-2logalpha= -3
+N= 256
+n= 4
+eps= 0.0125
+2logalpha= -8
 theta= 0.15
 cont= 7
 osCoef= 0

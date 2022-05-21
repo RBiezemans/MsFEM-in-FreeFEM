@@ -29,6 +29,7 @@ stabExpression = "-- Stabilization parameter = cotangent formula + b-diameter of
 
 macro aComplete(u,v) (adif(u,v) + aadv(u,v) + asupg(u,v))// EOM
 macro aBasis(u,v) adif(u,v)// EOM
+macro aref(u,v) (adif(u,v) + aadv(u,v))// EOM
 
 //macro aEffDif(u,v,nu,bx,by) aComplete(u,v,nu,bx,by)// EOM
 //bilinear form collecting all terms for the effective diffusion

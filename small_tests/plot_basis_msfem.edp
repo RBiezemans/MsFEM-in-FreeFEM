@@ -17,15 +17,15 @@ exec("mkdir -p basis");
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="CR";
+string FEtype="Lin";
 
 // Parameters defining the coarse mesh
-int n=3, nx=n, ny=n;
+int n=2, nx=n, ny=n;
 real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.0078125, alpha=0.0078125, theta=0.15, cont=7, osCoef=2;
+real eps=0.005, alpha=1., theta=0.15, cont=7, osCoef=0;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
@@ -73,11 +73,11 @@ fespace Vh(Th,P1); //fine global FE space
 
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-func nu=alpha*(1+delta*cos(2*pi/eps*x));
+func nu=alpha*(1+delta*cos(2*pi/eps*x))*(1+delta*sin(0.2*pi/eps*y)) + 5*alpha*( (x-3*Lx/8)^2 + (y-5*Ly/8)^2 < 0.004*Lx^2 ) + 5*alpha*( (x-3*Lx/4)^2 + (y-Ly/2)^2 < 0.008*Lx^2 );
 // func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
-real bx=cos(2*pi*theta);
-real by=sin(2*pi*theta);
+real bx=0;//cos(2*pi*theta);
+real by=0;//sin(2*pi*theta);
 // Divergence of the advection field
 func sigma=0; 
  
@@ -242,8 +242,23 @@ for(int i=0; i<VH0.ndof; i++) {
     phi[][i]=0;
 }
 
+
+real[int] colorhsv=[ // color hsv model
+   1./6., 0.1216 , 1., // LightYellow
+   //1./12., 0.3031 , 1., // LightOrange
+   38./360., 1. , 1., // Orange
+   //0., 0.75, 1., // Coral Red
+   1./72., 0.75 , 0.86// Google Red
+   //1./180., 1., 1. // Candy Apple Red
+   //1, 1. , 1, // red
+   //7./12., 0.48, 0.71, // dark blue
+   //5./6., 0.85, 0.79 // dark blue
+   ];
+
+
 macro reconstruct(uH,bubbleValue) {
-    plot(TH,uH,wait=1,cmm="Coarse basis function");
+    /*(plot(TH,uH,wait=1,cmm="Coarse basis function", hsv=colorhsv, fill=1);*/
+    plot(TH,uH,wait=1, hsv=colorhsv, fill=1,ps="basis_fem.eps");
     Vh uHh=0; /*for the reconstructed basis functions*/
     Vh uBh=0; /*reconstruction of bubble functions*/
     Vh uHhB=0; /*reconstruction with a bubble function*/
@@ -276,7 +291,8 @@ macro reconstruct(uH,bubbleValue) {
 
         phi[][i]=0;
     }
-    plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);
+    /*plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=0, hsv=colorhsv);*/
+    plot(TH, uHh, wait=1, fill=1, value=0, hsv=colorhsv, ps="basis_msfem.eps");
     /*plot(TH, uBh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);*/
     /*plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);*/
 } // EOM
@@ -285,7 +301,7 @@ real basisValue=0.05;
 if (FEtype=="Lin") {
     fespace VH(TH,P1); 
     VH uH=0; 
-    for (int i=0; i<VH.ndof; i++) {
+    for (int i=4; i<5; i++) {
         uH[][i]=1;
         reconstruct(uH,1./basisValue)
         uH[][i]=0;
@@ -302,5 +318,5 @@ else if (FEtype=="CR") {
         uH[][i]=0;
     }
     uH=x*basisValue;
-    reconstruct(uH,1./basisValue)
+    //reconstruct(uH,1./basisValue)
 }
