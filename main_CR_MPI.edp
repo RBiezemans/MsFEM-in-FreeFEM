@@ -12,6 +12,7 @@
 //
 //
 // Parameters are read from parameters.txt
+// Local and global variational forms are read from vffile.idp
 //
 // 
 ////// Parallelized version ////////////////////////////////////////////
@@ -62,7 +63,7 @@ if (offlineMode == "compute") {
     if (iproc == i%nbproc) {
         if (i%(2*n)==0) {
             cout <<"construction ms coefficients on tri "<<i<<endl;
-            if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
+            // if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
         }
         phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 

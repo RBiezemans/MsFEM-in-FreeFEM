@@ -1,5 +1,11 @@
 // offline_load.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Load numerical correctors, bubble functions, and effective coefficients (if available) from earlier computations
 // Compute and save effective coefficients if they were not available for the method used
 // Compute effective coefficients related to the RHS of the PDE
@@ -78,7 +84,7 @@ catch (...) {
 for(int i=0; i<VH0.ndof; i++) {
     if (i%(2*n)==0) {
         cout << "loading offline phase for tri " << i << endl;
-        ffLog << "loading offline phase for tri " << i << endl;
+        // ffLog << "loading offline phase for tri " << i << endl;
     }
     phi[][i]=2;
     if (useVc) { //store numerical correctors associated to constants

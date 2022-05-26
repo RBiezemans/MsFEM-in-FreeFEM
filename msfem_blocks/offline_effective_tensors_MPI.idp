@@ -1,5 +1,11 @@
 // offline_effective_tensors_MPI.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Computation of the effective tensors based on pre-computed numerical correctors Vc, Vx, Vy and possibly a bubble B
 //
 //

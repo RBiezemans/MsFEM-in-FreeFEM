@@ -1,5 +1,11 @@
 // offline_save_effective_tensors.idp
 // 
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Save all computed effective tensors (on the global process) to dedicated folders
 //
 //

@@ -25,13 +25,13 @@ real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.005, alpha=1., theta=0.15, cont=7, osCoef=0;
+real eps=0.0078125, alpha=0.125, theta=0.15, cont=7, osCoef=0;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
-int strongDir=0, useB=1, advMS=1, testMS=1;
+int strongDir=0, useB=0, testMS=1;
 string glue="dof", treatB="in_system";
 
 int nbproc=1;
@@ -73,11 +73,12 @@ fespace Vh(Th,P1); //fine global FE space
 
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-func nu=alpha*(1+delta*cos(2*pi/eps*x))*(1+delta*sin(0.2*pi/eps*y)) + 5*alpha*( (x-3*Lx/8)^2 + (y-5*Ly/8)^2 < 0.004*Lx^2 ) + 5*alpha*( (x-3*Lx/4)^2 + (y-Ly/2)^2 < 0.008*Lx^2 );
+func nu=alpha*(1+delta*cos(2*pi/eps*x));
+// func nu=alpha*(1+delta*cos(2*pi/eps*x))*(1+delta*sin(0.2*pi/eps*y)) + 5*alpha*( (x-3*Lx/8)^2 + (y-5*Ly/8)^2 < 0.004*Lx^2 ) + 5*alpha*( (x-3*Lx/4)^2 + (y-Ly/2)^2 < 0.008*Lx^2 );
 // func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
-real bx=0;//cos(2*pi*theta);
-real by=0;//sin(2*pi*theta);
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
 // Divergence of the advection field
 func sigma=0; 
  
@@ -307,7 +308,7 @@ if (FEtype=="Lin") {
         uH[][i]=0;
     }
     uH=x*basisValue;
-    reconstruct(uH,1./basisValue)
+    //reconstruct(uH,1./basisValue)
 }
 else if (FEtype=="CR") {
     fespace VH(TH,P1nc); 

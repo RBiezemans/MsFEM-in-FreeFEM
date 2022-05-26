@@ -1,5 +1,11 @@
 // post.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Fine-scale reconstruction of the coarse solution, error computation
 // Writing solution and errors to external files (all writes appended)
 //
@@ -20,6 +26,7 @@
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - useB -- (int) indicates whether bubbles are to be used
 // - useVc -- (int) indicates whether the correctors for constants are to be used
+// - vfname -- (string) description of (global and local) VF used
 // - rhsDescription -- (string) description of the function fRHS
 // - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
 // - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
@@ -117,7 +124,7 @@ if (iproc == i%nbproc) {
     //build fine mesh of the coarse mesh element K treated by the current process
     if (i%(2*n)==0) {
         cout <<"reconstruction on tri "<<i<<endl;
-        if (iproc==0) ffLog <<"reconstruction on tri "<<i<<endl;
+        // if (iproc==0) ffLog <<"reconstruction on tri "<<i<<endl;
     }
     phi[][i]=2;
     int[int] n2o;
@@ -272,7 +279,7 @@ if (iproc==0) {
     }
 
     {// Writing errors to an external file
-        string errname = output + "err_" + name + "_OS" + osCoef + ".txt";
+        string errname = output + "err_" + vfname + "_"+ name + "_OS" + osCoef + ".txt";
         ffLog << "Writing errors to " << errname << endl;
         ofstream ff(errname, append);
         ff  << rhsDescription

@@ -6,9 +6,6 @@
 // //  //  // //  //////  //        //        //  //  // //
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
-// author: Rutger Biezemans
-//
-//
 // Problem and MsFEM definition, declaration of global variables
 // Definition of internal and external storage infrastructure
 //
@@ -18,7 +15,7 @@
 //
 // Files read ////////////////////////////////////////////////////////////
 // - "parameters.txt"
-//   -- read L, Ndiscr, n, eps, logalpha, theta, cont, osCoef, glue, strongDir, useB, treatB, advMS, testMS
+//   -- read L, Ndiscr, n, eps, logalpha, theta, cont, osCoef, glue, strongDir, useB, treatB, testMS
 //
 //
 // Scripts loaded ////////////////////////////////////////////////////////
@@ -28,7 +25,7 @@
 //   -- define vf of global and local problems (aComplete, aTest1 and aBasis)
 //   -- specify computation options for the offline phase (useVc, fullVF)
 //   -- define vfname
-// - msfem_blocks/tools_CR_and_OS.idp
+// - msfem_blocks/tools.idp
 //   -- tools for the offline phase common to multiple MsFEM variants
 //
 //
@@ -101,8 +98,6 @@
 //               Multiscale basis functions for OS are DOF continuous
 //            == "restrict"
 //               Multiscale basis functions for OS are restricted from the patch without further continuity properties
-// - (int)    advMS
-//            REDUNDANT
 // 
 // Define the mesh ////////////////////////////////////////////////////
 // - (real)     Hx, Hy -- size of the legs of the coarse mesh elements
@@ -192,12 +187,9 @@
 
 
 /////// TO BE DONE
-// describe input, output, equation, assumptions (e.g. b does not need to be divergence free any more)
-// Adapt quadrature rules for RHS integration in fH -- in fB we could be less precise on the RHS if we expand it in a P1 basis
-// Possibility to construct the same method without advection in the basis functions (MsFEM rather than adv-MsFEM)
-// Understand and explain how the OS coefficient works, how large one can take it, etc.
-//  Also provide some correction of size h... None of this is clear now !!!
-//  Investigate OS strategies if flags in the mesh creation is not set to 0.
+// Add an explanation on maximum values of the allowed values of the oversampling coefficient
+// Investigate OS strategies if flags in the mesh creation is not set to 0
+// Implement strong boundary conditions for CR and over-sampling methods
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -238,7 +230,7 @@ real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 int logalpha, logeps;
 // Parameters tuning the MsFEM method
-int strongDir, useB, advMS, testMS;
+int strongDir, useB, testMS;
 string glue, treatB;
 
 // Reading parameters from external file "parameters.txt"
@@ -257,12 +249,10 @@ string glue, treatB;
 	f >> read >> strongDir;
 	f >> read >> useB;
 	f >> read >> treatB;
-	f >> read >> advMS;
 	f >> read >> testMS;
 }
 
 // Compatibility checks for certain parameters
-assert(advMS==1); //only adv-MsFEM variants (as opposed to MsFEM) are available
 assert(strongDir==0); //strong Dirichlet conditions for CR are not yet supported 
 if (!useB) assert(treatB=="out_system");
   //without bubbles, there is no need to construct linear equations with bubble functions
@@ -379,8 +369,7 @@ if (osCoef >= osThr) {
 	if (glue=="dof") name = name + "gld";
 	else name = name + "glr";	
 }
-name = name + nameMPI;
-if (bcType=="CR") {
+if (bcType=="CR" || osCoef>osThr) {
 	//specify the use of weak or strong BC for CR methods
 	if (strongDir) name = name + "_strDir";
 	else name = name + "_weakDir";
@@ -401,6 +390,7 @@ if (iproc==0) {
 }
 
 // Add the choice of test space to the MsFEM name
+name = name + nameMPI;
 name = name + "_testMS_" + testMS;
 
 // Add the bubble specifications to the MsFEM name

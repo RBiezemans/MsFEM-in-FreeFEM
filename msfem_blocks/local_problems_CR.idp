@@ -1,11 +1,16 @@
 // local_problems_CR.idp
 //
-//
-// Computation of numerical correctors and bubble functions on a single coarse mesh element for (adv-)MsFEM-CR
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Computation of numerical correctors and bubble functions on a single coarse mesh element for MsFEM-CR methods
 //
 //
 ////////////////////////////////////////////////////////////////////////
-// TO BE DONE: considering the implementation of strong Dirichlet boundary conditions
+// TO BE DONE: implementation of strong Dirichlet boundary conditions
 //  the current implementation can only be trusted for weak conditions: 
 //  numerical correctors as well as bubble functions are only imposed to have zero mean on the boundary of the global domain
 ////////////////////////////////////////////////////////////////////////

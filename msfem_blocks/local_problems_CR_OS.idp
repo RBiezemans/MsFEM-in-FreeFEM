@@ -1,7 +1,12 @@
 // local_problems_CR_OS.idp
 //
-//
-// Computation of numerical correctors and bubble functions on a single coarse mesh element for (adv-)MsFEM-CR on a sampling patch
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Computation of numerical correctors and bubble functions on a single coarse mesh element for MsFEM-CR methods on an oversampling patch
 //
 //
 ////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,11 @@
 // offline_effective_RHS_MPI.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Computation for the effective terms that appear in the RHS for some methods
 //
 //

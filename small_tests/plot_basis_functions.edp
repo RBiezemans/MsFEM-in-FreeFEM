@@ -31,7 +31,7 @@ real eps=0.0078125, alpha=0.0078125, theta=0.15, cont=7, osCoef=2;
 real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
-int strongDir=0, useB=1, advMS=1, testMS=1;
+int strongDir=0, useB=1, testMS=1;
 string glue="dof", treatB="in_system";
 
 int nbproc=1;

@@ -1,6 +1,12 @@
 // local_problems_LIN.idp
 //
-// Computation of numerical correctors and bubble functions on a single coarse mesh element for (adv-)MsFEM-LIN
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Computation of numerical correctors and bubble functions on a single coarse mesh element for MsFEM-LIN methods
 //
 //
 // Scripts loaded ////////////////////////////////////////////////////////

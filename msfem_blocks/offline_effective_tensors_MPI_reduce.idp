@@ -1,5 +1,11 @@
 // offline_save_effective_tensors_MPI_reduce.idp
 // 
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Send contributions to the effective coefficients computed by the current process to the main process
 //
 //

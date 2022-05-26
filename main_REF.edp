@@ -1,4 +1,4 @@
-// reference solution for advection-diffusion problems
+// Compute eference solution for MsFEM tests
 // run with   ff-mpirun -np 1 main_REF.edp  
 load "MUMPS"
 

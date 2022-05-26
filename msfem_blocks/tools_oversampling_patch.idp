@@ -1,5 +1,11 @@
 // tools_oversampling_patch.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Construction of an oversampling patch for a triangular coarse mesh element
 // This construction has only been verified for meshes with the option flag==0
 // For flag==2, it probably suffices to changes the flag type of the patch container C defined below

@@ -1,13 +1,58 @@
+// define here a "vffile.idp" -->
+//
+// Complete the following definitions to determine the MsFEM method you wish to use
+// This can be done in terms of the following macros that are defined in init.idp
+// in terms of the scalar coefficients nu (diffusion), b[x/y] (advection) and sigma (reaction):
+// - adif(u,v) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu) -- diffusion terms
+// - aadv(u,v) ( v*(  bx*dx(u)+by*dy(u) ) ) -- advection terms
+// - aadvAdj(u,v) ( u*(  bx*dx(v)+by*dy(v) ) ) -- adjoint advection terms
+// - amass(u,v) (u*v*sigma) -- reaction term
+// - asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) )) -- stabilization terms
+//   When stabilization is used in the formulation of the macroscopic P1 method, one has to
+//   - set the variable 'stabilization' to 1 to activate stabilization terms on the RHS of the scheme
+//   - define the values of the parameter tau (of type VH0, i.e. piecewise constant) cell by cell
+//   - put a description of the choice of stabilization parameter in the variable 'stabExpression'
+//////////////////////////////////////////////////////////////////////// 
+
+// advection_diffusion_direct.idp
+// resolution of the advection-diffusion equation 
+// the basis functions resolve the all terms of the PDE
+
+////////////////////////////////////////////////////////////////////////
+// Results are stored in the directory results_[vfname]               //
+////////////////////////////////////////////////////////////////////////
 vfname = "adv_diffusion_direct";
 
+////////////////////////////////////////////////////////////////////////
+// aComplete defines the terms under the integral of the bilinear     //
+//  form for the macroscopic P1 scheme                                //
+////////////////////////////////////////////////////////////////////////
 macro aComplete(u,v) (adif(u,v) + aadv(u,v))// EOM
+
+////////////////////////////////////////////////////////////////////////
+// aBasis defines the terms under the integral of the bilinear form   //
+//  that defines the PDE for the basis functions (local problems)     //
+////////////////////////////////////////////////////////////////////////
 macro aBasis(u,v) aComplete(u,v)// EOM
+
+////////////////////////////////////////////////////////////////////////
+// aref defines the terms under the integral of the bilinear form     //
+//  that defines the reference solution                               //
+////////////////////////////////////////////////////////////////////////
 macro aref(u,v) aComplete(u,v)// EOM
 
-//macro aEffDif(u,v) aComplete(u,v)// EOM
-//bilinear form collecting all terms for the effective diffusion
+////////////////////////////////////////////////////////////////////////
+// aTest1 must provide those terms of aComplete(u,v) that do not      //
+//  contain derivatives on the test function                          //
+////////////////////////////////////////////////////////////////////////
 macro aTest1(u,v) aadv(u,v)// EOM
-//bilinear form collecting all terms for the effective advection
 
+////////////////////////////////////////////////////////////////////////
+// One may set useVc to 0 if aBasis(1,w)==0 for all test functions w  //
+// One may set fullVF to 0 if one knows that the effective P1 scheme  //
+//  only containts diffusion and advection terms                      //
+// When omitted here, these variables default to 1 and may result in  //
+//  the unnecessary computation of some terms that vanish             //
+////////////////////////////////////////////////////////////////////////
 useVc=0;
 fullVF=0;

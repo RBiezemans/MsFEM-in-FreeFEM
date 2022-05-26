@@ -1,5 +1,11 @@
 // tools.idp
 //
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
 // Some (geometric) tools that are used when working with CR and oversampling methods and writing tools to provide output
 //
 // Variables not defined in this script /////////////////////////////////

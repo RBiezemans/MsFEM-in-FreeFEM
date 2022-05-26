@@ -1,0 +1,13 @@
+L= 1.
+N= 128
+n= 8
+eps= 0.1
+2logalpha= -5
+theta= 0.15
+cont= 7
+osCoef= 2
+glue= dof
+strong_Dirichlet= 0
+useB= 0
+treatB= out_system
+testMS= 1

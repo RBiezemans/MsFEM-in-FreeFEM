@@ -12,6 +12,7 @@
 //    included in the linear system or carry the average of fRHS as coefficient.
 //
 // Parameters are read from parameters.txt
+// Local and global variational forms are read from vffile.idp
 //
 // 
 ////// Sequential version //////////////////////////////////////////////
@@ -55,7 +56,7 @@ if (offlineMode == "compute")
     for(int i=0; i<VH0.ndof; i++) {
         if (i%(2*n)==0) {
             cout <<"construction ms coefficients on tri "<<i<<endl;
-            ffLog <<"construction ms coefficients on tri "<<i<<endl;
+            // ffLog <<"construction ms coefficients on tri "<<i<<endl;
         }
         phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
