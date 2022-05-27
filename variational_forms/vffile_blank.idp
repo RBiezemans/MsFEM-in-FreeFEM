@@ -53,5 +53,5 @@ macro aTest1(u,v) ( )// EOM //TO BE COMPLETED
 // When omitted here, these variables default to 1 and may result in  //
 //  the unnecessary computation of some terms that vanish             //
 ////////////////////////////////////////////////////////////////////////
-useVc=1;  //MQY BE MODIFIED
+useVc=1;  //MAY BE MODIFIED
 fullVF=1; //MAY BE MODIFIED
