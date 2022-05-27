@@ -10,7 +10,7 @@ We wish to avoid the computation *new basis functions* because their integration
 You need an [installation of FreeFEM](https://doc.freefem.org/introduction/installation.html). The code in this repository was developed under version [v4.7](https://github.com/FreeFem/FreeFem-sources/releases/tag/v4.7).
 Then download this repository to your desired `working_directory`. Open a terminal and `cd` to `working_directory`. On the commmand line, any of the `main` files of this repository can then be run with, e.g. for [main_LIN.edp](main_LIN.edp):
 ```
-FreeFEM++ main_LIN.edp
+FreeFem++ main_LIN.edp
 ```
 For its parallelized counter part [main_LIN_MPI.edp](main_LIN_MPI.edp) one runs FreeFem++-mpi under mpirun with the following command:
 ```
