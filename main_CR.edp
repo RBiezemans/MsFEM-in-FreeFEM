@@ -1,6 +1,6 @@
 // main_CR.edp
 //
-// run with   FreeFEM++ main_CR.edp -o [offline_mode]
+// run with   FreeFem++ main_CR.edp -o [offline_mode]
 //            -o specifies the option for the offline stage: either "compute" (default) or "load"
 // The user must ensure at all times that the appropriate mode is used for correct results
 //
