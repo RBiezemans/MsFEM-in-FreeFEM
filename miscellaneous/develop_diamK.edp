@@ -1,3 +1,5 @@
+// Testing a functionality that computes the diameter of a triangle K in the direction of the advection field (bx,by)
+
 real theta=0.15;
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);

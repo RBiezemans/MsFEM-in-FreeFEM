@@ -10,4 +10,4 @@ glue= dof
 strong_Dirichlet= 0
 useB= 0
 treatB= out_system
-testMS= 0
+testMS= 1

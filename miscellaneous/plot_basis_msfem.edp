@@ -17,7 +17,7 @@ exec("mkdir -p basis");
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="Lin";
+string FEtype="CR";
 
 // Parameters defining the coarse mesh
 int n=2, nx=n, ny=n;
@@ -25,7 +25,7 @@ real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.0078125, alpha=0.125, theta=0.15, cont=7, osCoef=0;
+real eps=0.0078125, alpha=0.03125, theta=0.15, cont=7, osCoef=0;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
@@ -149,57 +149,6 @@ real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
 real[int,int] storeB(storeLen,ndofOffline); storeB=0;
 
 
-/*
-///////////////////////////////////////////////////////////////////////
-// Effective coefficients for the macroscopic problem                //
-///////////////////////////////////////////////////////////////////////
-
-// Effective coefficients for the main process (== only process for sequential code)
-VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0, AHB=0, BHx=0, BHy=0, 
-	rH=0, rHx=0, rHy=0, lHx=0, lHy=0, fH=0, fB=0;
-//
-// AH.. represent the 2x2 matrix that captures the effective (physical + upscaling) diffusion due to multiscale basis functions
-// BH.  represent the 2x1 vector that captures the effective (physical + upscaling) advection due to multiscale basis functions
-// AHB  represents the diagonal entries capturing advection + diffusion for bubble functions
-// 
-// rH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the trial space
-// lH. represent the 2x1 vector that captures the numerical diffusion due to bubble functions in the test space
-// rH represents the numerical advection due to bubble functions in the trial space
-//    these terms can be moved to the RHS of the macro-scale scheme if bubble coefficients are predetermined
-//
-// fH contains the average of the RHS function on each mesh element (can be used as coefficients for the bubble functions)
-// fB contains the integral of the RHS function on each mesh element against the respective bubble function
-
-// Additional coefficients of the effective problem that are non-zero if multi-scale test functions are used
-VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, 
-	rHxTestMS=0, rHyTestMS=0, fHxTestMS=0, fHyTestMS=0;
-
-// Effective coefficients for the current process, to be sent to the main process later
-VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0, iAHB=0, iBHx=0, iBHy=0, 
-	irH=0, irHx=0, irHy=0, ilHx=0, ilHy=0, ifH=0, ifB=0;
-VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, 
-	irHxTestMS=0, irHyTestMS=0, ifHxTestMS=0, ifHyTestMS=0;
- 
-// Effective variational formulation(s) in terms of the above coefficients (to be computed)
-varf rhsP1(unused,vH) = 
-	 int2d(TH)(fRHS*vH)
-	+int2d(TH,qft=qf1pT)(fHxTestMS*dx(vH) + fHyTestMS*dy(vH));
-varf effectiveVar(uH,vH) =
-	 int2d(TH,qft=qf1pT)( dx(vH)*AHxx*dx(uH) + dy(vH)*AHyx*dx(uH) + dx(vH)*AHxy*dy(uH) + dy(vH)*AHyy*dy(uH) + vH*BHx*dx(uH) + vH*BHy*dy(uH) )
-	+int2d(TH,qft=qf1pT)( dx(vH)*AHxxTestMS*dx(uH) + dy(vH)*AHyxTestMS*dx(uH) + dx(vH)*AHxyTestMS*dy(uH) + dy(vH)*AHyyTestMS*dy(uH) );
-varf rEffectiveOS(unused,vH) =
-	 int2d(TH,qft=qf1pT)( fH*(rH*vH+rHx*dx(vH)+rHy*dy(vH)) )
-	+int2d(TH,qft=qf1pT)( fH*(rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) );
-varf rEffective(u0,vH) = 
-	 int2d(TH,qft=qf1pT)( (rHx*dx(vH)+rHy*dy(vH)+rH*vH) * u0)
-	+int2d(TH,qft=qf1pT)( (rHxTestMS*dx(vH)+rHyTestMS*dy(vH)) * u0);
-varf lEffective(uH,v0) = int2d(TH,qft=qf1pT)( v0 * (lHx*dx(uH)+lHy*dy(uH)) );
-// All piecewise constant coefficients are computed in such a way that the evaluation..
-// ..of the respective integrals at the barycentre corresponds to the exact integral..
-// ..to be computed for the effective problem
-*/
-
-
 ///////////////////////////////////////////////////////////////////////
 // Construction of multiscale basis                                  //
 ///////////////////////////////////////////////////////////////////////
@@ -313,7 +262,7 @@ if (FEtype=="Lin") {
 else if (FEtype=="CR") {
     fespace VH(TH,P1nc); 
     VH uH=0; 
-    for (int i=0; i<VH.ndof; i++) {
+    for (int i=4; i<5; i++) {
         uH[][i]=1;
         reconstruct(uH,1./basisValue)
         uH[][i]=0;

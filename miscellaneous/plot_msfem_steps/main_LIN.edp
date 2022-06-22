@@ -38,6 +38,13 @@ string nameMPI = ""; //nothing is added to name later, indicating no usage of pa
 
 int iproc=0, nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
 
+// Color scheme for plots
+real[int] colorhsv=[ // color hsv model
+   1./6., 0.1216 , 1., // LightYellow
+   38./360., 1. , 1., // Orange
+   1./72., 0.75 , 0.86// Google Red
+   ];
+
 include "msfem_blocks/init.idp"
 
 
@@ -90,6 +97,7 @@ else if (offlineMode == "load")
 }
 
 printTime("Offline phase (computing + storing) lasted ")
+if (plots) plot(TH,AHxy,wait=1,fill=1,hsv=colorhsv,value=1);
 
 ///////////////////////////////////////////////////////////////////////
 // ONLINE STAGE                                                      //

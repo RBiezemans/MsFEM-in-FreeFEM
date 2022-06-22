@@ -1,0 +1,44 @@
+// offline_save_basis.idp
+//
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Store basis functions (to external files) on current triangle K
+//
+// Compatible with both sequential and parallel versions (main_* files)
+//
+//
+// Variables not defined in this script /////////////////////////////////
+// - basisDir -- (string) name of directory where basis functions are stored
+// - i -- (int) global index of the coarse mesh element that is treated
+// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useB -- (int) indicates whether bubbles are to be used
+// - V[c/x/y] -- (VK) numerical correctors on K
+// - B -- (VK) bubble function on K
+////////////////////////////////////////////////////////////////////////
+
+
+if (useVc) {
+    string basisname = basisDir + "/tri_" + i + "_Vc" + ".txt";
+    ofstream writeVc(basisname);
+    writeVc << Vc[];
+}
+{
+    string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
+    ofstream writeVx(basisname);
+    writeVx << Vx[];
+}
+{
+    string basisname = basisDir + "/tri_" + i + "_Vy" + ".txt";
+    ofstream writeVy(basisname);
+    writeVy << Vy[];
+}
+if(useB) {
+    string basisname = basisDir + "/tri_" + i + "_B" + ".txt";
+    ofstream writeB(basisname);
+    writeB << B[];
+}
+

@@ -1,0 +1,224 @@
+// msfem_diffusion_intrusive.edp
+//
+// A FreeFEM++ script that shows the non-intrusive MsFEM implementation
+//
+// Note that this implementation is possible mainly due to the following in-depth functionality of FreeFEM++:
+// - VK(k,i) gives the global degree of freedom of the ith local DOF in the kth triangle of the mesh
+// Also note that the offline phase is not stored in this example code;
+//  the microstructure is obtained after the resolution of the global problem by solving more local PDEs
+
+
+///////////////////////////////////////////////////////////////////////
+// Declaring and reading external parameters                         //
+///////////////////////////////////////////////////////////////////////
+
+// Parameters defining the domain
+real L, Lx, Ly;
+// Parameters defining the fine mesh
+int Ndiscr, Nx, Ny;
+// Parameters defining the coarse mesh
+int n, nx, ny;
+// Parameters defining the PDE
+real eps, alpha, cont;
+//cont: contrast of the multiscale coefficient
+int logalpha;
+
+// Reading parameters from external file "parameters.txt"
+{
+	ifstream f("parameters.txt");
+	string read;
+	f >> read >> L;        Lx=L; Ly=L;
+	f >> read >> Ndiscr;   Nx=Ndiscr; Ny=Ndiscr;
+	f >> read >> n;		   nx=n; ny=n;
+	f >> read >> eps;
+	f >> read >> logalpha; alpha=2.^logalpha;
+	f >> read >> read; //this line in parameters.txt can be ignored for pure diffusion problems
+	f >> read >> cont;
+}
+
+real Hx=Lx/nx, Hy=Ly/ny;
+mesh Th=square(Nx,Ny,[Lx*x,Ly*y]); //fine mesh
+fespace Vh(Th,P1); //fine global FE space
+mesh TH=square(nx,ny,[Lx*x,Ly*y]); //coarse mesh
+fespace VH(TH,P1); //coarse global FE space 
+int Ntri = TH.nt;
+
+
+///////////////////////////////////////////////////////////////////////
+// Define the PDE                                                    //
+///////////////////////////////////////////////////////////////////////
+
+// Diffusion coefficient
+real delta = (cont-1.)/(cont+1.);
+func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+macro a(dif,u,v) (dif*dx(u)*dx(v) + dif*dy(u)*dy(v))//EOM
+// Plot diffusion coefficient
+Vh aplot=nu;
+plot(aplot, value=1, cmm="Diffusion coefficient", wait=1);
+// Right-hand side
+func fRHS = sin(x)*sin(y);
+string rhsDescription = "-- Tests for RHS f = sin(x)*sin(y) --";
+// func fRHS = 1;
+// string rhsDescription = "-- Tests for RHS f = 1 --";
+
+
+///////////////////////////////////////////////////////////////////////
+// Define internal data structures                                   //
+///////////////////////////////////////////////////////////////////////
+
+fespace VH0(TH,P0);
+VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0; //piecewise constant effective diffusion matrix elements
+VH0 vk=0;
+vk[][0]=1;
+mesh Kstore=trunc(Th, vk>0.5, split=1);
+vk[][0]=0;
+fespace Vstore(Kstore,P1);
+real[int,int] storeVx(Ntri,Vstore.ndof), storeVy(Ntri,Vstore.ndof); //numerical correctors
+
+
+
+///////////////////////////////////////////////////////////////////////
+// Offline stage                                                     //
+// - Computation of numerical correctors                             //
+// - Computation of effective diffusion coefficient                  //
+///////////////////////////////////////////////////////////////////////
+
+for (int k=0; k<Ntri; k++) {
+	vk[][k]=1;
+	mesh Kh=trunc(Th, vk>1e-10, split=1); //mesh for the fine-scale resolution of numerical correctors
+	fespace VK(Kh,P1);
+	
+	// Resolution of local problems
+	VK uH, uHx=x, uHy=y, Vx, Vy;
+	varf defMS(uh,vh)=int2d(Kh)(a(nu,uh,vh)) + int1d(Kh)(tgv*uh*vh) //variational formulation of local problems -- bilinear form
+            -int2d(Kh)(a(nu,uH,vh)); //variational formulation of local problems -- linear form for the RHS of the numerical correctors
+	matrix A=defMS(VK,VK, solver=UMFPACK);
+	real[int] F(VK.ndof);
+	uH[]=uHx[];  F=defMS(0,VK);  Vx[]=A^-1*F;	storeVx(k,:)=Vx[];
+	uH[]=uHy[];  F=defMS(0,VK);  Vy[]=A^-1*F;	storeVy(k,:)=Vy[];
+
+	// Computation of effective matrix elements
+	VK phix, phiy;
+	phix[]=uHx[]+Vx[]; 
+	phiy[]=uHy[]+Vy[];
+	AHxx[][k]=int2d(Kh)(a(nu,phix,phix))/Kh.measure; 
+	// One may check that the above is equivalent to 
+	//AHxx[][i]=int2d(K)(aComplete(phix,uHx))/K.measure;
+	AHyx[][k]=int2d(Kh)(a(nu,phix,phiy))/Kh.measure; 
+	AHxy[][k]=int2d(Kh)(a(nu,phiy,phix))/Kh.measure; 
+	AHyy[][k]=int2d(Kh)(a(nu,phiy,phiy))/Kh.measure;
+	
+	vk[][k]=0;
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// Online stage                                                      //
+///////////////////////////////////////////////////////////////////////
+
+varf effectiveVar(uH,vH) = // Effective bilinear form
+int2d(TH,qft=qf1pT)( dx(vH)*AHxx*dx(uH) + dy(vH)*AHyx*dx(uH) 
+	+ dx(vH)*AHxy*dy(uH) + dy(vH)*AHyy*dy(uH) )
+	+ int1d(TH)(tgv*uH*vH)
+	+ int2d(TH)(fRHS*vH);
+matrix Aglobal = effectiveVar(VH,VH,solver=UMFPACK);
+real[int] Fglobal(VH.ndof); Fglobal=effectiveVar(0,VH);
+VH uP1;
+uP1[] = Aglobal^-1*Fglobal;
+plot(uP1, fill=1, value=1, wait=1, cmm="MsFEM solution in P1 basis");
+
+
+///////////////////////////////////////////////////////////////////////
+// Reconstruction of the MsFEM solution on the fine scale            //
+///////////////////////////////////////////////////////////////////////
+
+VH0 uP1b = uP1, uP1dx=dx(uP1), uP1dy=dy(uP1), xb=x, yb=y; //interpolations to ease local reconstructions
+Vh uh=0; //ms solution
+for (int k=0; k<Ntri; k++)
+{// Loop over all elements to reuse the multiscale information of the offline stage
+	vk[][k]=1;
+	int[int] n2oFine;
+	mesh Kh=trunc(Th, vk>0.5, split=1, new2old=n2oFine); //mesh for the resolution of MsFEM solution
+	fespace VK(Kh,P1);
+	int[int] loc2globFine = restrict(VK, Vh, n2oFine);
+	
+	VK phix=x-xb[][k];	phix[]+=storeVx(k,:);
+	VK phiy=y-yb[][k];	phiy[]+=storeVy(k,:);
+	real[int] uhloc(VK.ndof);
+	uhloc =  uP1b[][k];
+	uhloc += uP1dx[][k]*phix[];
+	uhloc += uP1dy[][k]*phiy[];
+	
+	uh[](loc2globFine) = uhloc;
+	
+	vk[][k]=0;
+}
+{
+	ofstream fsol("solution_h_"+Ndiscr+".txt");
+	fsol << uh[] << endl;
+}
+plot(uh, fill=1, value=1, wait=1, cmm="MsFEM solution (fine mesh)");
+
+
+///////////////////////////////////////////////////////////////////////
+// Reference solution and error computation                          //
+///////////////////////////////////////////////////////////////////////
+
+// Load or compute reference solution
+Vh uref;
+try {
+ifstream ff("ex-sol.dat");
+ff>>uref[];
+}
+catch (...) {
+    Vh vh;
+    solve pb(uref,vh)=int2d(Th)(a(nu,uref,vh)) +int1d(Th)(tgv*uref*vh)
+            -int2d(Th)(fRHS*vh);
+}
+plot(uref,wait=1,value=1,fill=1, cmm="reference solution");
+
+// Compute norms of reference solution
+real nL1=0, nL2=0, nH1=0, nMax=0;
+nL1=int2d(Th)(abs(uref));
+nL2=sqrt(int2d(Th)(uref*uref));
+nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
+uref = abs(uref);
+nMax=uref[].max;
+string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+
+// Compute errors and relative errors
+Vh e = uh - uref;
+plot(e,wait=1,value=1, cmm="error");
+real eL1, eL2, eH1, eMax, erL1, erL2, erH1, erMax;
+eL1=int2d(Th)(abs(e));
+erL1=eL1/nL1;
+eL2=sqrt(int2d(Th)(e*e));
+erL2=eL2/nL2;
+eH1=sqrt(int2d(Th)(dx(e)*dx(e)+dy(e)*dy(e)) + eL2^2 );
+erH1=eH1/nH1;
+e=abs(e);
+eMax=e[].max;
+erMax=eMax/nMax;
+
+{// Writing errors to an external file
+    string errname = "errors.txt";
+    ofstream ff(errname, append);
+    ff  << rhsDescription
+        << endl
+        << "\t\t"
+        << "n    " << n << "\t\t"
+        << "N    " << Ndiscr << "\t\t"
+        << "eps  " << eps << "\t\t"
+        << "alp  " << alpha << "\t\t"
+        << "cont " << cont << "\t\t"
+        << endl
+        << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
+        << endl;        
+    
+    ff  << "\t\t"
+        << eL1  <<"\t"<< eL2  <<"\t"<< eH1  <<"\t"<< eMax  <<"\t"
+        << erL1 <<"\t"<< erL2 <<"\t"<< erH1 <<"\t"<< erMax
+        << endl;
+    
+	ff<<endl;
+}
