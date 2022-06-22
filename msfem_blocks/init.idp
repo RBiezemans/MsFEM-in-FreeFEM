@@ -300,8 +300,8 @@ real delta = (cont-1.)/(cont+1.);
 // func nu=alpha*(1+delta*cos(2*pi/eps*x))*(1+0.2*sin(2*pi*y));
 func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
-real bx=0*cos(2*pi*theta);
-real by=0*sin(2*pi*theta);
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
 // Divergence of the advection field
 func sigma=0; 
  
