@@ -48,3 +48,27 @@ The `working_drectory` must contain a script named [vffile.idp](vffile.idp). Thi
 
 ## Comparison of intrusive and non-intrusive code
 FreeFEM++ contains all functionalities to develop the traditional intrusive MsFEM as well as, of course, the non-intrusive MsFEM variant. To illustrate the differences between the two, a traditional MsFEM script in FreeFEM++ can be found [here](miscellaneous/compare_intrusive_vs_non_intrusive/msfem_diffusion_intrusive.edp) and it can be compared to the non-intrusive MsFEM in [this script](miscellaneous/compare_intrusive_vs_non_intrusive/msfem_diffusion_non_intrusive.edp).
+
+### Reproducing the results of the [paper](https://arxiv.org/abs/2204.06852)
+To reproduce the results in the [paper](https://arxiv.org/abs/2204.06852) that introduces the non-intrusive MsFEM, the correct PDE must be defined in [init.idp](msfem_blocks/init.idp). This must be done manually. The correct definitions are:
+
+```
+func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+```
+for the diffusion coefficient;
+```
+real bx=0;
+real by=0;
+func sigma=0;
+```
+for the other coefficients of the PDE;
+```
+func fRHS=sin(x)*sin(y);
+string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+```
+for the right-hand side.
+*The preprint erroneously states that `fRHS=sin(x)*cos(y)` was used.*
+
+With the above definitions, all tests are reproduced by executing [this shell script](experiment/execute_experiment_arxiv_220414.sh). Note that this will execute the parallel version of the MsFEM code distributed over 10 processes.
+
+Finally, once all computations are finalized, the numerical solutions provided by the intrusive and non-intrusive MsFEM can be compared by running [this FreeFEM script](miscellaneous/compare_intrusive_vs_non_intrusive/testMS_compare.edp).

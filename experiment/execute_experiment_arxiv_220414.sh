@@ -3,8 +3,7 @@
 # To be executed from the directory where main_LIN_MPI.edp and main_CR_MPI.edp are located
 
 # Consecutive executions of FreeFem++ code to perform experiments with different parameter values
-# The parameter values are changed continuously based on the values given below
-# The execution commands for FreeFem++-mpi may need to be changed depending on the local FreeFEM installation
+# The parameter values given below correspond to the tests for the arxiv preprint at https://arxiv.org/abs/2204.06852
 
 
 # Number of processors to be used
@@ -79,11 +78,9 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
             if [ $COMPUTE_BASIS == 0 ]
             then 
                 /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o compute
-                # /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o compute
                 COMPUTE_BASIS=1
             else
                 /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o load
-                # /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o load
             fi
             rm parameters.txt
         fi
