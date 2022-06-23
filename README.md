@@ -46,7 +46,7 @@ More details on the options and usage of these parameters are provided in the he
 ### Defining the local and global variational formulations
 The `working_drectory` must contain a script named [vffile.idp](vffile.idp). This file defines the bilinear forms of the local problems (used to compute the numerical correctors), for the global problem (coupling the MsFEM basis functions; before the construction of an effective scheme) and for the reference solution. Various examples are provided in the folder [variational_forms](variational_forms). In particular, the script [vffile_blank.idp](variational_forms/vffile_blank.idp) provides an empty version that can be tuned to the user's needs. More explanation is also available in this blank file.
 
-## Comparison of intrusive and non-intrusive code
+## Comparison of intrusive and non-intrusive MsFEM
 FreeFEM++ contains all functionalities to develop the traditional intrusive MsFEM as well as, of course, the non-intrusive MsFEM variant. To illustrate the differences between the two, a traditional MsFEM script in FreeFEM++ can be found [here](miscellaneous/compare_intrusive_vs_non_intrusive/msfem_diffusion_intrusive.edp) and it can be compared to the non-intrusive MsFEM in [this script](miscellaneous/compare_intrusive_vs_non_intrusive/msfem_diffusion_non_intrusive.edp).
 
 ### Reproducing the results of the [paper](https://arxiv.org/abs/2204.06852)
@@ -69,6 +69,13 @@ string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
 for the right-hand side.
 *The preprint erroneously states that `fRHS=sin(x)*cos(y)` was used.*
 
-With the above definitions, all tests are reproduced by executing [this shell script](experiment/execute_experiment_arxiv_220414.sh). Note that this will execute the parallel version of the MsFEM code distributed over 10 processes.
+With the above definitions, all tests are reproduced by executing [this shell script](experiment/execute_experiment_arxiv_220414.sh). Note that this will execute the parallel version of the MsFEM code distributed over 10 processes. The shell script must be launched from the directory where the `main_*` files are located. Execution is done as follows:
+```
+./experiment/execute_experiment_arxiv_220414.sh
+```
+Should permission to execute this script be denied, first do
+```
+chmod +x experiment/execute_experiment_arxiv_220414.sh 
+```
 
 Finally, once all computations are finalized, the numerical solutions provided by the intrusive and non-intrusive MsFEM can be compared by running [this FreeFEM script](miscellaneous/compare_intrusive_vs_non_intrusive/testMS_compare.edp).
