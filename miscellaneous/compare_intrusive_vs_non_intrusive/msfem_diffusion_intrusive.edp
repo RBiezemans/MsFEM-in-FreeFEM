@@ -4,8 +4,6 @@
 //
 // Note that this implementation is possible mainly due to the following in-depth functionality of FreeFEM++:
 // - VK(k,i) gives the global degree of freedom of the ith local DOF in the kth triangle of the mesh
-// Also note that the offline phase is not stored in this example code;
-//  the microstructure is obtained after the resolution of the global problem by solving more local PDEs
 
 
 ///////////////////////////////////////////////////////////////////////
