@@ -164,7 +164,7 @@ if (useB) {
 }
 
 if (plotBubbles) {
-    plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+    if (useVc) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
     plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
     plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
     if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");

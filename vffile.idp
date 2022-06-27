@@ -14,20 +14,20 @@
 //   - put a description of the choice of stabilization parameter in the variable 'stabExpression'
 //////////////////////////////////////////////////////////////////////// 
 
-// diffusion.idp
-// resolution of the diffusion equation 
-// with basis functions that resolve the diffusion opeator locally
+// advection_diffusion_direct.idp
+// resolution of the advection-diffusion equation 
+// the basis functions resolve the all terms of the PDE
 
 ////////////////////////////////////////////////////////////////////////
 // Results are stored in the directory results_[vfname]               //
 ////////////////////////////////////////////////////////////////////////
-vfname = "diffusion";
+vfname = "adv_diffusion_direct";
 
 ////////////////////////////////////////////////////////////////////////
 // aComplete defines the terms under the integral of the bilinear     //
 //  form for the macroscopic P1 scheme                                //
 ////////////////////////////////////////////////////////////////////////
-macro aComplete(u,v) (adif(u,v))// EOM
+macro aComplete(u,v) (adif(u,v) + aadv(u,v))// EOM
 
 ////////////////////////////////////////////////////////////////////////
 // aBasis defines the terms under the integral of the bilinear form   //
@@ -45,7 +45,7 @@ macro aref(u,v) aComplete(u,v)// EOM
 // aTest1 must provide those terms of aComplete(u,v) that do not      //
 //  contain derivatives on the test function                          //
 ////////////////////////////////////////////////////////////////////////
-macro aTest1(u,v) 0// EOM
+macro aTest1(u,v) aadv(u,v)// EOM
 
 ////////////////////////////////////////////////////////////////////////
 // One may set useVc to 0 if aBasis(1,w)==0 for all test functions w  //

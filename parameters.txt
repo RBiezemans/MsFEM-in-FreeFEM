@@ -1,10 +1,10 @@
 L= 1.
-N= 256
-n= 16
-eps= 0.020947
+N= 100
+n= 5
+eps= 0.1
 2logalpha= 0
 theta= 0
-cont= 100
+cont= 10
 osCoef= 0
 glue= dof
 strong_Dirichlet= 0
