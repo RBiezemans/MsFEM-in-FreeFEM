@@ -299,7 +299,7 @@ real delta = (cont-1.)/(cont+1.);
 // func nu=alpha*(1+delta*cos(2*pi/eps*x));
 // func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
 // func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
-func nu=alpha*(1+cos(2*pi*x)^2)(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+func nu=alpha*(1+cos(2*pi*x)^2)*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);
