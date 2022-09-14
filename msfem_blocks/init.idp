@@ -297,8 +297,9 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
 // func nu=alpha*(1+delta*cos(2*pi/eps*x));
-func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
+// func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
 // func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+func nu=alpha*(1+cos(2*pi*x)^2)(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
 real bx=cos(2*pi*theta);
 real by=sin(2*pi*theta);
@@ -329,11 +330,11 @@ if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
 
 // RHS of the PDE to be solved
-func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
-string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+// func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
+// string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
   //string used to document the tests performed in the error file
-// func fRHS=sin(x)*sin(y);
-// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+func fRHS=sin(x)*sin(y);
+string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
 // VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
 // string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
 // func fRHS=1;

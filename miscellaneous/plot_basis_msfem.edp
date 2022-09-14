@@ -17,7 +17,7 @@ exec("mkdir -p basis");
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="CR";
+string FEtype="Lin";
 
 // Parameters defining the coarse mesh
 int n=2, nx=n, ny=n;
@@ -25,13 +25,13 @@ real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
 int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.0078125, alpha=0.03125, theta=0.15, cont=7, osCoef=0;
+real eps=0.1, alpha=2.^(-11), theta=0.15, cont=7, osCoef=3;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
-int strongDir=0, useB=0, testMS=1;
+int strongDir=0, useB=1, testMS=1;
 string glue="dof", treatB="in_system";
 
 int nbproc=1;
@@ -243,15 +243,15 @@ macro reconstruct(uH,bubbleValue) {
     }
     /*plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=0, hsv=colorhsv);*/
     plot(TH, uHh, wait=1, fill=1, value=0, hsv=colorhsv, ps="basis_msfem.eps");
-    /*plot(TH, uBh, wait=1, cmm="Reconstruction of basis function", fill=1, value=1);*/
-    /*plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);*/
+    plot(TH, uBh, wait=1, cmm="Reconstruction of bubble function", fill=1, value=1, hsv=colorhsv);
+    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1, hsv=colorhsv);
 } // EOM
 
-real basisValue=0.05;
+real basisValue=0.1;
 if (FEtype=="Lin") {
     fespace VH(TH,P1); 
     VH uH=0; 
-    for (int i=4; i<5; i++) {
+    for (int i=0; i<VH.ndof; i++) {
         uH[][i]=1;
         reconstruct(uH,1./basisValue)
         uH[][i]=0;
@@ -262,7 +262,7 @@ if (FEtype=="Lin") {
 else if (FEtype=="CR") {
     fespace VH(TH,P1nc); 
     VH uH=0; 
-    for (int i=4; i<5; i++) {
+    for (int i=0; i<VH.ndof; i++) {
         uH[][i]=1;
         reconstruct(uH,1./basisValue)
         uH[][i]=0;

@@ -42,7 +42,7 @@ macro aref(u,v) ( )// EOM //TO BE COMPLETED
 
 ////////////////////////////////////////////////////////////////////////
 // aTest1 must provide those terms of aComplete(u,v) that do not      //
-//  contain derivatives on the test function                          //
+//  contain derivatives on the test function v                        //
 ////////////////////////////////////////////////////////////////////////
 macro aTest1(u,v) ( )// EOM //TO BE COMPLETED
 

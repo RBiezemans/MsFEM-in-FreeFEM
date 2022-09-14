@@ -11,23 +11,25 @@
 # Number of processors to be used
 NUMBER_OF_PROC=10
 
+LOAD_OPTION=0 #1 : offline stage is loaded from the very first test -- 0 : first offline stage is computed for each set of parameters
+COMPUTE_REF=0 #0 : reference solution is computed -- 1 : reference solution is not computed
+
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_L="1."
-TOTEST_LARGE_N="2048" 
-TOTEST_LARGER_N="4096" # unused in this experiment 
-TOTEST_SMALL_N="16"
-TOTEST_EPS="0.0078125" # 2^-7
-TOTEST_2LOGALP="-2 -3 -4 -5 -6 -7" # alpha = 2^-2 ... 2^-8
-TOTEST_THETA="0.15"
-TOTEST_CONT="7"
-TOTEST_VFFILE="advection_diffusion_direct.idp"
+TOTEST_LARGE_N="1024" 
+TOTEST_LARGER_N="0" # unused in this experiment 
+TOTEST_SMALL_N="4 8 16 32 64 128 256"
+TOTEST_EPS="0.020944" # pi/150
+TOTEST_2LOGALP="0" 
+TOTEST_THETA="0.15" # unused
+TOTEST_CONT="100"
+TOTEST_VFFILE="diffusion.idp"
 TOTEST_OSCOEF="0 3"
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
 TOTEST_STR_DIR="0"
-TOTEST_USE_B="1" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
-TOTEST_TREAT_B="in_system out_system"
-## TOTEST_ADV_MS="1" # has become irrelevant
+TOTEST_USE_B="0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
+TOTEST_TREAT_B="out_system"
 TOTEST_MS="1 0 2"
 
 ## SOME PARAMETER RULES
@@ -43,7 +45,7 @@ for TEST_2LOGALP in $TOTEST_2LOGALP; do sed -i "s/2logalpha=.*/2logalpha= $TEST_
 for TEST_THETA in $TOTEST_THETA; do sed -i "s/theta=.*/theta= $TEST_THETA/" "experiment/parameters.txt" 
 for TEST_CONT in $TOTEST_CONT; do sed -i "s/cont=.*/cont= $TEST_CONT/" "experiment/parameters.txt" 
 for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "experiment/parameters.txt"
-    if [ $TEST_2LOGALP = "-8" ] # the last test requires a finer reference solution (skipped here)
+    if [ $TEST_2LOGALP = "-11" ] # the last test requires a finer reference solution (skipped here)
     then sed -i "s/N=.*/N= $TOTEST_LARGER_N/" "experiment/parameters.txt" 
     fi
 
@@ -55,30 +57,32 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
         do cp variational_forms/$TEST_VFFILE vffile.idp
         break # the availibility of a vffile is only needed for compatibility with initialization, but not actually used in the computation of the reference solution
     done
-    /usr/bin/mpirun -np 1 /usr/local/bin/FreeFem++-mpi main_REF.edp -v 0
+    if [ $COMPUTE_REF == 0 ]
+    then
+        /usr/bin/mpirun -np 1 /usr/local/bin/FreeFem++-mpi main_REF.edp -v 0
+    fi
 
     for TEST_VFFILE in $TOTEST_VFFILE; do cp variational_forms/$TEST_VFFILE vffile.idp
-    for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt" 
-    for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt" 
-    for TEST_OSCOEF in $TOTEST_OSCOEF; do sed -i "s/osCoef=.*/osCoef= $TEST_OSCOEF/" "experiment/parameters.txt" 
+    for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt"
+    for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt"
+    for TEST_OSCOEF in $TOTEST_OSCOEF; do sed -i "s/osCoef=.*/osCoef= $TEST_OSCOEF/" "experiment/parameters.txt"
     for TEST_GLUE in $TOTEST_GLUE; do sed -i "s/glue=.*/glue= $TEST_GLUE/" "experiment/parameters.txt"
-    ## has become irrelevant for TEST_ADV_MS in $TOTEST_ADV_MS; do sed -i "s/advMS=.*/advMS= $TEST_ADV_MS/" "experiment/parameters.txt" 
     # The above loops contain all parameters that require the computation of a new basis
-    COMPUTE_BASIS=0
-    for TEST_MS in $TOTEST_MS; do sed -i "s/testMS=.*/testMS= $TEST_MS/" "experiment/parameters.txt" 
-    for TEST_USE_B in $TOTEST_USE_B; do sed -i "s/useB=.*/useB= $TEST_USE_B/" "experiment/parameters.txt" 
-    for TEST_TREAT_B in $TOTEST_TREAT_B; do sed -i "s/treatB=.*/treatB= $TEST_TREAT_B/" "experiment/parameters.txt" 
+    COMPUTE_BASIS=$LOAD_OPTION
+    for TEST_MS in $TOTEST_MS; do sed -i "s/testMS=.*/testMS= $TEST_MS/" "experiment/parameters.txt"
+    for TEST_USE_B in $TOTEST_USE_B; do sed -i "s/useB=.*/useB= $TEST_USE_B/" "experiment/parameters.txt"
+    for TEST_TREAT_B in $TOTEST_TREAT_B; do sed -i "s/treatB=.*/treatB= $TEST_TREAT_B/" "experiment/parameters.txt"
 
-        if [ $TEST_USE_B == 0 -a $TEST_TREAT_B = "out_system" ] || [ $TEST_USE_B == 1 ] # Not all parameter combinations are allowed
+        if [ $TEST_USE_B == 0 -a $TEST_TREAT_B = "out_system" ] || [ $TEST_USE_B == 1 -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ] # Not all parameter combinations are allowed
         then
             cp experiment/parameters.txt parameters.txt
 
             if [ $COMPUTE_BASIS == 0 ]
-            then 
+            then
                 /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o compute
                 if [ ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ]
                 then
-                    /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o compute
+                     /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o compute
                 fi
                 COMPUTE_BASIS=1
             else
@@ -97,6 +101,7 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     fi
     done done done done done # end of loops over basis specification
 done done done done done done # end of loops over reference solution/physical parameters + fine mesh + vf form used
+
 
 # Remove resolution files from main directory
 # cp sol_REF_* results_adv_diffusion_MsFEM_SUPG/
