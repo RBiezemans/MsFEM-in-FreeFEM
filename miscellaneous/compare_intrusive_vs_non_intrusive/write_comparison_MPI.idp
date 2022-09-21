@@ -1,0 +1,105 @@
+// write_comparison_MPI.idp
+//
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Writing norms of a given uHh=(uH1-uH2)h to external files (all writes appended)
+//
+//
+// Compatible with parallel version only
+//
+//
+// Variables not defined in this script /////////////////////////////////
+// - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
+// - plots -- (int) indicates whether solutions should be plotted
+// - iproc -- (int) local index of the current process
+// - useB -- (int) indicates whether bubbles are to be used
+// - vfname -- (string) description of (global and local) VF used
+// - rhsDescription -- (string) description of the function fRHS
+// - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
+// - uH -- (VH) P1 solution of the effective problem
+// - uB -- (VH0) bubble coefficients computed from the effective problem
+// - output -- (string) name of the directory (possibly to be created) where all output will be stored
+// - parameters -- (string) parameters tuning the PDE and the MsFEM applied
+// - name -- (string) abbreviation for  MsFEM underlying affine space
+// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
+// - uHh -- (Vh) reconstructed, fine-scale solution (but must be processed during element-per-element reconstruction)
+// - uHhGl -- (Vh) global reconstructed solution, to be gathered by the main process
+// - uref -- (Vh) reference solution
+// - error -- (Vh) error between uHh and uref
+// - (real[1]) eL1Gl, eL2Gl, eH1Gl, eMaxGl         -- errors on the entire domain
+// - (real[1]) eML1Gl,  eML2Gl,  eMH1Gl,  eMMaxGl  -- errors OBL according to the definition of Madiot
+// - (real[1]) eOL1Gl,  eOL2Gl,  eOH1Gl,  eOMaxGl  -- errors outside the mesh elements at the outflow
+////////////////////////////////////////////////////////////////////////
+
+
+// Saving and writing test results (main process only)
+if (iproc==0) {
+    eL2Gl[0]=sqrt(eL2Gl[0]);
+    eML2Gl[0]=sqrt(eML2Gl[0]);
+    eOL2Gl[0]=sqrt(eOL2Gl[0]);
+    eH1Gl[0]=sqrt(eH1Gl[0]);
+    eMH1Gl[0]=sqrt(eMH1Gl[0]);
+    eOH1Gl[0]=sqrt(eOH1Gl[0]);
+
+    if (plots) {
+        plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
+        plot(error, value=1, cmm="Error");
+    }
+
+    ffLog << "  H1 norm of difference: " << erH1Gl[0] << endl;
+    printTime("Reconstruction + error computation lasted ")
+
+    {// Writing difference to an external file
+        string errname = output + "MsFEM_compare_" + vfname + "_"+ name + "_OS" + osCoef + "_vs_testMS_" + testCompare + ".txt";
+        ffLog << "Writing differences to " << errname << endl;
+        ofstream ff(errname, append);
+        ff  << rhsDescription
+            << endl
+            << stabExpression
+            << endl
+            << "\t\t"
+            << "n    " << n << "\t\t"
+            << "N    " << Ndiscr << "\t\t"
+            << "eps  " << eps << "\t\t"
+            << "alp  " << alpha << "\t\t"
+            << "cont " << cont << "\t\t"
+            << "the  " << theta << "\t\t"
+            << endl
+            << "\t\t"
+            << "useB     " << useB << "\t\t"
+            << "testMS   " << testMS << "\t\t"
+            << "testMS-compare    " << testCompare << "\t\t"
+            << "strongD  " << strongDir << "\t\t"
+            << "OScoef   " << osCoef << "\t\t"
+            << endl
+            << "\t\t"
+            << "PeGlob   " << PeGlob << "\t\t"
+            << "PeLoc    " << PeLoc  << "\t\t"
+            << "PeFine   " << PeFine << "\t\t"
+            << endl
+            << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
+            << endl;        
+        
+        ff  << "all \t"
+            << eL1Gl[0]   <<"\t"<< eL2Gl[0]   <<"\t"<< eH1Gl[0]   <<"\t"<< eMaxGl[0]   <<"\t"
+            << 0          <<"\t"<< 0          <<"\t"<< 0          <<"\t"<< 0
+            << endl
+            << "OBL \t"
+            << eML1Gl[0]  <<"\t"<< eML2Gl[0]  <<"\t"<< eMH1Gl[0]  <<"\t"<< eMMaxGl[0]  <<"\t"
+            << 0          <<"\t"<< 0          <<"\t"<< 0          <<"\t"<< 0
+            << endl
+            << "OLME \t"
+            << eOL1Gl[0]  <<"\t"<< eOL2Gl[0]  <<"\t"<< eOH1Gl[0]  <<"\t"<< eOMaxGl[0]  <<"\t"
+            << 0          <<"\t"<< 0          <<"\t"<< 0          <<"\t"<< 0
+            << endl;
+
+        ff<<endl;
+    }
+
+    cout << endl;
+    ffLog << endl << endl; //end of MsFEM routine
+}

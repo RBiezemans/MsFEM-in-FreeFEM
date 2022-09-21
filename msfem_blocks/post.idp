@@ -36,7 +36,6 @@
 // - widthMadiot -- (real) size of the boundary layer used by Madiot et al.
 // - parametersFine -- (string) parameters tuning the PDE without coarse mesh information
 // - parameters -- (string) parameters tuning the PDE and the MsFEM applied
-// - output -- (string) name of the directory (possibly to be created) where all output will be stored
 // - name -- (string) abbreviation for  MsFEM underlying affine space
 // - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
 //

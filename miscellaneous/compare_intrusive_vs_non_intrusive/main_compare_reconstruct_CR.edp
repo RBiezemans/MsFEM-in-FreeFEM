@@ -1,0 +1,119 @@
+// main_compare_reconstruct_CR.edp
+//
+// run with   mpirun -np [number_of_processes] FreeFem++-mpi main_compare_reconstruct.edp -c [method_for_comparison]
+//              (or a variant depending on local installation of mpi, FreeFem)
+//            -- method_for_comparison == 1 for Galerkin, == 0 for Petrov-Galerkin, == 2 for non-intrusive Galerkin
+//
+// Computation of the difference of two MsFEM-CR solutions with different testMS options
+//
+//
+// Parameters are read from parameters.txt
+//
+// 
+////// Parallelized version ////////////////////////////////////////////
+//
+//
+// Global variables declared in this script ////////////////////////////
+// - (string)  bcType -- a string to set the correct boundary conditions in the macroscopic problem (Lin/CR) 
+// - (string)  name -- abbreviation for  MsFEM underlying affine space
+// - (string)  nameMPI -- must be empty for sequential script; "_MPI" for parallel script
+// - (int)     iproc -- index of the current process (always 0 for sequential script)
+// - (int)     nbproc -- number of processes (always 1 for sequential script)
+// - (int)     countOffline -- counter for the number of triangles associated to the current process
+// - (fespace) VH -- the relevant P1 space for the macroscopic problem
+///////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////
+// INITIALIZATION                                                    //
+// (msfem_blocks/init.idp)                                           //
+///////////////////////////////////////////////////////////////////////
+string bcType = "CR"; //type of boundary condtitions, relevant for the macroscopic problem
+string name = bcType; //abbreviation used for the MsFEM output
+string nameCompare = name; //name string to be finetuned to the desired comparison
+string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
+// MPI
+mpiComm comm(mpiCommWorld,0,0);
+int nbproc = mpiSize(comm); //number of processes in parallel
+int iproc = mpiRank(comm); //current process
+
+include "msfem_blocks/init.idp"
+int testCompare = getARGV("-c", testMS);
+assert(testCompare == 0 || testCompare == 1 || testCompare == 2);
+// Definition of nameCompare
+if (osCoef >= osThr) {
+	//osCoef should be 0 when no oversampling is applied and larger than 1 if it is to be applied
+	nameCompare = nameCompare + "OS";
+	if (glue=="dof") nameCompare = nameCompare + "gld";
+	else nameCompare = nameCompare + "glr";	
+}
+
+//specify the use of weak or strong BC for CR methods
+if (strongDir) nameCompare = nameCompare + "_strDir";
+else nameCompare = nameCompare + "_weakDir";
+
+nameCompare = nameCompare + nameMPI;
+nameCompare = nameCompare + "_testMS_" + testCompare;
+if (useB) {
+	nameCompare = nameCompare + "_wB";
+	if (treatB=="out_system") nameCompare = nameCompare + "os";
+	else nameCompare = nameCompare + "is";
+}
+else nameCompare = nameCompare + "_nB";
+
+mpiBarrier(comm);
+
+
+///////////////////////////////////////////////////////////////////////
+// OFFLINE STAGE                                                     //
+// (msfem_blocks/offline_load_MPI.idp)                               //
+///////////////////////////////////////////////////////////////////////
+// -- Reading the numerical correctors V[c/x/y] and bubble function B per coarse mesh element
+// -- The discrete RHS is also computed via the inclusion of msfem_blocks/offline_effective_RHS.idp in the files for the offline stage
+// -- Data structures storeVx, storeVy, store B are declared in init.idp
+int countOffline=0; //to count the number of triangles associated to the current process
+include "msfem_blocks/offline_load_MPI.idp"
+
+
+///////////////////////////////////////////////////////////////////////
+// ONLINE STAGE is not needed here                                   //
+///////////////////////////////////////////////////////////////////////
+fespace VH(TH,P1nc); //coarse global FE conforming P1 space
+VH uH, uH1, uH2;
+{
+    ifstream readsol(output+"solCoarse_" + name + parameters + ".txt");
+   readsol >> uH1[];
+}
+{
+    ifstream readsol(output+"solCoarse_" + nameCompare + parameters + ".txt");
+    readsol >> uH2[];
+}
+uH[]=uH1[]-uH2[]; //difference we want to analyse, in the coarse space
+VH0 uB=0, uB1=0, uB2=0;
+if (treatB == "in_system") {// Saving bubble coefficients
+    {
+        ifstream readsol(output+"solCoarseB_" + name + parameters + ".txt");
+        readsol >> uB1[];
+    }
+    {
+        ifstream readsol(output+"solCoarseB_" + nameCompare + parameters + ".txt");
+        readsol >> uB2[];
+    }
+}
+uB[]=uB1[]-uB2[]; //difference of bubble parts, in the coarse space
+
+
+///////////////////////////////////////////////////////////////////////
+// POST-PROCESSING                                                   //
+// (msfem_blocks/post_MPI.idp)                                       //
+///////////////////////////////////////////////////////////////////////
+// -- Reconstruction, error computation, documentation
+// First, we need a little work-around in order not to load the reference solution in msfem_blocks/post_MPI.idp
+{
+    parametersFine="_null";
+    ofstream ref("sol_REF" + parametersFine + ".txt");
+    Vh refnull=0;
+    ref << refnull[];
+}
+include "msfem_blocks/post_MPI.idp" 
+include "write_comparison_MPI.idp"

@@ -93,6 +93,7 @@ printTime("Offline phase (computing + storing) lasted ")
 ///////////////////////////////////////////////////////////////////////
 // ONLINE STAGE                                                      //
 // (msfem_blocks/online.idp                                          //
+// (msfem_blocks/write_results.idp)                                  //
 ///////////////////////////////////////////////////////////////////////
 // -- Solving the effective problem  
 fespace VH(TH,P1nc); //coarse global FE Crouzeix-Raviart space 
@@ -106,3 +107,4 @@ include "msfem_blocks/online.idp"
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
 include "msfem_blocks/post.idp"
+include "msfem_blocks/write_results.idp"

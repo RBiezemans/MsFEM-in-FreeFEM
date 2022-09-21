@@ -1,6 +1,6 @@
 // main_CR_MPI.edp
 //
-// run with   mpirun -np 2 FreeFem++-mpi main_CR_MPI.edp -o [offline_mode]
+// run with   mpirun -np [number_of_processes] FreeFem++-mpi main_CR_MPI.edp -o [offline_mode]
 //              (or a variant depending on local installation of mpi, FreeFem)
 //            -o specifies the option for the offline stage: either "compute" (default) or "load"
 // The user must ensure at all times that the appropriate mode is used for correct results
@@ -129,7 +129,9 @@ if (iproc>0) {
 
 ///////////////////////////////////////////////////////////////////////
 // POST-PROCESSING                                                   //
-// (msfem_blocks/post_MPI.idp)                                           //
+// (msfem_blocks/post_MPI.idp)                                       //
+// (msfem_blocks/write_results_MPI.idp)                              //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
 include "msfem_blocks/post_MPI.idp"
+include "msfem_blocks/write_results_MPI.idp"

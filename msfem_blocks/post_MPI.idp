@@ -1,4 +1,4 @@
-// post.idp
+// post_MPI.idp
 //
 // //         //          ////////  ////////  //         //
 // ////      ///  //////  //        //        ////      ///
@@ -7,10 +7,9 @@
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
 // Fine-scale reconstruction of the coarse solution, error computation
-// Writing solution and errors to external files (all writes appended)
 //
 //
-// Compatible with sequential version only
+// Compatible with parallel version only
 //
 //
 // Variables not defined in this script /////////////////////////////////
@@ -38,7 +37,6 @@
 // - widthMadiot -- (real) size of the boundary layer used by Madiot et al.
 // - parametersFine -- (string) parameters tuning the PDE without coarse mesh information
 // - parameters -- (string) parameters tuning the PDE and the MsFEM applied
-// - output -- (string) name of the directory (possibly to be created) where all output will be stored
 // - name -- (string) abbreviation for  MsFEM underlying affine space
 // - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
 //
@@ -47,9 +45,10 @@
 // - (VH0)     uH0 -- piecewise evaluation of uH at the barycentre
 // - (VH0)     uHd[x/y] -- piecewise constant gradient of uH
 // - (Vh)      uHh -- reconstructed, fine-scale solution (but must be processed during element-per-element reconstruction)
+// - (Vh)      uHhGl -- global reconstructed solution, to be gathered by the main process
 // - (Vh)      uref -- reference solution
 // - (Vh)      error -- error between uHh and uref
-// - (real[1]) eL1[/Gl], eL2, eH1, eMax         -- errors on the entire domain
+// - (real[1]) eL1[/Gl], eL2[/Gl], eH1[/Gl], eMax[/Gl]         -- errors on the entire domain
 // - (real[1]) eML1[/Gl],  eML2[/Gl],  eMH1[/Gl],  eMMax[/Gl]  -- errors OBL according to the definition of Madiot
 // - (real[1]) eOL1[/Gl],  eOL2[/Gl],  eOH1[/Gl],  eOMax[/Gl]  -- errors outside the mesh elements at the outflow
 // - (real[1]) erL1[/Gl],  erL2[/Gl],  erH1[/Gl],  erMax[/Gl]  -- relative errors on the entire domain
@@ -201,6 +200,7 @@ mpiReduce(uHh[], uHhGl[], processor(0,comm), mpiSUM); //uHhGl will be corrected 
 // Compute the correct correction of the reconstructed solution
 real[int] correctReduceGl(Vh.ndof); correctReduceGl=0;
 mpiReduce(correctReduce, correctReduceGl, processor(0,comm), mpiSUM);
+if (iproc==0) uHhGl[] = uHhGl[]./correctReduceGl; // Correcting the reconstructed solution for double used edges
 // Errors
 mpiReduce(eL1,   eL1Gl,   processor(0,comm), mpiSUM);
 mpiReduce(eL2,   eL2Gl,   processor(0,comm), mpiSUM);
@@ -214,116 +214,3 @@ mpiReduce(eOL1,  eOL1Gl,  processor(0,comm), mpiSUM);
 mpiReduce(eOL2,  eOL2Gl,  processor(0,comm), mpiSUM);
 mpiReduce(eOH1,  eOH1Gl,  processor(0,comm), mpiSUM);
 mpiReduce(eOMax, eOMaxGl, processor(0,comm), mpiMAX);
-
-
-// Saving and writing test results (main process only)
-if (iproc==0) {
-    // Correcting the reconstructed solution for double used edges
-    uHhGl[] = uHhGl[]./correctReduceGl;
-    // Computing norms of the reference solution
-    real nL1=0, nL2=0, nH1=0, nMax=0;
-    nL1=int2d(Th)(abs(uref));
-    nL2=sqrt(int2d(Th)(uref*uref));
-    nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
-    uref = abs(uref);
-    nMax=uref[].max;
-    string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-    ffLog << printNorms;
-    // Taking square roots, determining the relative errors
-    eL2Gl[0]=sqrt(eL2Gl[0]);
-    eML2Gl[0]=sqrt(eML2Gl[0]);
-    eOL2Gl[0]=sqrt(eOL2Gl[0]);
-    eH1Gl[0]=sqrt(eH1Gl[0]);
-    eMH1Gl[0]=sqrt(eMH1Gl[0]);
-    eOH1Gl[0]=sqrt(eOH1Gl[0]);
-    try {
-        erL1Gl[0]=eL1Gl[0]/nL1; erL2Gl[0]=eL2Gl[0]/nL2; erH1Gl[0]=eH1Gl[0]/nH1; erMaxGl[0]=eMaxGl[0]/nMax;
-        erML1Gl[0]=eML1Gl[0]/nL1; erML2Gl[0]=eML2Gl[0]/nL2; erMH1Gl[0]=eMH1Gl[0]/nH1; erMMaxGl[0]=eMMaxGl[0]/nMax;
-        erOL1Gl[0]=eOL1Gl[0]/nL1; erOL2Gl[0]=eOL2Gl[0]/nL2; erOH1Gl[0]=eOH1Gl[0]/nH1; erOMaxGl[0]=eOMaxGl[0]/nMax;
-    } 
-    catch (...) {
-        cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
-        ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
-    }
-    if (plots) {
-        plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
-        plot(error, value=1, cmm="Error");
-    }
-
-    ffLog << "  Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
-    printTime("Reconstruction + error computation lasted ")
-
-    {// Saving coarse scale solution
-        string solCname = output+"solCoarse_" + name + parameters;
-        solCname = solCname + ".txt";
-        ffLog << "Writing solution in P1 basis to " << solCname << endl; 
-        ofstream ff(solCname, append);
-        ff << uH[] << endl;
-        ff << endl;
-    }
-    if (treatB == "in_system") {// Saving bubble coefficients
-        string solBname = output+"solCoarseB_" + name + parameters;
-        solBname = solBname + ".txt";
-        ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
-        ofstream ff(solBname, append);
-        ff << uB[] << endl;
-        ff << endl;
-    }
-    {// Saving reconstructed micro-scale solution
-        string solname = output+"sol_" + name + parameters;
-        solname = solname + ".txt";
-        ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
-        ofstream ff(solname, append);
-        ff << uHhGl[] << endl;
-        ff << endl;
-    }
-
-    {// Writing errors to an external file
-        string errname = output + "err_" + vfname + "_"+ name + "_OS" + osCoef + ".txt";
-        ffLog << "Writing errors to " << errname << endl;
-        ofstream ff(errname, append);
-        ff  << rhsDescription
-            << endl
-            << stabExpression
-            << endl
-            << "\t\t"
-            << "n    " << n << "\t\t"
-            << "N    " << Ndiscr << "\t\t"
-            << "eps  " << eps << "\t\t"
-            << "alp  " << alpha << "\t\t"
-            << "cont " << cont << "\t\t"
-            << "the  " << theta << "\t\t"
-            << endl
-            << "\t\t"
-            << "useB     " << useB << "\t\t"
-            << "testMS   " << testMS << "\t\t"
-            << "strongD  " << strongDir << "\t\t"
-            << "OScoef   " << osCoef << "\t\t"
-            << endl
-            << "\t\t"
-            << "PeGlob   " << PeGlob << "\t\t"
-            << "PeLoc    " << PeLoc  << "\t\t"
-            << "PeFine   " << PeFine << "\t\t"
-            << endl
-            << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
-            << endl;        
-        
-        ff  << "all \t"
-            << eL1Gl[0]   <<"\t"<< eL2Gl[0]   <<"\t"<< eH1Gl[0]   <<"\t"<< eMaxGl[0]   <<"\t"
-            << erL1Gl[0]  <<"\t"<< erL2Gl[0]  <<"\t"<< erH1Gl[0]  <<"\t"<< erMaxGl[0]
-            << endl
-            << "OBL \t"
-            << eML1Gl[0]  <<"\t"<< eML2Gl[0]  <<"\t"<< eMH1Gl[0]  <<"\t"<< eMMaxGl[0]  <<"\t"
-            << erML1Gl[0] <<"\t"<< erML2Gl[0] <<"\t"<< erMH1Gl[0] <<"\t"<< erMMaxGl[0]
-            << endl
-            << "OLME \t"
-            << eOL1Gl[0]  <<"\t"<< eOL2Gl[0]  <<"\t"<< eOH1Gl[0]  <<"\t"<< eOMaxGl[0]  <<"\t"
-            << erOL1Gl[0] <<"\t"<< erOL2Gl[0] <<"\t"<< erOH1Gl[0] <<"\t"<< erOMaxGl[0]
-            << endl;
-
-        ff<<endl;
-    }
-
-    cout << endl;
-    ffLog << endl << endl; //end of MsFEM routine
-}

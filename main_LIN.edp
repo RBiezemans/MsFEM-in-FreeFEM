@@ -104,6 +104,8 @@ include "msfem_blocks/online.idp"
 ///////////////////////////////////////////////////////////////////////
 // POST-PROCESSING                                                   //
 // (msfem_blocks/post.idp)                                           //
+// (msfem_blocks/write_results.idp)                                  //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
 include "msfem_blocks/post.idp"
+include "msfem_blocks/write_results.idp"
