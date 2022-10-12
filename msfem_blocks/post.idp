@@ -150,111 +150,111 @@ for(int i=0; i<VH0.ndof; i++) {
     phi[][i]=0;
 }
 
-// Computing norms of the reference solution
-real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
-nL1=int2d(Th)(abs(uref));
-nL2=sqrt(int2d(Th)(uref*uref));
-nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
-uref = abs(uref);
-nMax=uref[].max;
-string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-ffLog << printNorms;
-// Taking square roots, determining the relative errors
-eL2=sqrt(eL2);
-eML2=sqrt(eML2);
-eOL2=sqrt(eOL2);
-eH1=sqrt(eH1);
-eMH1=sqrt(eMH1);
-eOH1=sqrt(eOH1);
-try{ 
-    erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
-    erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
-    erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1; erOMax=eOMax/nMax;
-}
-catch (...) {
-    cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
-    ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
-}
+// // Computing norms of the reference solution
+// real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
+// nL1=int2d(Th)(abs(uref));
+// nL2=sqrt(int2d(Th)(uref*uref));
+// nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
+// uref = abs(uref);
+// nMax=uref[].max;
+// string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+// ffLog << printNorms;
+// // Taking square roots, determining the relative errors
+// eL2=sqrt(eL2);
+// eML2=sqrt(eML2);
+// eOL2=sqrt(eOL2);
+// eH1=sqrt(eH1);
+// eMH1=sqrt(eMH1);
+// eOH1=sqrt(eOH1);
+// try{ 
+//     erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
+//     erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
+//     erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1; erOMax=eOMax/nMax;
+// }
+// catch (...) {
+//     cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+//     ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+// }
 
-if (plots) {
-    plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
-    plot(error, value=1, cmm="Error");
-}
+// if (plots) {
+//     plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
+//     plot(error, value=1, cmm="Error");
+// }
 
-ffLog << "  Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
-printTime("Reconstruction + error computation lasted ")
+// ffLog << "  Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
+// printTime("Reconstruction + error computation lasted ")
 
 
-{// Saving coarse scale solution
-    string solCname = output+"solCoarse_" + name + parameters;
-    solCname = solCname + ".txt";
-    ffLog << "Writing solution in P1 basis to " << solCname << endl; 
-    ofstream ff(solCname, append);
-    ff << uH[] << endl;
-    ff << endl;
-}
-if (treatB == "in_system") {// Saving bubble coefficients
-    string solBname = output+"solCoarseB_" + name + parameters;
-    solBname = solBname + ".txt";
-    ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
-    ofstream ff(solBname, append);
-    ff << uB[] << endl;
-    ff << endl;
-}
-{// Saving reconstructed micro-scale solution
-    string solname = output+"sol_" + name + parameters;
-    solname = solname + ".txt";
-    ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
-    ofstream ff(solname, append);
-    ff << uHh[] << endl;
-    ff << endl;
-}
+// {// Saving coarse scale solution
+//     string solCname = output+"solCoarse_" + name + parameters;
+//     solCname = solCname + ".txt";
+//     ffLog << "Writing solution in P1 basis to " << solCname << endl; 
+//     ofstream ff(solCname, append);
+//     ff << uH[] << endl;
+//     ff << endl;
+// }
+// if (treatB == "in_system") {// Saving bubble coefficients
+//     string solBname = output+"solCoarseB_" + name + parameters;
+//     solBname = solBname + ".txt";
+//     ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
+//     ofstream ff(solBname, append);
+//     ff << uB[] << endl;
+//     ff << endl;
+// }
+// {// Saving reconstructed micro-scale solution
+//     string solname = output+"sol_" + name + parameters;
+//     solname = solname + ".txt";
+//     ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
+//     ofstream ff(solname, append);
+//     ff << uHh[] << endl;
+//     ff << endl;
+// }
 
-{// Writing errors to an external file
-    string errname = output + "err_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
-    ffLog << "Writing errors to " << errname << endl;
-    ofstream ff(errname, append);
-    ff  << rhsDescription
-        << endl
-        << stabExpression
-        << endl
-        << "\t\t"
-        << "n    " << n << "\t\t"
-        << "N    " << Ndiscr << "\t\t"
-        << "eps  " << eps << "\t\t"
-        << "alp  " << alpha << "\t\t"
-        << "cont " << cont << "\t\t"
-        << "the  " << theta << "\t\t"
-        << endl
-        << "\t\t"
-        << "useB     " << useB << "\t\t"
-        << "testMS   " << testMS << "\t\t"
-        << "strongD  " << strongDir << "\t\t"
-        << "OScoef   " << osCoef << "\t\t"
-        << endl
-        << "\t\t"
-        << "PeGlob   " << PeGlob << "\t\t"
-        << "PeLoc    " << PeLoc  << "\t\t"
-        << "PeFine   " << PeFine << "\t\t"
-        << endl
-        << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
-        << endl;        
+// {// Writing errors to an external file
+//     string errname = output + "err_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
+//     ffLog << "Writing errors to " << errname << endl;
+//     ofstream ff(errname, append);
+//     ff  << rhsDescription
+//         << endl
+//         << stabExpression
+//         << endl
+//         << "\t\t"
+//         << "n    " << n << "\t\t"
+//         << "N    " << Ndiscr << "\t\t"
+//         << "eps  " << eps << "\t\t"
+//         << "alp  " << alpha << "\t\t"
+//         << "cont " << cont << "\t\t"
+//         << "the  " << theta << "\t\t"
+//         << endl
+//         << "\t\t"
+//         << "useB     " << useB << "\t\t"
+//         << "testMS   " << testMS << "\t\t"
+//         << "strongD  " << strongDir << "\t\t"
+//         << "OScoef   " << osCoef << "\t\t"
+//         << endl
+//         << "\t\t"
+//         << "PeGlob   " << PeGlob << "\t\t"
+//         << "PeLoc    " << PeLoc  << "\t\t"
+//         << "PeFine   " << PeFine << "\t\t"
+//         << endl
+//         << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
+//         << endl;        
     
-    ff  << "all \t"
-        << eL1  <<"\t"<< eL2  <<"\t"<< eH1  <<"\t"<< eMax  <<"\t"
-        << erL1 <<"\t"<< erL2 <<"\t"<< erH1 <<"\t"<< erMax
-        << endl
-        << "OBL \t"
-        << eML1  <<"\t"<< eML2  <<"\t"<< eMH1  <<"\t"<< eMMax  <<"\t"
-        << erML1 <<"\t"<< erML2 <<"\t"<< erMH1 <<"\t"<< erMMax
-        << endl
-        << "OLME \t"
-        << eOL1  <<"\t"<< eOL2  <<"\t"<< eOH1  <<"\t"<< eOMax  <<"\t"
-        << erOL1 <<"\t"<< erOL2 <<"\t"<< erOH1 <<"\t"<< erOMax
-        << endl;
+//     ff  << "all \t"
+//         << eL1  <<"\t"<< eL2  <<"\t"<< eH1  <<"\t"<< eMax  <<"\t"
+//         << erL1 <<"\t"<< erL2 <<"\t"<< erH1 <<"\t"<< erMax
+//         << endl
+//         << "OBL \t"
+//         << eML1  <<"\t"<< eML2  <<"\t"<< eMH1  <<"\t"<< eMMax  <<"\t"
+//         << erML1 <<"\t"<< erML2 <<"\t"<< erMH1 <<"\t"<< erMMax
+//         << endl
+//         << "OLME \t"
+//         << eOL1  <<"\t"<< eOL2  <<"\t"<< eOH1  <<"\t"<< eOMax  <<"\t"
+//         << erOL1 <<"\t"<< erOL2 <<"\t"<< erOH1 <<"\t"<< erOMax
+//         << endl;
 
-    ff<<endl;
-}
+//     ff<<endl;
+// }
 
-cout << endl;
-ffLog << endl << endl; //end of MsFEM routine
+// cout << endl;
+// ffLog << endl << endl; //end of MsFEM routine

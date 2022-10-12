@@ -30,25 +30,29 @@ vfname = "adv_diffusion_MsFEM_SUPG";
 //  form for the macroscopic P1 scheme                                //
 ////////////////////////////////////////////////////////////////////////
 stabilization=1;
+VH0 bx0=bx; //interpolation at the barycentre
+VH0 by0=by; //interpolation at the barycentre
 // Computation of the stabilization parameter in each macroscopic mesh cell
 for (int i=0; i<VH0.ndof; i++) {
     phi[][i]=2;
 
     mesh K = trunc(TH,phi>1,split=1,label=1);
+    real bxK = bx0[][i];
+    real byK = by0[][i];
+    real bK = sqrt(bxK^2+byK^2);
+    
     fespace VK(K,P1);
     VK psi=0;
     real sumdphi=0;
     for(int j=0; j<VK.ndof; j++) {
         psi[][j]=1.;
-        sumdphi += abs(bx*dx(psi) + by*dy(psi));
+        sumdphi += abs(bxK*dx(psi) + byK*dy(psi));
         psi[][j]=0.;
     }
-    real diamK = 2./sumdphi; //should be multiplied by |b(x)| if it is different from 1
-    real PeK = diamK*0.5/alpha;
-    // NOTE: PeK is only computed correctly for |b(x)|=1 throughout the domain
+    real diamK = 2.*bK/sumdphi; 
+    real PeK = bK*diamK*0.5/alpha;
     real tauK = cosh(PeK)/sinh(PeK) - 1./PeK; 
-    tauK = tauK*0.5*diamK; 
-    // still, division by |b(x)|=1 is implicit here
+    tauK = tauK*0.5*diamK/bK; 
     tau[][i] = tauK;
 
     phi[][i]=0;

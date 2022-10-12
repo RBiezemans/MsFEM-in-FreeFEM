@@ -57,8 +57,8 @@ func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 ```
 for the diffusion coefficient;
 ```
-real bx=0;
-real by=0;
+func bx=0;
+func by=0;
 func sigma=0;
 ```
 for the other coefficients of the PDE;
