@@ -3,7 +3,7 @@
 
 The multiscale finite element method (MsFEM) solves PDEs with highly oscillatory coefficients on a course mesh. It does so by precomputing basis functions for a Galerkin (or other) approximation. These basis functions are adapted to the variations of the coefficients. 
 
-We wish to avoid the computation *new basis functions* because their integration into some existing finite element architecture can be laborious. It is described in [this paper](https://arxiv.org/abs/2204.06852) how effective coefficients can be computed that lead to a PDE that can be solved directly by a finite element method with *standard basis functions* on the coarse mesh. This repository provides [FreeFEM](https://freefem.org/) scripts that implement various MsFEMs in the "non-intrusive" way proposed in the paper.
+We wish to avoid the computation of *new basis functions* because their integration into some existing finite element architecture can be laborious. It is described in [this paper](https://arxiv.org/abs/2204.06852) how effective coefficients can be computed that lead to a PDE that can be solved directly by a finite element method with *standard basis functions* on the coarse mesh. This repository provides [FreeFEM](https://freefem.org/) scripts that implement various MsFEMs in the "non-intrusive" way proposed in the paper.
 
 ## Launching the MsFEM scripts
 
