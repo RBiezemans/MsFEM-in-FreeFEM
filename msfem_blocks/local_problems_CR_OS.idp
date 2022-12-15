@@ -2,6 +2,7 @@
 TO DO
 Exclude computation of correctors when not on boundary triangles
 Also excluse the associated computation of effective coefficients?
+Fix/check conditions for bubbles of strong dirichlet is used
 ***************************************
 ***************************************
 ***************************************
