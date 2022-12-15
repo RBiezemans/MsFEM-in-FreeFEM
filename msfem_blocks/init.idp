@@ -92,7 +92,9 @@
 //            == 0
 //               CR elements are defined with weak boundary conditions on the boundary of the global domain (i.e. in the average sense)
 //            == 1
-//               CR elements are defined with strong boundary conditions on the boundary of the global domain
+//               CR elements are defined with strong boundary conditions on the boundary of the global domain 
+//			  == 2
+//				 ...
 // - (string) glue
 //            == "dof"
 //               Multiscale basis functions for OS are DOF continuous
@@ -253,15 +255,12 @@ string glue, treatB;
 }
 
 // Compatibility checks for certain parameters
-assert(strongDir==0); //strong Dirichlet conditions for CR are not yet supported 
+assert(strongDir==0 || strongDir==1 || strongDir==2); //strong Dirichlet conditions for CR are not yet supported 
 if (!useB) assert(treatB=="out_system");
   //without bubbles, there is no need to construct linear equations with bubble functions
 assert(treatB=="out_system" || treatB=="in_system");
 if (osCoef>=osThr) {
 	assert(glue=="dof" || glue=="restrict");
-	// if (name=="CR") {
-	// 	assert(glue=="dof"); //CR basis should always be continuous in the mean over the edges?
-	// }
 }
 
 
@@ -334,6 +333,10 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "vffile.idp"
+if (name=="CR" && osCoef > osThr && strongDir==1) {
+	useVc=1; //we need non-trivial Vc functions because of non-homogeneous BC..
+	fullVF=1; //..if we want to enforce strong conditions on the boundaty of Omega
+}
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
 
@@ -383,7 +386,7 @@ if (osCoef >= osThr) {
 }
 if (bcType=="CR" || osCoef>osThr) {
 	//specify the use of weak or strong BC for CR methods
-	if (strongDir) name = name + "_strDir";
+	if (strongDir) name = name + "_strDir_" + strongDir;
 	else name = name + "_weakDir";
 }
 

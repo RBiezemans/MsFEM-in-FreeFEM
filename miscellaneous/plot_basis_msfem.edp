@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////
 // Some additional parameters that are used during code development  //
-int debug=0; //display/hide intermediate output                      //
-int plotBubbles=0; //show plots of numerical correctors and bubbles  //
+int debug=1; //display/hide intermediate output                      //
+int plotBubbles=1; //show plots of numerical correctors and bubbles  //
 int plots=1; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
@@ -17,21 +17,21 @@ exec("mkdir -p basis");
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="Lin";
+string FEtype="CR";
 
 // Parameters defining the coarse mesh
 int n=2, nx=n, ny=n;
 real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
-int Ndiscr=n*128, Nx=Ndiscr, Ny=Ndiscr;
+int Ndiscr=n*40, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=0.1, alpha=2.^(-11), theta=0.15, cont=7, osCoef=3;
+real eps=2.^(-2), alpha=2.^(1), theta=0.15, cont=7, osCoef=2;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
-int strongDir=0, useB=1, testMS=1;
+int strongDir=1, useB=1, testMS=1;
 string glue="dof", treatB="in_system";
 
 int nbproc=1;
@@ -104,6 +104,8 @@ string vfname="no_VF_provided"; //string to characterize the output directory fo
 include "../variational_forms/advection_diffusion_direct.idp"
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
+if (FEtype=="CR" && osCoef > osThr) useVc=1; //we need non-trivial Vc functions..
+	//..because of non-homogeneous BC if we want to enforce strong conditions on the boundaty of Omega
 
 // RHS of the PDE to be solved
 // func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
@@ -144,6 +146,7 @@ int storeLen = VH0.ndof/nbproc;
 if (VH0.ndof%nbproc>0) {
 	storeLen += 1; //correction for round-off
 }
+real[int,int] storeVc(storeLen,ndofOffline); storeVc=0;
 real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
 real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
 real[int,int] storeB(storeLen,ndofOffline); storeB=0;
@@ -163,11 +166,15 @@ for(int i=0; i<VH0.ndof; i++) {
         //osCoef is larger than osThr if oversampling should be used
         if (FEtype=="Lin") {
             include "../msfem_blocks/local_problems_LIN.idp"
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+            if (useVc) storeVc(i,:)=Vc[];
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+            if (useB) storeB(i,:)=B[];
         }
         else if (FEtype=="CR") {
             include "../msfem_blocks/local_problems_CR.idp"
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+            if (useVc) storeVc(i,:)=Vc[];
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+            if (useB) storeB(i,:)=B[];
         }
         // Save (internally) the offline computations on K
         // Compute effective coefficient on K
@@ -175,19 +182,20 @@ for(int i=0; i<VH0.ndof; i++) {
     } else { //OS case
         if (FEtype=="Lin") {
             include "../msfem_blocks/local_problems_LIN_OS.idp"
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
+            if (useVc) storeVc(i,:)=Vc[];
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+            if (useB) storeB(i,:)=B[];
         }
         else if (FEtype=="CR") {
             include "../msfem_blocks/local_problems_CR_OS.idp"
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; if (useB) storeB(i,:)=B[];
-
+            if (useVc) storeVc(i,:)=Vc[];
+            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+            if (useB) storeB(i,:)=B[];
         }
         // Save (internally) the offline computations on K
         // Compute effective coefficient on K
         // include "msfem_blocks/offline_effective_tensors.idp"
     }
-    
-
     if (debug) if (i%(2*n)==0) cout << endl;
     phi[][i]=0;
 }
@@ -208,7 +216,7 @@ real[int] colorhsv=[ // color hsv model
 
 macro reconstruct(uH,bubbleValue) {
     /*(plot(TH,uH,wait=1,cmm="Coarse basis function", hsv=colorhsv, fill=1);*/
-    plot(TH,uH,wait=1, hsv=colorhsv, fill=1,ps="basis_fem.eps");
+    plot(TH,uH,wait=1, fill=1,ps="basis_fem.eps");
     Vh uHh=0; /*for the reconstructed basis functions*/
     Vh uBh=0; /*reconstruction of bubble functions*/
     Vh uHhB=0; /*reconstruction with a bubble function*/
@@ -226,8 +234,12 @@ macro reconstruct(uH,bubbleValue) {
         VK uHK;
         uHK=uH0[][i] + uHdx[][i]*(x-xb[][i]) + uHdy[][i]*(y-yb[][i]);
         real[int] uHhK=uHK[];  /*array currently representing the coarse solution on K*/
+        if (useVc) {uHhK+=uH0[][i]*storeVc(i,:);}
+        /*VK uplot=1; uplot[]+=storeVc(i,:); plot(TH, uplot, wait=1, fill=1, value=1, cmm="Lambda_0");*/
         uHhK+=uHdx[][i]*storeVx(i,:);
+        /*uplot=x-xb[][i]; uplot[]+=storeVx(i,:); plot(TH, uplot, wait=1, fill=1, value=1, cmm="Lambda_x");*/
         uHhK+=uHdy[][i]*storeVy(i,:);
+        /*uplot=y-yb[][i]; uplot[]+=storeVy(i,:); plot(TH, uplot, wait=1, fill=1, value=1, cmm="Lambda_y");*/
         int[int] R=restrict(VK, Vh, n2o);
         uHh[](R)=uHhK;
 
@@ -242,9 +254,9 @@ macro reconstruct(uH,bubbleValue) {
         phi[][i]=0;
     }
     /*plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=0, hsv=colorhsv);*/
-    plot(TH, uHh, wait=1, fill=1, value=0, hsv=colorhsv, ps="basis_msfem.eps");
-    plot(TH, uBh, wait=1, cmm="Reconstruction of bubble function", fill=1, value=1, hsv=colorhsv);
-    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1, hsv=colorhsv);
+    plot(TH, uHh, wait=1, fill=1, value=0, ps="basis_msfem.eps"); /*hsv=colorhsv*/
+    plot(TH, uBh, wait=1, cmm="Reconstruction of bubble function", fill=1, value=1);
+    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);
 } // EOM
 
 real basisValue=0.1;
@@ -257,7 +269,7 @@ if (FEtype=="Lin") {
         uH[][i]=0;
     }
     uH=x*basisValue;
-    //reconstruct(uH,1./basisValue)
+    reconstruct(uH,1./basisValue)
 }
 else if (FEtype=="CR") {
     fespace VH(TH,P1nc); 
@@ -268,5 +280,5 @@ else if (FEtype=="CR") {
         uH[][i]=0;
     }
     uH=x*basisValue;
-    //reconstruct(uH,1./basisValue)
+    reconstruct(uH,1./basisValue)
 }

@@ -1,3 +1,15 @@
+/*
+TO DO
+Exclude computation of correctors when not on boundary triangles
+Also excluse the associated computation of effective coefficients?
+***************************************
+***************************************
+***************************************
+***************************************
+*/
+
+
+
 // local_problems_CR_OS.idp
 //
 // //         //          ////////  ////////  //         //
@@ -97,9 +109,12 @@ if (timing) {
 varf pdeLoc(uh,vh) = int2d(S)(aBasis(uh,vh)); //variational formulation of local problems -- bilinear form -- LHS of the PDE on S of the saddle point problem
 matrix A = pdeLoc(VS,VS); //linear system of the local problems -- matrix associated to the PDE
 if (strongDir) { //add strong Dirichlet conditions to A if required
-    varf pdeDir(uh,vh) = int1d(S,-1)(uh*vh*tgv);
-    matrix Adir = pdeDir(VS,VS);
-    A = A+Adir;
+    real testB = int1d(S,-1)(1.);
+    if (testB > hx/2.) {
+        varf pdeDir(uh,vh) = int1d(S,-1)(uh*vh*tgv);
+        matrix Adir = pdeDir(VS,VS);
+        A = A+Adir;
+    }
 }
 //all weak boundary conditions are handled by the linear constraints
 
@@ -123,25 +138,27 @@ for(int k=0; k<nedges; k++) {
     }
 }
 varf linF2(unused,vh) = edgeIntegral(K,1,normS,edg,vh) + edgeIntegral(K,-1,normS,edg,vh);
-real[int,int] arrB2(VS.ndof,nedges); //constraint matrix (linear form 2, for integrations over the boundary of K)
-for(int k=0; k<nedges; k++) {
-    //integrations over the edges of K that correspond to Crouzeix-Raviart boundary conditions
-    edg=edges[k];
-    real[int] Bedge = linF2(0,VS);
-    // real meas=edgeIntegral(S,1,normS,edg,1) + edgeIntegral(S,-1,normS,edg,1);
-    // Bedge = Bedge/meas; //normalization is unnecessary since we are only imposing homogeneous constraints in the local problems
-    arrB2(:,k) = Bedge;
-    if (debug) {
-        VS test;
-        test[] = arrB2(:,k);
-        plot(S, test, cmm="Edge selection on K for integration", fill=1, wait=1);
-    }
-}
 
 matrix B1 = arrB1;
 matrix B2;
 if (glue=="restrict") B2 = arrB1;
-if (glue=="dof") B2 = arrB2;
+if (glue=="dof") {
+    real[int,int] arrB2(VS.ndof,nedges); //constraint matrix (linear form 2, for integrations over the boundary of K)
+    for(int k=0; k<nedges; k++) {
+        //integrations over the edges of K that correspond to Crouzeix-Raviart boundary conditions
+        edg=edges[k];
+        real[int] Bedge = linF2(0,VS);
+        // real meas=edgeIntegral(S,1,normS,edg,1) + edgeIntegral(S,-1,normS,edg,1);
+        // Bedge = Bedge/meas; //normalization is unnecessary since we are only imposing homogeneous constraints in the local problems
+        arrB2(:,k) = Bedge;
+        if (debug) {
+            VS test;
+            test[] = arrB2(:,k);
+            plot(S, test, cmm="Edge selection on K for integration", fill=1, wait=1);
+        }
+    }
+    B2 = arrB2;
+}
 
 matrix CRmat = [[A,B1],
                 [B2',0]]; // matrix for local saddle-point problem on S
@@ -153,30 +170,25 @@ if (timing) {
 }
 
 // Save midpoints of the edges of K for possible strong Dirichlet conditions
-real[int,int] midpoints(3,2);
-midpoints=-1;
-for(int k=0; k<3; k++) {
-    real meas=edgeIntegral(K,-1,normS,k,1);
-    if (meas>hx/10.) {
-        midpoints(k,0) = edgeIntegral(K,-1,normS,k,x)/meas;
-        midpoints(k,1) = edgeIntegral(K,-1,normS,k,y)/meas;
-    }
-}
-if (debug) {
-    cout << "Midpoints of the relevant edges: " << midpoints << endl;
-}
+// real[int,int] midpoints(3,2);
+// midpoints=-1;
+// for(int k=0; k<3; k++) {
+//     // real meas=edgeIntegral(K,-1,normS,k,1);
+//     // if (meas>hx/10.) {
+//         midpoints(k,0) = xb[][i];//edgeIntegral(K,-1,normS,k,x)/meas;
+//         midpoints(k,1) = yb[][i];//edgeIntegral(K,-1,normS,k,y)/meas;
+//     // }
+// }
+// if (debug) {
+//     cout << "Midpoints of the relevant edges: " << midpoints << endl;
+// }
 // Define functions to set the correct boundary conditions for the numerical correctors 
 // (if strong Dirichlet conditions are chosen)
 // The following two functions are supported on the edges of S and ensure that..
 // ..(CR P1 basis function + numerical corrector) is zero on the boundary of the global domain
-func bcVx = (ip(N.x,N.y,normS(0,:))>0.99)*(x-midpoints(0,0)) 
-    + (ip(N.x,N.y,normS(1,:))>0.99)*(x-midpoints(1,0)) 
-    + (ip(N.x,N.y,normS(2,:))>0.99)*(x-midpoints(2,0));
-func bcVy = (ip(N.x,N.y,normS(0,:))>0.99)*(y-midpoints(0,1)) 
-    + (ip(N.x,N.y,normS(1,:))>0.99)*(y-midpoints(1,1)) 
-    + (ip(N.x,N.y,normS(2,:))>0.99)*(y-midpoints(2,1));
-varf boundaryVx(unused,vh) = -int1d(S,-1)(tgv*bcVx*vh);
-varf boundaryVy(unused,vh) = -int1d(S,-1)(tgv*bcVy*vh);
+varf boundaryVx(unused,vh) = -int1d(S,-1)(tgv*(x-xb[][i])*vh);
+varf boundaryVy(unused,vh) = -int1d(S,-1)(tgv*(y-yb[][i])*vh);
+varf boundaryVc(unused,vh) = -int1d(S,-1)(tgv*vh);
 // Strong Dirichlet conditions for the bubble functions and for Vc are yet to be implementated
 
 
@@ -194,17 +206,20 @@ varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -
 
 // Resolution:
 if(useVc) {
-    uH[]=1;  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VcS[]=X;
-    if (debug) residue(CRmat,F,X,"Corrector 0 was computed with residue ")
+    uH[]=1;  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVc(0,VS);  X=CRmat^-1*F;   VcS[]=X;
+    if (debug) {
+        real testB = int1d(S,-1)(1.);
+        if (testB>hx/2.) {residue(CRmat,F,X,"Corrector 0 was computed with residue ")}
+    }
     if (debug) printIntegralsTri(K,VcS)
     //note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
 }
 
-uH[]=uHxS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VxS[]=X;
+uH[]=uHxS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VxS[]=X;
 if (debug) residue(CRmat,F,X,"Corrector 1 was computed with residue ")
 if (debug) printIntegralsTri(K,VxS)
 
-uH[]=uHyS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
+uH[]=uHyS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
 if (debug) residue(CRmat,F,X,"Corrector 2 was computed with residue ")
 if (debug) printIntegralsTri(K,VyS)
 
