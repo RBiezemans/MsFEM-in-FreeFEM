@@ -7,30 +7,30 @@
 # Check that all values that are not controlled here, are as desired in the basic parameter.txt file in experiment_parameters
 # The execution commands for FreeFem++ are adapted to use on the cluster of CERMICS
 
+
 # Number of processors to be used
-NUMBER_OF_PROC=2
+NUMBER_OF_PROC=10
 
 LOAD_OPTION=0 #0 : first offline stage is computed for each set of parameters -- 1 : offline stage is loaded from the very first test
-COMPUTE_REF=0 #0 : reference solution is computed -- 1 : reference solution is not computed
+COMPUTE_REF=1 #0 : reference solution is computed -- 1 : reference solution is not computed
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_L="1."
-TOTEST_LARGE_N="20" 
-TOTEST_LARGER_N="40" # unused in this experiment 
-TOTEST_SMALL_N="5"
-TOTEST_EPS="0.1" # 2^-7
-TOTEST_2LOGALP="-2 -8" # -8" # 2^-2 ... 2^-8
+TOTEST_LARGE_N="2048" 
+TOTEST_LARGER_N="4096" # unused in this experiment 
+TOTEST_SMALL_N="16"
+TOTEST_EPS="0.0078125" # 2^-7
+TOTEST_2LOGALP="-2 -3 -4 -5 -6 -7 -8 -9 -10 -11" 
 TOTEST_THETA="0.15"
 TOTEST_CONT="7"
 TOTEST_VFFILE="advection_diffusion_direct.idp"
-TOTEST_OSCOEF="0 3"
+TOTEST_OSCOEF="3" # -- the MsFEM-lin can only be executed for the option 0
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
-TOTEST_STR_DIR="0 1 2"
+TOTEST_STR_DIR="1 2"
 TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
 TOTEST_TREAT_B="in_system out_system"
-## TOTEST_ADV_MS="1" # has become irrelevant
-TOTEST_MS="1 0"
+TOTEST_MS="1 0 2"
 
 ## SOME PARAMETER RULES
 ## - Usage of bubbles must be executed before non-usage: "1 0" or "0"

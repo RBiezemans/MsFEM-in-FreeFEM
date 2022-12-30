@@ -11,7 +11,7 @@
 # Number of processors to be used
 NUMBER_OF_PROC=10
 
-LOAD_OPTION=0 #1 : offline stage is loaded from the very first test -- 0 : first offline stage is computed for each set of parameters
+LOAD_OPTION=0 #0 : first offline stage is computed for each set of parameters -- 1 : offline stage is loaded from the very first test
 COMPUTE_REF=0 #0 : reference solution is computed -- 1 : reference solution is not computed
 
 # Parameter values to be used in the tests (all will be combined)
@@ -25,7 +25,7 @@ TOTEST_2LOGALP="0"
 TOTEST_THETA="0.15" # unused
 TOTEST_CONT="100"
 TOTEST_VFFILE="diffusion.idp"
-TOTEST_OSCOEF="3"
+TOTEST_OSCOEF="3" # -- the MsFEM-lin can only be executed for the option 0
 TOTEST_GLUE="dof restrict" # either "dof" or "restrict" -- without OS, this options is automatically ignored
 TOTEST_STR_DIR="2"
 TOTEST_USE_B="0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
@@ -64,9 +64,9 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
 
     for TEST_VFFILE in $TOTEST_VFFILE; do cp variational_forms/$TEST_VFFILE vffile.idp
     for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt"
-    for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt"
     for TEST_OSCOEF in $TOTEST_OSCOEF; do sed -i "s/osCoef=.*/osCoef= $TEST_OSCOEF/" "experiment/parameters.txt"
     for TEST_GLUE in $TOTEST_GLUE; do sed -i "s/glue=.*/glue= $TEST_GLUE/" "experiment/parameters.txt"
+    for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt"
     # The above loops contain all parameters that require the computation of a new basis
     COMPUTE_BASIS=$LOAD_OPTION
     for TEST_MS in $TOTEST_MS; do sed -i "s/testMS=.*/testMS= $TEST_MS/" "experiment/parameters.txt"
@@ -76,28 +76,30 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
         if [ $TEST_USE_B == 0 -a $TEST_TREAT_B = "out_system" ] || [ $TEST_USE_B == 1 -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ] # Not all parameter combinations are allowed
         then
             cp experiment/parameters.txt parameters.txt
-
-            if [ $COMPUTE_BASIS == 0 ]
-            then
-                /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o compute
-                # if [ ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ]
-                # then
-                #      /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o compute
-                # fi
-                COMPUTE_BASIS=1
-            else
-                /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o load
-                # if [ ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ]
-                # then
-                #     /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o load
-                # fi
+            OFFLINE_MODE="compute"
+            if [ $COMPUTE_BASIS == 1 ]
+            then 
+                OFFLINE_MODE="load"
             fi
+
+            # MsFEM-LIN
+            if [ $TEST_STR_DIR == 0 ]
+            then 
+                /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o $OFFLINE_MODE
+            fi
+            # MsFEM-CR
+            if [ ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ]
+            then
+                    /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o $OFFLINE_MODE
+            fi
+            
+            COMPUTE_BASIS=1
             rm parameters.txt
         fi
 
     done done done # end of loops over bubbles and multiscale usage
     if (( $(echo "$TEST_OSCOEF < 0.1" | bc) )) # basic calculator is used for decimal arithmetic
-        then break # break the loop over GLUE options if no oversamling is actually used
+        then break # break the loops over GLUE and STR_DIR options if no oversamling is actually used
     fi
     done done done done done # end of loops over basis specification
 done done done done done done # end of loops over reference solution/physical parameters + fine mesh + vf form used
