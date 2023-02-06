@@ -36,6 +36,7 @@
 // - V[c/x/y] -- (VK) numerical correctors on K
 // - B -- (VK) bubble function on K
 // - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
 // - useB -- (int) indicates whether bubbles are to be used
 // - testMS -- (int) indicates whether test functions are multiscale or P1
 // - AHxx, AHxy, AHyx, AHyy, BHx, BHy, BAHx, BAHy, MH, AHB, rHx, rHy, rH, lHx, lHy, lH, ..
@@ -85,6 +86,11 @@ catch (...) {
 
 // Load and store the basis for the current process in storeV[c/x/y] and storeB
 // Compute effective coefficients per coarse mesh element if needed
+{ // Load Vc pattern over all coarse mesh elements
+    string vecFile = basisDir + "/Vc_pattern.txt";
+    ifstream ffvec (vecFile);
+    ffvec >> useVcOnK;
+}
 for(int i=0; i<VH0.ndof; i++) {
 if (iproc == i%nbproc) {
     if (i%(2*n)==0) {
@@ -92,7 +98,7 @@ if (iproc == i%nbproc) {
         // if (iproc==0) ffLog << "loading offline phase for tri " << i << endl;
     }
     phi[][i]=2;
-    if (useVc) { //store numerical correctors associated to constants
+    if (useVcOnK[i]) { //store numerical correctors associated to constants
         string basisname = "/tri_" + i + "_Vc.txt";
         readBasis(basisname,storeVc(countOffline,:))
     }
@@ -114,7 +120,7 @@ if (iproc == i%nbproc) {
     mesh K=trunc(Th,phi>1,split=1); 
     fespace VK(K, P1);
     VK Vc=0, Vx, Vy, B=0;
-    if (useVc) Vc[]=storeVc(countOffline,:);
+    if (useVcOnK[i]) Vc[]=storeVc(countOffline,:);
     Vx[]=storeVx(countOffline,:);
     Vy[]=storeVy(countOffline,:);
     if (useB) B[]=storeB(countOffline,:);

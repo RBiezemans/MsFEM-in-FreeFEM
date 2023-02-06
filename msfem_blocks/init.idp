@@ -132,9 +132,11 @@
 // - (string) rhsDescription -- description of the function fRHS
 // - (int)    useVc [default == 1]
 //            == 1
-//            Compute numerical correctors for constants
+//            Compute (some) numerical correctors for constants
+//            (For the MsFEM-CR with strongDir==1, these are not computed on all mesh elements)
 //            == 0
 //            Do not compute numerical correctors for constants (only for x,y direction)
+// - (real[int]) useVcOnK -- vector to keep track of the use of numerical correctors for constants per mesh element
 // - (int)    fullVF [default == 1]
 //            == 1
 //            Compute all possible coefficients of the effective schemes
@@ -336,9 +338,11 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "vffile.idp"
-//if (name=="CR" && osCoef > osThr && strongDir==1) {
+
+real[int] useVcOnK(VH0.ndof); //an array to keep track of the computation of Vc at the bounday of Omega for strong Dirichlet conditions
+useVcOnK=useVc;
 if (name=="CR" && strongDir==1) {
-	useVc=1; //we need non-trivial Vc functions because of non-homogeneous BC..
+	useVc=1; //we need at least some non-trivial Vc functions because of non-homogeneous BC..
 	fullVF=1; //..if we want to enforce strong conditions on the boundary of Omega
 }
 if (fullVF==0) assert(useVc==0);

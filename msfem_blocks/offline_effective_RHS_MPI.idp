@@ -13,12 +13,14 @@
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - K -- (mesh) coarse mesh element that is treated
+// - i -- (int) global index of the coarse mesh element to be treated
 // - ifH -- (VH0) is to hold the average of the RHS function on each mesh element if treatB == out_system
 // - ifB -- (VH0) is to hold the integral of the RHS function on each mesh element against the respective bubble function if treatB == in_system
 // - ifH[/x/yTestMS[/supg] -- (VH0) effective terms
 // - V[c/x/y] -- (VK) numerical correctors on K
 // - B -- (VK) bubble function on K
-// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
 // - useB -- (int) indicates whether bubbles are to be used
 // - testMS -- (int) indicates whether test functions are multiscale or P1
 // - stabilization -- (int) indicates whether or not stabilization terms are used
@@ -34,10 +36,10 @@ if (useB) {
 if(testMS==1) {
     ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
     ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
-    if (useVc) ifHTestMS[][i]=int2d(K)(fRHS*Vc)/K.measure;
+    if (useVcOnK[i]) ifHTestMS[][i]=int2d(K)(fRHS*Vc)/K.measure;
     if (stabilization==1) {
         ifHxTestMSsupg[][i]=int2d(K)(rhssupg(Vx))/K.measure;
         ifHyTestMSsupg[][i]=int2d(K)(rhssupg(Vy))/K.measure;
-        if (useVc) ifHTestMSsupg[][i]=int2d(K)(rhssupg(Vc))/K.measure;
+        if (useVcOnK[i]) ifHTestMSsupg[][i]=int2d(K)(rhssupg(Vc))/K.measure;
     }
 }

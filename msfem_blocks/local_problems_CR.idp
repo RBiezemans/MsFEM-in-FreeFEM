@@ -22,7 +22,7 @@
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - i -- (int) global index of the coarse mesh element to be treated
 // - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
-// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be computed
 // - useB -- (int) indicates whether bubbles are to be used
 // - strongDir -- (int) specifies the type of boundary conditions on the global boundary for the numerical correctors
 // - plotBubbles -- (int) indicates whether the user wishes to visualize V[c/x/y] and B
@@ -80,6 +80,7 @@ matrix A=pb(VK,VK); //linear system of the local problems -- matrix associated t
 if (strongDir) { //add strong Dirichlet conditions to A if if S partially lies on the global boundary (with label 1)
     real testB = int1d(K,-1)(1.);
     if (testB > hx/2.) {
+        if (strongDir==1) useVcOnK[i]=1; //we need Vc on K if strongDir==1 to correct the BC of the basis functions
         varf pdeDir(uh,vh) = int1d(K,-1)(uh*vh*tgv);
         matrix Adir = pdeDir(VK,VK);
         A = A+Adir;
@@ -136,7 +137,7 @@ varf pbRHS(unused,vh)=-int2d(K)(aBasis(uH,vh)); //variational formulation of loc
 varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
 
 // Resolution
-if (useVc) {
+if (useVcOnK[i]) {
     uH[]=1;  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVc(0,VK);  X=CRmat^-1*F;   Vc[]=X;
     if (debug) {
         real testB = int1d(K,-1)(1.);
@@ -157,7 +158,7 @@ if (useB) {
 }
 
 if (plotBubbles) {
-    if (useVc) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+    if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
     plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
     plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
     if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");

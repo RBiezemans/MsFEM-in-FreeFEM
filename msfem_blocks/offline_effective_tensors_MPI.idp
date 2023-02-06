@@ -21,12 +21,13 @@
 // - iAHxx, iAHxy, iAHyx, iAHyy, iBHx, iBHy, iBAHx, iBAHy, iMH, iAHB, irHx, irHy, irH, ilHx, ilHy, ilH, ..
 //   iAHxxTestMS, iAHxyTestMS, iAHyxTestMS, iAHyyTestMS, iBHxTestMS, iBHyTestMS, ..
 //   iBAHxTestMS, iBAHyTestMS, iMHTestMS, irHxTestMS, irHyTestMS, irHTestMS -- (VH0) effective tensors for the current process
-// - K -- (mesh)
+// - K -- (mesh) coarse mesh element that is treated
+// - i -- (int) global index of the coarse mesh element to be treated
 // - V[c/x/y] -- (VK) numerical correctors on K
 // - B -- (VK) bubble function on K
 // - aComplete -- bilinear form of the global problem
 // - aTest1 -- bilinear form of the global problem suitable for testing against a constant
-// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
 // - useB -- (int) indicates whether bubbles are to be used
 // - testMS -- (int) indicates whether test functions are multiscale or P1
 // - fullVF -- (int) indicates whether the BAH[x/y] and MH vanish in the effective problem
@@ -34,7 +35,7 @@
 
 
 VK phi0=1, phix, phiy; //sums of affine functions and numerical correctors
-if (useVc) {
+if (useVcOnK[i]) {
     phi0[]+=Vc[];
 }
 phix[]=uHx[]+Vx[]; 
@@ -74,7 +75,7 @@ if(testMS) {
     iAHxyTestMS[][i]=int2d(K)(aComplete(phiy,Vx))/K.measure; 
     iAHyyTestMS[][i]=int2d(K)(aComplete(phiy,Vy))/K.measure;
     
-    if (useVc) {
+    if (useVcOnK[i]) {
         iBHxTestMS[][i]=int2d(K)(aComplete(phix,Vc))/K.measure;
         iBHyTestMS[][i]=int2d(K)(aComplete(phiy,Vc))/K.measure;
     }
@@ -82,14 +83,14 @@ if(testMS) {
     if (fullVF) {
         iBAHxTestMS[][i]=int2d(K)(aComplete(phi0,Vx))/K.measure;
         iBAHyTestMS[][i]=int2d(K)(aComplete(phi0,Vy))/K.measure;
-        if (useVc) iMHTestMS[][i]=int2d(K)(aComplete(phi0,Vc))/K.measure;
+        if (useVcOnK[i]) iMHTestMS[][i]=int2d(K)(aComplete(phi0,Vc))/K.measure;
     }
 
     if (useB) {
         // No "AHBTestMS" -- we always use the (multiscale) precomputed bubbles B
         irHxTestMS[][i]=int2d(K)(aComplete(B,Vx))/K.measure;
         irHyTestMS[][i]=int2d(K)(aComplete(B,Vy))/K.measure;
-        if (useVc) irHTestMS[][i] =int2d(K)(aComplete(B,Vc))/K.measure;   
+        if (useVcOnK[i]) irHTestMS[][i] =int2d(K)(aComplete(B,Vc))/K.measure;   
         // No "lH[x/y]TestMS" -- we always use the (multiscale) precomputed bubbles B
     }
 }

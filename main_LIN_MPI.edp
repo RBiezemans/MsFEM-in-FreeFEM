@@ -73,7 +73,7 @@ if (offlineMode == "compute")
         if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
             include "msfem_blocks/local_problems_LIN.idp"
             // Save (internally) the offline computations on K
-            if (useVc) storeVc(countOffline,:)=Vc[];
+            if (useVcOnK[i]) storeVc(countOffline,:)=Vc[];
             storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
             if (useB) storeB(countOffline,:)=B[];
             // Compute effective coefficient on K
@@ -81,7 +81,7 @@ if (offlineMode == "compute")
         } else { //OS case
             include "msfem_blocks/local_problems_LIN_OS.idp"
             // Save (internally) the offline computations on K
-            if (useVc) storeVc(countOffline,:)=Vc[];
+            if (useVcOnK[i]) storeVc(countOffline,:)=Vc[];
             storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
             if (useB) storeB(countOffline,:)=B[];
             // Compute effective coefficient on K
@@ -96,6 +96,7 @@ if (offlineMode == "compute")
     // send all information for the global problem to the main process
     include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
     if (iproc==0) { //the main process saves the effective coefficient (for the entire coarse mesh)
+        //also save the Vc pattern over all coarse mesh elements
         include "msfem_blocks/offline_save_effective_tensors.idp" 
     }
     mpiBarrier(comm);

@@ -24,7 +24,7 @@
 // - iproc -- (int) local index of the current process
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - useB -- (int) indicates whether bubbles are to be used
-// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
 // - vfname -- (string) description of (global and local) VF used
 // - rhsDescription -- (string) description of the function fRHS
 // - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
@@ -138,8 +138,8 @@ if (iproc == i%nbproc) {
     real[int] uHhK=uHK[]; //array currently representing the coarse solution on K
     if (useB) uHhK+=uB[][i]*storeB(countOffline,:); //reconstructing the bubble function
     if (debug && useB) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B");}
-    if (useVc) uHhK+=uH0[][i]*storeVc(countOffline,:); //reconstructing the numerical corrector constants
-    if (debug && useVc) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc");}
+    if (useVcOnK[i]) uHhK+=uH0[][i]*storeVc(countOffline,:); //reconstructing the numerical corrector constants
+    if (debug && useVcOnK[i]) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc");}
     uHhK+=uHdx[][i]*storeVx(countOffline,:); //reconstructing the numerical corrector for the x-direction
     if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx");}
     uHhK+=uHdy[][i]*storeVy(countOffline,:); //reconstructing the numerical corrector for the y-direction
