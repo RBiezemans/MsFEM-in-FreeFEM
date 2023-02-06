@@ -7,30 +7,30 @@
 # Check that all values that are not controlled here, are as desired in the basic parameter.txt file in experiment_parameters
 # The execution commands for FreeFem++ are adapted to use on the cluster of CERMICS
 
+
 # Number of processors to be used
-NUMBER_OF_PROC=2
+NUMBER_OF_PROC=10
 
 LOAD_OPTION=0 #0 : first offline stage is computed for each set of parameters -- 1 : offline stage is loaded from the very first test
-COMPUTE_REF=0 #0 : reference solution is computed -- 1 : reference solution is not computed
+COMPUTE_REF=1 #0 : reference solution is computed -- 1 : reference solution is not computed
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_L="1."
-TOTEST_LARGE_N="20" 
-TOTEST_LARGER_N="40" # unused in this experiment 
-TOTEST_SMALL_N="5"
-TOTEST_EPS="0.1" # 2^-7
-TOTEST_2LOGALP="-2 -8" # -8" # 2^-2 ... 2^-8
+TOTEST_LARGE_N="2048" 
+TOTEST_LARGER_N="4096" # unused in this experiment 
+TOTEST_SMALL_N="16"
+TOTEST_EPS="0.0078125" # 2^-7
+TOTEST_2LOGALP="-2 -3 -4 -5 -6 -7 -8 -9 -10 -11" 
 TOTEST_THETA="0.15"
 TOTEST_CONT="7"
 TOTEST_VFFILE="advection_diffusion_direct.idp"
-TOTEST_OSCOEF="0 3"
+TOTEST_OSCOEF="3" # -- the MsFEM-lin can only be executed for the option 0
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
-TOTEST_STR_DIR="0 1 2"
+TOTEST_STR_DIR="1 2"
 TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
 TOTEST_TREAT_B="in_system out_system"
-## TOTEST_ADV_MS="1" # has become irrelevant
-TOTEST_MS="1 0"
+TOTEST_MS="1 0 2"
 
 ## SOME PARAMETER RULES
 ## - Usage of bubbles must be executed before non-usage: "1 0" or "0"
@@ -65,8 +65,8 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     for TEST_VFFILE in $TOTEST_VFFILE; do cp variational_forms/$TEST_VFFILE vffile.idp
     for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt"
     for TEST_OSCOEF in $TOTEST_OSCOEF; do sed -i "s/osCoef=.*/osCoef= $TEST_OSCOEF/" "experiment/parameters.txt"
-    for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt"
     for TEST_GLUE in $TOTEST_GLUE; do sed -i "s/glue=.*/glue= $TEST_GLUE/" "experiment/parameters.txt"
+    for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt"
     # The above loops contain all parameters that require the computation of a new basis
     COMPUTE_BASIS=$LOAD_OPTION
     for TEST_MS in $TOTEST_MS; do sed -i "s/testMS=.*/testMS= $TEST_MS/" "experiment/parameters.txt"
@@ -99,7 +99,7 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
 
     done done done # end of loops over bubbles and multiscale usage
     if (( $(echo "$TEST_OSCOEF < 0.1" | bc) )) # basic calculator is used for decimal arithmetic
-        then break # break the loop over GLUE option if no oversamling is actually used
+        then break # break the loops over GLUE and STR_DIR options if no oversamling is actually used
     fi
     done done done done done # end of loops over basis specification
 done done done done done done # end of loops over reference solution/physical parameters + fine mesh + vf form used

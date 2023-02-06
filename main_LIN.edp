@@ -63,7 +63,7 @@ if (offlineMode == "compute")
         if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
             include "msfem_blocks/local_problems_LIN.idp"
             // Save (internally) the offline computations on K
-            if (useVc) storeVc(i,:)=Vc[];
+            if (useVcOnK[i]) storeVc(i,:)=Vc[];
             storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
             if (useB) storeB(i,:)=B[];
             // Compute effective coefficient on K
@@ -71,7 +71,7 @@ if (offlineMode == "compute")
         } else { //OS case
             include "msfem_blocks/local_problems_LIN_OS.idp"
             // Save (internally) the offline computations on K
-            if (useVc) storeVc(i,:)=Vc[];
+            if (useVcOnK[i]) storeVc(i,:)=Vc[];
             storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
             if (useB) storeB(i,:)=B[];
             // Compute effective coefficient on K
@@ -83,6 +83,7 @@ if (offlineMode == "compute")
         phi[][i]=0;
     }
     include "msfem_blocks/offline_save_effective_tensors.idp" //save effective coefficients (for the entire coarse mesh)
+    //also save the Vc pattern over all coarse mesh elements
 } 
 else if (offlineMode == "load") 
 {

@@ -13,7 +13,9 @@
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - basisDir -- (string) name of directory where basis functions are stored
 // - coeffDir -- (string) name of directory where effective coefficients are stored
+// - useVcOnK -- (real[int]) indicates on which mesh element correctors for constants are to be used
 // - useVc -- (int) indicates whether the correctors for constants are to be used
 // - useB -- (int) indicates whether bubbles are to be used
 // - testMS -- (int) indicates whether test functions are multiscale or P1
@@ -25,6 +27,12 @@
 
 // Macro that provides the writing procedure of the vector vec to a file with name coeffDir+filename
 macro writeVec2File(filename,vec) {string matrixFile = coeffDir + filename; ofstream ffmat (matrixFile); ffmat << vec;} // EOM
+
+{ //save Vc pattern for future loading of basis functions
+    string vecFile = basisDir + "/Vc_pattern.txt";
+    ofstream ffvec (vecFile);
+    ffvec << useVcOnK;
+}
 
 cout << "saving effective coefficients" << endl;
 ffLog << "saving effective coefficients" << endl;

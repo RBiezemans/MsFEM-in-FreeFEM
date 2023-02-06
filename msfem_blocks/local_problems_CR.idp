@@ -9,13 +9,6 @@
 // Computation of numerical correctors and bubble functions on a single coarse mesh element for MsFEM-CR methods
 //
 //
-////////////////////////////////////////////////////////////////////////
-// TO BE DONE: implementation of strong Dirichlet boundary conditions
-//  the current implementation can only be trusted for weak conditions: 
-//  numerical correctors as well as bubble functions are only imposed to have zero mean on the boundary of the global domain
-////////////////////////////////////////////////////////////////////////
-//
-//
 // Scripts loaded ///////////////////////////////////////////////////////
 // - offline_save_basis.idp 
 //   -- save numerical correctors and bubble function
@@ -29,12 +22,13 @@
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - i -- (int) global index of the coarse mesh element to be treated
 // - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
-// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be computed
 // - useB -- (int) indicates whether bubbles are to be used
+// - strongDir -- (int) specifies the type of boundary conditions on the global boundary for the numerical correctors
 // - plotBubbles -- (int) indicates whether the user wishes to visualize V[c/x/y] and B
 // - aBasis -- (macro) bilinear form for the local problems
 // - consNormals -- (func[1]) constructs outward unit normals on the three edges of the argument passed
-// - edgeIntagral -- (macro[5]) integration over a specific edge, one can choose to only integrate for specific labels
+// - edgeIntegral -- (macro[5]) integration over a specific edge, one can choose to only integrate for specific labels
 // - ip -- (macro[3]) inner product between two components and a vector
 //  
 //
@@ -83,10 +77,18 @@ if (debug) cout << "Edges for CR conditions: " << edges << endl;
 // This is a sadlle point problem
 varf pb(uh,vh)=int2d(K)(aBasis(uh,vh)); //variational formulation of local problems -- bilinear form -- LHS of the PDE of the saddle point problem
 matrix A=pb(VK,VK); //linear system of the local problems -- matrix associated to the PDE
-if (strongDir) { //add strong Dirichlet conditions to A if required
-    varf pdeDir(uh,vh) = int1d(K,-1)(uh*vh*(tgv));
-    matrix Adir = pdeDir(VK,VK);
-    A = A+Adir;
+if (strongDir) { //add strong Dirichlet conditions to A if if S partially lies on the global boundary (with label 1)
+    real testB = int1d(K,-1)(1.);
+    if (testB > hx/2.) {
+        if (strongDir==1) useVcOnK[i]=1; //we need Vc on K if strongDir==1 to correct the BC of the basis functions
+        varf pdeDir(uh,vh) = int1d(K,-1)(uh*vh*tgv);
+        matrix Adir = pdeDir(VK,VK);
+        A = A+Adir;
+        if (debug) cout << "Strong Dirichlet conditions are implemented on triangle " << i << endl;
+    }
+    else {
+        if (debug) cout << "No strong Dirichlet conditions are implemented on triangle " << i << endl;
+    }
 } //all weak boundary conditions are handled by the linear constraints
 
 int edg; //a dummy in intEdge representing integrations over each respective edge
@@ -115,59 +117,56 @@ matrix CRmat = [[A,Bcr],
 set(CRmat, solver=UMFPACK);
 
 
-// Save midpoints of the edges of K for possible strong Dirichlet conditions
-real[int,int] midpoints(3,2);
-midpoints=-1;
-for(int k=0; k<3; k++) {
-    real meas=edgeIntegral(K,-1,normK,k,1);
-    if (meas>hx/10.) {
-        midpoints(k,0) = edgeIntegral(K,-1,normK,k,x)/meas;
-        midpoints(k,1) = edgeIntegral(K,-1,normK,k,y)/meas;
-    }
-}
-if (debug) {
-    cout << "Midpoints of the relevant edges: " << midpoints << endl;
-}
-
-// Define functions to set the correct boundary conditions for the numerical correctors 
-// (if strong Dirichlet conditions are chosen)
-// The following two functions are supported on the edges of K and ensure that..
-// ..(CR P1 basis function + numerical corrector) is zero on the boundary of the global domain
-func bcVx = (ip(N.x,N.y,normK(0,:))>0.99)*(x-midpoints(0,0)) 
-    + (ip(N.x,N.y,normK(1,:))>0.99)*(x-midpoints(1,0)) 
-    + (ip(N.x,N.y,normK(2,:))>0.99)*(x-midpoints(2,0));
-func bcVy = (ip(N.x,N.y,normK(0,:))>0.99)*(y-midpoints(0,1)) 
-    + (ip(N.x,N.y,normK(1,:))>0.99)*(y-midpoints(1,1)) 
-    + (ip(N.x,N.y,normK(2,:))>0.99)*(y-midpoints(2,1));
-varf boundaryVx(unused,vh) = -int1d(K,-1)(tgv*bcVx*vh);
-varf boundaryVy(unused,vh) = -int1d(K,-1)(tgv*bcVy*vh);
-// Strong Dirichlet conditions for the bubble functions and for Vc are yet to be implementated
+// Variational formulations for strong Dirichlet conditions on the corrector to obtain homogeneous Dirichlet for the basis functions
+// (will be used if strongDir==1; the formulation below then corresponds to penalization)
+varf boundaryVx(unused,vh) = -int1d(K,-1)(tgv*(x-xb[][i])*vh);
+varf boundaryVy(unused,vh) = -int1d(K,-1)(tgv*(y-yb[][i])*vh);
+varf boundaryVc(unused,vh) = -int1d(K,-1)(tgv*vh);
 
 
 // Complete definition and resolution of the linear systems for the fine-scale problems
 VK Vc=0, Vx=0, Vy=0, B=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
 // V[c/x/y] -- the numerical corrector associated to constants/the [x/y]-direction
 // B -- bubble function for the MsFEM space associated to RHS = 1
-// uH[x/y] -- the centered coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
+// uH[x/y] -- the coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
 // uH -- serves as a dummy in the variational form pbRHS to set the RHS for V[c/x/y] and B
 real[int] F(VK.ndof+nedges), X(VK.ndof+nedges); F=0;
+// X is used to store the solutions to the linear systems. These contain the multi-scale basis functions..
+// ..and the Lagrange multipliers associated to the linear constraints
 varf pbRHS(unused,vh)=-int2d(K)(aBasis(uH,vh)); //variational formulation of local problems -- linear form for the RHS of the numerical correctors
 varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
-if (useVc) {
-    uH[]=1;  F(0:VK.ndof-1)=pbRHS(0,VK);  X=CRmat^-1*F;   Vc[]=X; //adapt if strong conditions are to be implemented
+
+// Resolution
+if (useVcOnK[i]) {
+    uH[]=1;  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVc(0,VK);  X=CRmat^-1*F;   Vc[]=X;
+    if (debug) {
+        real testB = int1d(K,-1)(1.);
+        if (testB>hx/2.) {residue(CRmat,F,X,"Corrector 0 was computed with residue ")}
+    }
+    //note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
 }
-uH[]=uHx[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir) F(0:VK.ndof-1)+=boundaryVx(0,VK);  X=CRmat^-1*F;   Vx[]=X;
-//note that Vx[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
-uH[]=uHy[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir) F(0:VK.ndof-1)+=boundaryVy(0,VK);  X=CRmat^-1*F;   Vy[]=X;
+
+uH[]=uHx[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVx(0,VK);  X=CRmat^-1*F;   Vx[]=X;
+if (debug) residue(CRmat,F,X,"Corrector 1 was computed with residue ")
+
+uH[]=uHy[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVy(0,VK);  X=CRmat^-1*F;   Vy[]=X;
+if (debug) residue(CRmat,F,X,"Corrector 2 was computed with residue ")
+
 if (useB) {
-    F(0:VK.ndof-1)=id(0,VK);    X=CRmat^-1*F;   B[]=X; //adapt if strong conditions are to be implemented
+    F(0:VK.ndof-1)=id(0,VK);    X=CRmat^-1*F;   B[]=X; //adapt if different Dirichlet conditions for bubbles are required
+    if (debug) residue(CRmat,F,X,"Bubble was computed with residue ")
 }
 
 if (plotBubbles) {
-    if (useVc) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+    if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
     plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
     plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
     if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
+}
+
+if (timing) {
+    cout << "Solving for the basis functions lasted " << clock()-time << " s" << endl;
+    time=clock();
 }
 
 include "offline_save_basis.idp" //store (externally) numerical correctors, bubble functions on K

@@ -92,7 +92,11 @@
 //            == 0
 //               CR elements are defined with weak boundary conditions on the boundary of the global domain (i.e. in the average sense)
 //            == 1
-//               CR elements are defined with strong boundary conditions on the boundary of the global domain
+//               CR basis functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain 
+//               CR bubble functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain
+//			  == 2
+//               CR correctors are defined with strong, homogeneous boundary conditions on the boundary of the global domain 
+//               CR bubble functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain
 // - (string) glue
 //            == "dof"
 //               Multiscale basis functions for OS are DOF continuous
@@ -128,9 +132,11 @@
 // - (string) rhsDescription -- description of the function fRHS
 // - (int)    useVc [default == 1]
 //            == 1
-//            Compute numerical correctors for constants
+//            Compute (some) numerical correctors for constants
+//            (For the MsFEM-CR with strongDir==1, these are not computed on all mesh elements)
 //            == 0
 //            Do not compute numerical correctors for constants (only for x,y direction)
+// - (real[int]) useVcOnK -- vector to keep track of the use of numerical correctors for constants per mesh element
 // - (int)    fullVF [default == 1]
 //            == 1
 //            Compute all possible coefficients of the effective schemes
@@ -253,15 +259,13 @@ string glue, treatB;
 }
 
 // Compatibility checks for certain parameters
-assert(strongDir==0); //strong Dirichlet conditions for CR are not yet supported 
+if (bcType == "Lin") assert(strongDir==0); // strong local Dirichlet BC are not supported for the MsFEM-lin
+else assert(strongDir==0 || strongDir==1 || strongDir==2);
 if (!useB) assert(treatB=="out_system");
   //without bubbles, there is no need to construct linear equations with bubble functions
 assert(treatB=="out_system" || treatB=="in_system");
 if (osCoef>=osThr) {
 	assert(glue=="dof" || glue=="restrict");
-	// if (name=="CR") {
-	// 	assert(glue=="dof"); //CR basis should always be continuous in the mean over the edges?
-	// }
 }
 
 
@@ -297,20 +301,20 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
 // func nu=alpha*(1+delta*cos(2*pi/eps*x));
-// func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
+func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
 // func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // func nu=(1+cos(2*pi*x)^2)*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
-func nu=1+(cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2)*cos((x^2+y^2)/eps)^2;
+// func nu=1+(cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2)*cos((x^2+y^2)/eps)^2;
 // Advection field
 // func bx=1+0.5*cos(0.1*pi*y/eps);
 // func by=1+0.5*sin(0.1*pi*x/eps);
 // Constant advection field coefficients
-// real bx=cos(2*pi*theta);
-// real by=sin(2*pi*theta);
+real bx=cos(2*pi*theta);
+real by=sin(2*pi*theta);
 // real bx=cos(2*pi*theta)/alpha;
 // real by=sin(2*pi*theta)/alpha;
-real bx=0;
-real by=0;
+// real bx=0;
+// real by=0;
 // Divergence of the advection field
 func sigma=0; 
  
@@ -334,15 +338,22 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "vffile.idp"
+
+real[int] useVcOnK(VH0.ndof); //an array to keep track of the computation of Vc at the bounday of Omega for strong Dirichlet conditions
+useVcOnK=useVc;
+if (name=="CR" && strongDir==1) {
+	useVc=1; //we need at least some non-trivial Vc functions because of non-homogeneous BC..
+	fullVF=1; //..if we want to enforce strong conditions on the boundary of Omega
+}
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
 
 // RHS of the PDE to be solved
-// func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
-// string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
+string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
   //string used to document the tests performed in the error file
-func fRHS=sin(x)*sin(y);
-string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+// func fRHS=sin(x)*sin(y);
+// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
 // func fRHS=2+sin(x)*sin(y);
 // string rhsDescription = "-- Tests for RHS f = 2+sin(x)sin(y) --";
 // VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
@@ -383,7 +394,7 @@ if (osCoef >= osThr) {
 }
 if (bcType=="CR" || osCoef>osThr) {
 	//specify the use of weak or strong BC for CR methods
-	if (strongDir) name = name + "_strDir";
+	if (strongDir) name = name + "_strDir_" + strongDir;
 	else name = name + "_weakDir";
 }
 

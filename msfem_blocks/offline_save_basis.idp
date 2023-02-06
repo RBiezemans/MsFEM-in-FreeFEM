@@ -14,14 +14,14 @@
 // Variables not defined in this script /////////////////////////////////
 // - basisDir -- (string) name of directory where basis functions are stored
 // - i -- (int) global index of the coarse mesh element that is treated
-// - useVc -- (int) indicates whether the correctors for constants are to be used
+// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
 // - useB -- (int) indicates whether bubbles are to be used
 // - V[c/x/y] -- (VK) numerical correctors on K
 // - B -- (VK) bubble function on K
 ////////////////////////////////////////////////////////////////////////
 
 
-if (useVc) {
+if (useVcOnK[i]) {
     string basisname = basisDir + "/tri_" + i + "_Vc" + ".txt";
     ofstream writeVc(basisname);
     writeVc << Vc[];
