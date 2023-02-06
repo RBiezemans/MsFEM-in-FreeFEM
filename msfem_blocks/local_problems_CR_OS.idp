@@ -1,18 +1,3 @@
-/*
-TO DO
-Exclude computation of correctors when not on boundary triangles
-Also exclude the associated computation of effective coefficients?
-Fix/check conditions for bubbles if strong dirichlet is used
-Adapt the no-OS variant of the Crouzeix-Raviart method
-Update descriptions/documentation text regarding strongDir options
-***************************************
-***************************************
-***************************************
-***************************************
-*/
-
-
-
 // local_problems_CR_OS.idp
 //
 // //         //          ////////  ////////  //         //
@@ -22,13 +7,6 @@ Update descriptions/documentation text regarding strongDir options
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
 // Computation of numerical correctors and bubble functions on a single coarse mesh element for MsFEM-CR methods on an oversampling patch
-//
-//
-////////////////////////////////////////////////////////////////////////
-// TO BE DONE: considering the implementation of strong Dirichlet boundary conditions
-//  the current implementation can only be trusted for weak conditions: 
-//  numerical correctors as well as bubble functions are only imposed to have zero mean on the boundary of the global domain
-////////////////////////////////////////////////////////////////////////
 //
 //
 // Scripts loaded ///////////////////////////////////////////////////////
@@ -53,8 +31,9 @@ Update descriptions/documentation text regarding strongDir options
 // - plotBubbles -- (int) indicates whether the user wishes to visualize V[c/x/y] and B
 // - aBasis -- (macro) bilinear form for the local problems
 // - VS -- (fespace)
+// - strongDir -- (int) specifies the type of boundary conditions on the global boundary for the numerical correctors
 // - glue -- (string) specifies the way to glue patch functions
-// - edgeIntagral -- (macro[5]) integration over a specific edge, one can choose to only integrate for specific labels
+// - edgeIntegral -- (macro[5]) integration over a specific edge, one can choose to only integrate for specific labels
 // - ip -- (macro[3]) inner product between two components and a vector
 // - printIntegralsTri -- (macro[2]) writing integrals of a function over all of a triangle to command line
 //  
@@ -111,15 +90,18 @@ if (timing) {
 // This is a sadlle point problem
 varf pdeLoc(uh,vh) = int2d(S)(aBasis(uh,vh)); //variational formulation of local problems -- bilinear form -- LHS of the PDE on S of the saddle point problem
 matrix A = pdeLoc(VS,VS); //linear system of the local problems -- matrix associated to the PDE
-if (strongDir) { //add strong Dirichlet conditions to A if required
+if (strongDir) { //add strong Dirichlet conditions to A if S partially lies on the global boundary (with label 1)
     real testB = int1d(S,-1)(1.);
     if (testB > hx/2.) {
         varf pdeDir(uh,vh) = int1d(S,-1)(uh*vh*tgv);
         matrix Adir = pdeDir(VS,VS);
         A = A+Adir;
+        if (debug) cout << "Strong Dirichlet conditions are implemented on triangle " << i << endl;
     }
-}
-//all weak boundary conditions are handled by the linear constraints
+    else {
+        if (debug) cout << "No strong Dirichlet conditions are implemented on triangle " << i << endl;
+    }
+} //all weak boundary conditions are handled by the linear constraints
 
 int edg; //a dummy in linF1 and linF2 representing integrations over each respective edge
 varf linF1(unused,vh) = edgeIntegral(S,1,normS,edg,vh) + edgeIntegral(S,-1,normS,edg,vh);
@@ -140,11 +122,11 @@ for(int k=0; k<nedges; k++) {
         plot(TH, S, test, cmm="Edge selection on S for integration", fill=1, wait=1);
     }
 }
-varf linF2(unused,vh) = edgeIntegral(K,1,normS,edg,vh) + edgeIntegral(K,-1,normS,edg,vh);
 
 matrix B1 = arrB1;
 matrix B2;
 if (glue=="restrict") B2 = arrB1;
+varf linF2(unused,vh) = edgeIntegral(K,1,normS,edg,vh) + edgeIntegral(K,-1,normS,edg,vh);
 if (glue=="dof") {
     real[int,int] arrB2(VS.ndof,nedges); //constraint matrix (linear form 2, for integrations over the boundary of K)
     for(int k=0; k<nedges; k++) {
@@ -172,27 +154,11 @@ if (timing) {
     time=clock();
 }
 
-// Save midpoints of the edges of K for possible strong Dirichlet conditions
-// real[int,int] midpoints(3,2);
-// midpoints=-1;
-// for(int k=0; k<3; k++) {
-//     // real meas=edgeIntegral(K,-1,normS,k,1);
-//     // if (meas>hx/10.) {
-//         midpoints(k,0) = xb[][i];//edgeIntegral(K,-1,normS,k,x)/meas;
-//         midpoints(k,1) = yb[][i];//edgeIntegral(K,-1,normS,k,y)/meas;
-//     // }
-// }
-// if (debug) {
-//     cout << "Midpoints of the relevant edges: " << midpoints << endl;
-// }
-// Define functions to set the correct boundary conditions for the numerical correctors 
-// (if strong Dirichlet conditions are chosen)
-// The following two functions are supported on the edges of S and ensure that..
-// ..(CR P1 basis function + numerical corrector) is zero on the boundary of the global domain
+// Variational formulations for strong Dirichlet conditions on the corrector to obtain homogeneous Dirichlet for the basis functions
+// (will be used if strongDir==1; the formulation below then corresponds to penalization)
 varf boundaryVx(unused,vh) = -int1d(S,-1)(tgv*(x-xb[][i])*vh);
 varf boundaryVy(unused,vh) = -int1d(S,-1)(tgv*(y-yb[][i])*vh);
 varf boundaryVc(unused,vh) = -int1d(S,-1)(tgv*vh);
-// Strong Dirichlet conditions for the bubble functions and for Vc are yet to be implementated
 
 
 // Complete definition and resolution of the linear systems for the fine-scale problems
@@ -227,7 +193,7 @@ if (debug) residue(CRmat,F,X,"Corrector 2 was computed with residue ")
 if (debug) printIntegralsTri(K,VyS)
 
 if (useB) {
-    F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X; //adapt if strong conditions are to be implemented
+    F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X; //adapt if different Dirichlet conditions for bubbles are required
     if (debug) residue(CRmat,F,X,"Bubble was computed with residue ")
     if (debug) printIntegralsTri(K,BS)
 }

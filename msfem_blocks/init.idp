@@ -93,8 +93,10 @@
 //               CR elements are defined with weak boundary conditions on the boundary of the global domain (i.e. in the average sense)
 //            == 1
 //               CR basis functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain 
+//               CR bubble functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain
 //			  == 2
 //               CR correctors are defined with strong, homogeneous boundary conditions on the boundary of the global domain 
+//               CR bubble functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain
 // - (string) glue
 //            == "dof"
 //               Multiscale basis functions for OS are DOF continuous
@@ -334,9 +336,10 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "vffile.idp"
-if (name=="CR" && osCoef > osThr && strongDir==1) {
+//if (name=="CR" && osCoef > osThr && strongDir==1) {
+if (name=="CR" && strongDir==1) {
 	useVc=1; //we need non-trivial Vc functions because of non-homogeneous BC..
-	fullVF=1; //..if we want to enforce strong conditions on the boundaty of Omega
+	fullVF=1; //..if we want to enforce strong conditions on the boundary of Omega
 }
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
