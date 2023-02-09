@@ -1,6 +1,7 @@
 #! /bin/bash
 
 # To be executed from the directory where main_LIN_MPI.edp and main_CR_MPI.edp are located
+# For some if-statement doc, see https://acloudguru.com/blog/engineering/conditions-in-bash-scripting-if-statements
 
 # Consecutive executions of FreeFem++ code to perform experiments with different parameter values
 # The parameter values are changed continuously based on the values given below
@@ -13,6 +14,11 @@ NUMBER_OF_PROC=2
 LOAD_OPTION=0 #0 : first offline stage is computed for each set of parameters -- 1 : offline stage is loaded from the very first test
 COMPUTE_REF=0 #0 : reference solution is computed -- 1 : reference solution is not computed
 
+# FEM variants to be tested: 0 if yes, 1 if no
+TEST_MSFEM_LIN=0
+TEST_MSFEM_CR=0
+TEST_P1_LIN=0
+
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_L="1."
@@ -23,8 +29,8 @@ TOTEST_EPS="0.1" # 2^-7
 TOTEST_2LOGALP="-2 -8" # -8" # 2^-2 ... 2^-8
 TOTEST_THETA="0.15"
 TOTEST_CONT="7"
-TOTEST_VFFILE="advection_diffusion_direct.idp"
-TOTEST_OSCOEF="0 3"
+TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_p1_supg.idp "
+TOTEST_OSCOEF="0"
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
 TOTEST_STR_DIR="0 1 2"
 TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
@@ -83,14 +89,21 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
             fi
 
             # MsFEM-LIN
-            if [ $TEST_STR_DIR == 0 ]
+            if [ $TEST_MSFEM_LIN -a $TEST_STR_DIR == 0 ] && [[ $TEST_VFFILE != *p1* ]]
             then 
-                /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_LIN_MPI.edp -o $OFFLINE_MODE
+                /usr/bin/mpirun -np $NUMBER_OF_PROC FreeFem++-mpi -v 0 main_LIN_MPI.edp -o $OFFLINE_MODE
             fi
+
             # MsFEM-CR
-            if [ ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ]
+            if [ $TEST_MSFEM_CR -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ] && [[ $TEST_VFFILE != *p1* ]]
             then
-                    /usr/bin/mpirun -np $NUMBER_OF_PROC /usr/local/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o $OFFLINE_MODE
+                /usr/bin/mpirun -np $NUMBER_OF_PROC FreeFem++-mpi -v 0 main_CR_MPI.edp -o $OFFLINE_MODE
+            fi 
+            
+            # P1 FEM Lagrange
+            if [ $TEST_P1_LIN -a $TEST_STR_DIR == 0 -a $TEST_USE_B == 0 -a $TEST_MS == 0 -a $TEST_OSCOEF == 0 ] && [[ $TEST_VFFILE == *p1* ]]
+            then
+                /usr/bin/mpirun -np $NUMBER_OF_PROC FreeFem++-mpi -v 0 main_P1_LIN_MPI.edp -o "compute"
             fi
             
             COMPUTE_BASIS=1

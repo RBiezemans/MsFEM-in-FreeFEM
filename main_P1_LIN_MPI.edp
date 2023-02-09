@@ -44,6 +44,7 @@ assert(strongDir==0);
 assert(useB==0);
 assert(testMS==0);
 assert(offlineMode=="compute");
+assert(osCoef < osThr);
 
 mpiBarrier(comm);
 
