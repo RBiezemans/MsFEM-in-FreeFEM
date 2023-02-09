@@ -1,0 +1,120 @@
+// main_P1_LIN_MPI.edp
+//
+// run with   mpirun -np [number_of_processes] FreeFem++-mpi main_P1_LIN_MPI.edp -o [offline_mode]
+//              (or a variant depending on local installation of mpi, FreeFem)
+//            -o must be "compute" (default) or unspecified
+//
+// Computation of a numerical approximation to the PDE defined in init.idp
+// by the P1 method based on the "vffile.idp" on a coarse mesh,
+// while the stiffness matrix is computed from integrations on a fine mesh
+// The right-hand side is always computed on the coarse mesh
+//
+// Parameters are read from parameters.txt
+// Local and global variational forms are read from vffile.idp
+//
+// 
+////// Parallelized version ////////////////////////////////////////////
+//
+//
+// Global variables declared in this script ////////////////////////////
+// - (string)  bcType -- a string to set the correct boundary conditions in the macroscopic problem (Lin/CR) 
+// - (string)  name -- abbreviation for  MsFEM underlying affine space
+// - (string)  nameMPI -- must be empty for sequential script; "_MPI" for parallel script
+// - (int)     iproc -- index of the current process (always 0 for sequential script)
+// - (int)     nbproc -- number of processes (always 1 for sequential script)
+// - (int)     countOffline -- counter for the number of triangles associated to the current process
+// - (fespace) VH -- the relevant P1 space for the macroscopic problem
+///////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////
+// INITIALIZATION                                                    //
+// (msfem_blocks/init.idp)                                           //
+///////////////////////////////////////////////////////////////////////
+string bcType = "Lin"; //type of boundary condtitions, relevant for the macroscopic problem
+string name = bcType; //abbreviation used for the MsFEM output
+string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
+// MPI
+mpiComm comm(mpiCommWorld,0,0);
+int nbproc = mpiSize(comm); //number of processes in parallel
+int iproc = mpiRank(comm); //current process
+
+include "msfem_blocks/init.idp"
+assert(strongDir==0);
+assert(useB==0);
+assert(testMS==0);
+assert(offlineMode=="compute");
+
+mpiBarrier(comm);
+
+
+///////////////////////////////////////////////////////////////////////
+// OFFLINE STAGE                                                     //
+// (msfem_blocks/offline_effective_tensors_MPI.idp)                  //
+// (msfem_blocks/offline_effective_tensors_MPI_reduce.idp)           //
+// (msfem_blocks/offline_save_effective_tensors.idp)                 //
+///////////////////////////////////////////////////////////////////////
+// -- Computation of the effective coefficients on a fine mesh
+// -- The discrete RHS is also computed via the inclusion of msfem_blocks/offline_effective_RHS.idp in the files for the offline stage
+int countOffline=0; //to count the number of triangles associated to the current process
+for(int i=0; i<VH0.ndof; i++) {
+if (iproc == i%nbproc) {
+    if (i%(2*n)==0) {
+        cout <<"construction ms coefficients on tri "<<i<<endl;
+        // if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
+    }
+    phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
+
+    // All numerical correctors vanish for a standard P1 method
+    // and are defined here only for compatibility with other offline routines
+    mesh K=trunc(Th,phi>1,split=1,label=1); //fine mesh of the coarse mesh element K indicated by phi
+    fespace VK(K,P1); //P1 finite element space on the triangle K
+    VK Vc=0, Vx=0, Vy=0, B=0, uHx=x-xb[][i], uHy=y-yb[][i];
+    // Compute effective coefficient on K
+    include "msfem_blocks/offline_effective_tensors_MPI.idp"
+    
+    if (debug) if (i%(2*n)==0) cout << endl;
+    phi[][i]=0;
+    countOffline++;
+}
+}
+// send all information for the global problem to the main process
+include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
+if (iproc==0) { //the main process saves the effective coefficients (for the entire coarse mesh)
+    include "msfem_blocks/offline_save_effective_tensors.idp" 
+}
+mpiBarrier(comm);
+if (iproc==0) printTime("Offline phase (computing + storing) lasted ")
+
+
+///////////////////////////////////////////////////////////////////////
+// ONLINE STAGE                                                      //
+// (msfem_blocks/online.idp)                                         //
+///////////////////////////////////////////////////////////////////////
+// -- Solving the effective problem  
+fespace VH(TH,P1); //coarse global FE conforming P1 space
+include "msfem_blocks/online.idp"
+// the P1 solution is stored in (VH) uH, the bubble coefficients in (VH0) uB
+
+mpiBarrier(comm); //only the main process computes the solution
+if (iproc==0) { 
+    for (int i=1; i<nbproc; i++) { //send the coarse scale solution to the other processes
+        Send(processor(i,comm), uH[]);
+        //Send(processor(i,comm), uB[]); //never used for P1
+    }
+}
+//mpiBarrier(comm); //THIS BARRIER MUST NOT BE USED
+if (iproc>0) {
+    Recv(processor(0,comm), uH[]); //the other processes receive the coarse scale solution
+    // Recv(processor(0,comm), uB[]); //never used for P1
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// POST-PROCESSING                                                   //
+// (msfem_blocks/post_MPI.idp)                                       //
+// (msfem_blocks/write_results_MPI.idp)                              //
+///////////////////////////////////////////////////////////////////////
+// -- Reconstruction, error computation, documentation
+include "msfem_blocks/post_MPI.idp"
+include "msfem_blocks/write_results_MPI.idp"
