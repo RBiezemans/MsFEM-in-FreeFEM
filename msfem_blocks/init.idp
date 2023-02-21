@@ -41,6 +41,12 @@
 // - (real) time -- CPU time clocked at the beginning of the script
 // - (ofstream) ffLog -- writes execution log to "log_msfem.txt"
 // - (real) osThr -- threshold value above which sampling patches are used
+// - (ofstream) ffRes -- writes residue information for local and global problems to dedicated file
+// - (real) maxResOffline -- storage of the maximum residue in the offline stage on the main process
+// - (real) imaxResOffline -- storage of the maximum residue in the offline stage on the current process
+// - (real) LINOSRes -- storage of the maximum residue for the DOF option for LinOS on the main process
+// - (real) iLINOSRes -- storage of the maximum residue for the DOF option for LinOS on the current process
+// - (real) ResOnline -- residue of the online stage in the online stage
 //
 // Debugging ///////////////////////////////////////////////////////////
 // - (int) debug, plotBubbles, plots, timing
@@ -375,6 +381,9 @@ if (plots) { //plot of diffusion coefficient
 ///////////////////////////////////////////////////////////////////////
 
 string output = "results_" + vfname + "/"; //directory name to store all test results
+string residueFile = output + "log_residues_" + vfname + ".txt";
+if (name=="REF") residueFile = "./log_residues_REF.txt";
+
 // Parameter strings for reference (fine mesh) and MsFEM solution names
 string parametersFine = "_alpha_" + alpha + "_cont_" + cont + "_eps_" + eps; 
 string parameters = parametersFine;
@@ -424,6 +433,15 @@ if (useB) {
 }
 else name = name + "_nB";
 
+
+// Define residue output stream and data structures
+ofstream ffRes(residueFile, append);
+real maxResOffline=0; //storage of the maximum residue in the offline stage on the main process
+real imaxResOffline=0; //storage of the maximum residue in the offline stage on the current process
+real LINOSRes=0; //storage of the maximum residue for the DOF option for LinOS on the main process
+real iLINOSRes=0; //storage of the maximum residue for the DOF option for LinOS on the current process
+real ResOnline=0; //residue of the online stage in the online stage -- restricted to main process only
+
 // Write starting message for the method
 if (iproc==0) {
 	cout << "////////////////////////////////////////////////////////////////" << endl;
@@ -431,11 +449,13 @@ if (iproc==0) {
 	if (ARGV[1] == "main_REF.edp") {
 		cout << "// Computing reference solution with parameters " + parametersFine << endl;
 		ffLog << "// Computing reference solution with parameters " + parametersFine << endl;
+		ffRes << "// Computing reference solution with parameters " + parametersFine << endl;
 	} else {
 		cout << "// Performing " + name + " with parameters " + parameters << endl;
 		cout << "// Variational forms used: " + vfname << endl;
 		ffLog << "// Performing " + name + " with parameters " + parameters << endl;
 		ffLog << "// Variational forms used: " + vfname << endl;
+		ffRes << "// Performing " + name + " with parameters " + parameters << endl;
 	}
 }
 

@@ -68,6 +68,7 @@ for(int i=0; i<VH0.ndof; i++) {
     if (debug) if (i%(2*n)==0) cout << endl;
     phi[][i]=0;
 }
+include "msfem_blocks/offline_effective_tensors_reduce.idp" //compatibility with parallel version
 include "msfem_blocks/offline_save_effective_tensors.idp" //save effective coefficients (for the entire coarse mesh)
 
 printTime("Offline phase (computing + storing) lasted ")

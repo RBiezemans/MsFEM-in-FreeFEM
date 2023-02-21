@@ -20,7 +20,9 @@
 // - debug -- (int) provide helpful debugging output
 // - timing -- (int) do performance measurement
 // - time -- (real) CPU time since last clocked
-// - residue -- (macro[4]) compute and write residues for the resolution of linear systems
+// - residue -- (macro[4]) compute and store the residue of the solution of a linear system
+// - writeResidue -- (macro[2]) compute and write residues for the resolution of linear systems
+// - imaxResOffline -- (real) storage of the maximum residue in the offline stage on the current process
 // - TH -- (square) the coarse mesh of the global domain
 // - S -- (mesh) the fine mesh of the patch
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
@@ -175,27 +177,38 @@ varf pbRHS(unused,vh)=-int2d(S)(aBasis(uH,vh));  //variational formulation of lo
 varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
 
 // Resolution:
+real locRes=0; //residue in the computation of the numerical correctors
 if(useVcOnK[i]) {
     uH[]=1;  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVc(0,VS);  X=CRmat^-1*F;   VcS[]=X;
+    residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
     if (debug) {
         real testB = int1d(S,-1)(1.);
-        if (testB>hx/2.) {residue(CRmat,F,X,"Corrector 0 was computed with residue ")}
+        if (testB>hx/2.) {
+                writeResidue(locRes,"Corrector 0 was computed with residue ")
+            }
     }
     if (debug) printIntegralsTri(K,VcS)
     //note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
 }
 
 uH[]=uHxS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VxS[]=X;
-if (debug) residue(CRmat,F,X,"Corrector 1 was computed with residue ")
+residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
+if (debug) writeResidue(locRes,"Corrector 1 was computed with residue ")
 if (debug) printIntegralsTri(K,VxS)
 
 uH[]=uHyS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
-if (debug) residue(CRmat,F,X,"Corrector 2 was computed with residue ")
+residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
+if (debug) writeResidue(locRes,"Corrector 2 was computed with residue ")
 if (debug) printIntegralsTri(K,VyS)
 
 if (useB) {
     F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X; //adapt if different Dirichlet conditions for bubbles are required
-    if (debug) residue(CRmat,F,X,"Bubble was computed with residue ")
+    residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (debug) writeResidue(locRes,"Bubble was computed with residue ")
     if (debug) printIntegralsTri(K,BS)
 }
 

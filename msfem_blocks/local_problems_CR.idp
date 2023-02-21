@@ -17,6 +17,9 @@
 // Variables not defined in this script /////////////////////////////////
 // This file USES:
 // - debug -- (int) provide helpful debugging output
+// - residue -- (macro[4]) compute and store the residue of the solution of a linear system
+// - writeResidue -- (macro[2]) compute and write residues for the resolution of linear systems
+// - imaxResOffline -- (real) storage of the maximum residue in the offline stage on the current process
 // - Th -- (square) the fine mesh of the global domain
 // - TH -- (square) the coarse mesh of the global domain
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
@@ -137,24 +140,33 @@ varf pbRHS(unused,vh)=-int2d(K)(aBasis(uH,vh)); //variational formulation of loc
 varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -- linear form of the RHS for the bubble functions
 
 // Resolution
+real locRes=0; //residue in the computation of the numerical correctors
 if (useVcOnK[i]) {
     uH[]=1;  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVc(0,VK);  X=CRmat^-1*F;   Vc[]=X;
+    residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
     if (debug) {
         real testB = int1d(K,-1)(1.);
-        if (testB>hx/2.) {residue(CRmat,F,X,"Corrector 0 was computed with residue ")}
+        if (testB>hx/2.) {writeResidue(locRes,"Corrector 0 was computed with residue ")}
     }
     //note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored
 }
 
 uH[]=uHx[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVx(0,VK);  X=CRmat^-1*F;   Vx[]=X;
-if (debug) residue(CRmat,F,X,"Corrector 1 was computed with residue ")
+residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
+if (debug) writeResidue(locRes,"Corrector 1 was computed with residue ")
 
 uH[]=uHy[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVy(0,VK);  X=CRmat^-1*F;   Vy[]=X;
-if (debug) residue(CRmat,F,X,"Corrector 2 was computed with residue ")
+residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
+if (debug) writeResidue(locRes,"Corrector 2 was computed with residue ")
 
 if (useB) {
     F(0:VK.ndof-1)=id(0,VK);    X=CRmat^-1*F;   B[]=X; //adapt if different Dirichlet conditions for bubbles are required
-    if (debug) residue(CRmat,F,X,"Bubble was computed with residue ")
+    residue(CRmat,F,X,locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (debug) writeResidue(locRes,"Bubble was computed with residue ")
 }
 
 if (plotBubbles) {

@@ -18,6 +18,10 @@
 //
 // Variables not defined in this script /////////////////////////////////
 // - debug -- (int) provide helpful debugging output
+// - residue -- (macro[4]) compute and store the residue of the solution of a linear system
+// - writeResidue -- (macro[2]) compute and write residues for the resolution of linear systems
+// - imaxResOffline -- (real) storage of the maximum residue in the offline stage on the current process
+// - iLINOSRes -- (real) storage of the maximum residue for the DOF option for LinOS on the current process
 // - TH -- (square) the coarse mesh of the global domain
 // - S -- (mesh) the fine mesh of the patch
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
@@ -62,13 +66,23 @@ varf id(unused,vh) = int2d(S)(vh);  //variational formulation of local problems 
 // Definition and resolution of the linear systems for the fine-scale problems
 matrix A=pb(VS,VS, solver=UMFPACK);
 real[int] F(VS.ndof);
+
+real locRes=0; //residue in the computation of the numerical correctors
 if (useVcOnK[i]) {
     uH[]=1;  F=pb(0,VS);  VcS[]=A^-1*F;
+    residue(A,F,VcS[],locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
 }
 uH[]=uHxS[];  F=pb(0,VS);  VxS[]=A^-1*F;
+residue(A,F,VxS[],locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
 uH[]=uHyS[];  F=pb(0,VS);  VyS[]=A^-1*F;
+residue(A,F,VyS[],locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
 if (useB) {
     F=id(0,VS);     BS[]=A^-1*F;
+    residue(A,F,BS[],locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
 }
 
 // Restriction of the functions on the patch to the mesh element K
@@ -108,21 +122,29 @@ if (glue=="dof") {
     // Vc
     if (useVcOnK[i]) {
         c=gmat^-1 * Vcval;
-        if (debug) residue(gmat, Vxval, c, "Residue for imposing continuity at the nodes (Vc): ")    
+        residue(gmat,Vcval,c,locRes); //store residue of local linear combinations
+        iLINOSRes=max(locRes,iLINOSRes);
+        if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (Vc): ")    
         Vc[]+=c[0]*Wx[];    Vc[]+=c[1]*Wy[];    Vc[]+=c[2]*Wc[];
     }
     // Vx
     c=gmat^-1 * Vxval;
-    if (debug) residue(gmat, Vxval, c, "Residue for imposing continuity at the nodes (Vx): ")
+    residue(gmat,Vxval,c,locRes); //store residue of local linear combinations
+    iLINOSRes=max(locRes,iLINOSRes);
+    if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (Vx): ")
     Vx[]+=c[0]*Wx[];    Vx[]+=c[1]*Wy[];    Vx[]+=c[2]*Wc[];
     //Vy
     c=gmat^-1 * Vyval;
-    if (debug) residue(gmat, Vyval, c, "Residue for imposing continuity at the nodes (Vy): ")
+    residue(gmat,Vyval,c,locRes); //store residue of local linear combinations
+    iLINOSRes=max(locRes,iLINOSRes);
+    if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (Vy): ")
     Vy[]+=c[0]*Wx[];    Vy[]+=c[1]*Wy[];    Vy[]+=c[2]*Wc[];
     //B
     if (useB) {
         c=gmat^-1 * Bval;
-        if (debug) residue(gmat, Bval, c, "Residue for imposing continuity at the nodes (B): ")
+        residue(gmat,Bval,c,locRes); //store residue of local linear combinations
+        iLINOSRes=max(locRes,iLINOSRes);
+        if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (B): ")
         B[]+=c[0]*Wx[];    B[]+=c[1]*Wy[];    B[]+=c[2]*Wc[];
     }
 } else {

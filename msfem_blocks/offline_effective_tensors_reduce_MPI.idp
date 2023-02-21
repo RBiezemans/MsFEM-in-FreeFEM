@@ -1,4 +1,4 @@
-// offline_save_effective_tensors_MPI_reduce.idp
+// offline_effective_tensors_reduce_MPI.idp
 // 
 // //         //          ////////  ////////  //         //
 // ////      ///  //////  //        //        ////      ///
@@ -6,13 +6,24 @@
 // //  //  // //  //////  //        //        //  //  // //
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
+// Process the maximum residues of all offline computations
 // Send contributions to the effective coefficients computed by the current process to the main process
 //
 //
-// Compatible with seqential and parallelized versions
+// Compatible only with parallel version
+//
+//
+// Scripts loaded ///////////////////////////////////////////////////////
+// - msfem_blocks/offline_effective_RHS_reduce_MPI.idp
+//   -- send effective quantities related to the RHS to the main process
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - [/i]maxResOffline -- (real) storage of the maximum residue in the offline stage on the [main/current] process
+// - [/i]LINOSRes -- (real) storage of the maximum residue for the DOF option for LinOS on the [main/current] process
+// - bcType -- (string) indicates the type of global P1 space
+// - osThr -- (real) threshold value above which sampling patches are used
+// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
 // - useVc -- (int) indicates whether the correctors for constants are to be used
 // - useB -- (int) indicates whether bubbles are to be used
 // - testMS -- (int) indicates whether test functions are multiscale or P1
@@ -23,6 +34,11 @@
 ////////////////////////////////////////////////////////////////////////
 
 
+// Retrieve the maximum residue of local computations over all processes
+mpiReduce(imaxResOffline, maxResOffline, processor(0,comm), mpiMAX);
+if (bcType == "Lin" && osCoef > osThr) mpiReduce(iLINOSRes, LINOSRes, processor(0,comm), mpiMAX);
+
+// Effective tensors
 mpiReduce(iAHxx[], AHxx[], processor(0,comm), mpiSUM);
 mpiReduce(iAHyx[], AHyx[], processor(0,comm), mpiSUM);
 mpiReduce(iAHxy[], AHxy[], processor(0,comm), mpiSUM);
@@ -67,4 +83,5 @@ if (testMS) {
     }
 }
 
-include "msfem_blocks/offline_effective_RHS_MPI_reduce.idp"
+// Effective right-hand side terms
+include "msfem_blocks/offline_effective_RHS_reduce_MPI.idp"

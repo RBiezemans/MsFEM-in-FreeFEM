@@ -38,7 +38,7 @@ int nbproc=1;
 string basisDir="basis";
 real time=0;
 
-// macro residue(mat,rhs,sol,message) {
+// macro writeResidue(mat,rhs,sol,message) {
 //     real[int] res=mat*sol;
 //     res=res-rhs;
 //     real resNorm=sqrt(res'*res);

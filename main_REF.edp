@@ -29,3 +29,15 @@ if (plots) plot(uh,value=1,wait=1,cmm="P1 solution on a global fine mesh");
 
 printTime("Computation of the reference solution lasted ")
 ffLog << endl; //end of reference computations
+cout << endl;
+
+varf pbSolved(unused,vh)=int2d(Th)(aref(uh,vh)) + int1d(Th)(tgv*uh*vh)
+            - int2d(Th)(fRHS*vh);
+real[int] res(Vh.ndof), rhs(Vh.ndof);
+res=pbSolved(0,Vh); //compute residue
+uh=0; //remove solution from system to compute the right-hand side only
+rhs=pbSolved(0,Vh);
+real resNorm=sqrt(res'*res);
+real rhsNorm=sqrt(rhs'*rhs);
+resNorm=resNorm/rhsNorm;
+ffRes << "The reference solution is computed with residue " << resNorm << endl << endl;

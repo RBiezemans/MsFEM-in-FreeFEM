@@ -16,6 +16,8 @@
 //
 // Variables not defined in this script /////////////////////////////////
 // - debug -- (int) provide helpful debugging output
+// - residue -- (macro[4]) compute and store the residue of the solution of a linear system
+// - imaxResOffline -- (real) storage of the maximum residue in the offline stage on the current process
 // - TH -- (square) the coarse mesh of the global domain
 // - Th -- (square) the fine mesh of the global domain
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
@@ -51,13 +53,22 @@ varf id(unused,vh) = int2d(K)(vh); //variational formulation of local problems -
 matrix A=pb(VK,VK, solver=UMFPACK);
 real[int] F(VK.ndof);
 
+real locRes=0; //residue in the computation of the numerical correctors
 if (useVcOnK[i]) {
     uH[]=1;  F=pb(0,VK);  Vc[]=A^-1*F;
+    residue(A,F,Vc[],locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
 }
 uH[]=uHx[];  F=pb(0,VK);  Vx[]=A^-1*F;
+residue(A,F,Vx[],locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
 uH[]=uHy[];  F=pb(0,VK);  Vy[]=A^-1*F;
+residue(A,F,Vy[],locRes); //store residue of the local problem to locRes
+imaxResOffline=max(locRes,imaxResOffline);
 if (useB) {
     F=id(0,VK);     B[]=A^-1*F;
+    residue(A,F,B[],locRes); //store residue of the local problem to locRes
+    imaxResOffline=max(locRes,imaxResOffline);
 }
 
 if (plotBubbles) {

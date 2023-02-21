@@ -6,13 +6,20 @@
 // //  //  // //  //////  //        //        //  //  // //
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
-// Save all computed effective tensors (on the global process) to dedicated folders
+// Save all computed effective tensors and residual information (on the global process) to dedicated folders
 //
 //
-// Compatible with seqential and parallelized versions
+// Compatible with seqential and parallelized versions 
+// (but only to be executed on a single process)
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - ffRes -- (ofstream) writes residue information for local and global problems to dedicated file
+// - maxResOffline -- (real) storage of the maximum residue in the offline stage
+// - LINOSRes -- (real) storage of the maximum residue for the DOF option for LinOS
+// - bcType -- (string) indicates the type of global P1 space
+// - osThr -- (real) threshold value above which sampling patches are used
+// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
 // - basisDir -- (string) name of directory where basis functions are stored
 // - coeffDir -- (string) name of directory where effective coefficients are stored
 // - useVcOnK -- (real[int]) indicates on which mesh element correctors for constants are to be used
@@ -27,6 +34,11 @@
 
 // Macro that provides the writing procedure of the vector vec to a file with name coeffDir+filename
 macro writeVec2File(filename,vec) {string matrixFile = coeffDir + filename; ofstream ffmat (matrixFile); ffmat << vec;} // EOM
+
+// Save residue information
+ffRes << "The maximum residue for the numerical correctors is " << maxResOffline << endl;
+if (bcType == "Lin" && osCoef > osThr) ffRes << "The maximum residue for the LIN-OS 'DOF' option is " << LINOSRes << endl;
+ffRes << endl;
 
 { //save Vc pattern for future loading of basis functions
     string vecFile = basisDir + "/Vc_pattern.txt";

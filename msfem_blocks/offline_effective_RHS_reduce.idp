@@ -1,4 +1,4 @@
-// offline_save_effective_tensors_MPI_reduce.idp
+// offline_effective_RHS_reduce.idp
 // 
 // //         //          ////////  ////////  //         //
 // ////      ///  //////  //        //        ////      ///
@@ -6,7 +6,10 @@
 // //  //  // //  //////  //        //        //  //  // //
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
-// Send contributions to the effective coefficients computed by the current process to the main process
+// Pass contributions to the effective coefficients to the variables used in the online phase
+//
+//
+// To be used only with the sequential version
 //
 //
 // Variables not defined in this script /////////////////////////////////
@@ -19,17 +22,17 @@
 
 
 if (useB) { 
-    if (treatB=="out_system") mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
-    else mpiReduce(ifB[], fB[], processor(0,comm), mpiSUM);
+    if (treatB=="out_system") fH[]=ifH[];
+    else fB[]=ifB[];
 }
 
 if(testMS==1) {
-    mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
-    mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
-    if (useVc) mpiReduce(ifHTestMS[], fHTestMS[], processor(0,comm), mpiSUM);
+    fHxTestMS[]=ifHxTestMS[];
+    fHyTestMS[]=ifHyTestMS[];
+    if (useVc) fHTestMS[]=ifHTestMS[];
     if (stabilization==1) {
-        mpiReduce(ifHxTestMSsupg[], fHxTestMSsupg[], processor(0,comm), mpiSUM);
-        mpiReduce(ifHyTestMSsupg[], fHyTestMSsupg[], processor(0,comm), mpiSUM);
-        if (useVc) mpiReduce(ifHTestMSsupg[], fHTestMSsupg[], processor(0,comm), mpiSUM);
+        fHxTestMSsupg[]=ifHxTestMSsupg[];
+        fHyTestMSsupg[]=ifHyTestMSsupg[];
+        if (useVc) fHTestMSsupg[]=ifHTestMSsupg[];
     }
 }

@@ -51,9 +51,9 @@ mpiBarrier(comm);
 ///////////////////////////////////////////////////////////////////////
 // OFFLINE STAGE                                                     //
 // (msfem_blocks/local_problems_LIN[_OS].idp                         //
-//  or msfem_blocks/offline_load_MPI.idp)                            //
+//  or msfem_blocks/offline_load.idp)                                //
 // (msfem_blocks/offline_effective_tensors_MPI.idp)                  //
-// (msfem_blocks/offline_effective_tensors_MPI_reduce.idp)           //
+// (msfem_blocks/offline_effective_tensors_reduce_MPI.idp)           //
 // (msfem_blocks/offline_save_effective_tensors.idp)                 //
 ///////////////////////////////////////////////////////////////////////
 // -- Computation of numerical correctors V[c/x/y] and bubble function B per coarse mesh element
@@ -77,7 +77,7 @@ if (offlineMode == "compute")
             storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
             if (useB) storeB(countOffline,:)=B[];
             // Compute effective coefficient on K
-            include "msfem_blocks/offline_effective_tensors_MPI.idp"
+            include "msfem_blocks/offline_effective_tensors.idp"
         } else { //OS case
             include "msfem_blocks/local_problems_LIN_OS.idp"
             // Save (internally) the offline computations on K
@@ -85,7 +85,7 @@ if (offlineMode == "compute")
             storeVx(countOffline,:)=Vx[]; storeVy(countOffline,:)=Vy[]; 
             if (useB) storeB(countOffline,:)=B[];
             // Compute effective coefficient on K
-            include "msfem_blocks/offline_effective_tensors_MPI.idp"
+            include "msfem_blocks/offline_effective_tensors.idp"
         }
 
         if (debug) if (i%(2*n)==0) cout << endl;
@@ -94,7 +94,7 @@ if (offlineMode == "compute")
     }
     }
     // send all information for the global problem to the main process
-    include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
+    include "msfem_blocks/offline_effective_tensors_reduce_MPI.idp"
     if (iproc==0) { //the main process saves the effective coefficient (for the entire coarse mesh)
         //also save the Vc pattern over all coarse mesh elements
         include "msfem_blocks/offline_save_effective_tensors.idp" 
@@ -104,7 +104,8 @@ if (offlineMode == "compute")
 } 
 else if (offlineMode == "load") 
 {
-    include "msfem_blocks/offline_load_MPI.idp"
+    include "msfem_blocks/offline_load.idp"
+    mpiBarrier(comm);
 }
 
 

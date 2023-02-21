@@ -14,7 +14,8 @@
 //
 //
 // Global variables declared in this script ////////////////////////////
-// - (macro) residue[4] -- compute and write residues for the resolution of linear systems
+// - (macro) residue[4] -- compute residue of the solution of a linear system and store in a predeclared variable
+// - (macro) writeResidue[2] -- write a precomputed residue + message to the terminal and MsFEM log
 // - (macro) printTime[1] -- print a message follows by the time since last clocking time (and clocks automatically)
 // - (func)  consNormals[1] -- construct outward unit normals on the three edges of the argument passed
 // - (macro) edgeIntegral[5] -- integration over a specific edge, one can choose to only integrate for specific labels
@@ -28,14 +29,18 @@
 
 
 // Macro for residue computation of the resolution of linear systems
-macro residue(mat,rhs,sol,message) {
+macro residue(mat,rhs,sol,residue) {
     real[int] res=mat*sol;
     res=res-rhs;
     real resNorm=sqrt(res'*res);
     real rhsNorm=sqrt(rhs'*rhs);
-    resNorm=resNorm/rhsNorm;
-    cout << message << resNorm << endl;
-	ffLog << message << resNorm << endl;
+    residue=resNorm/rhsNorm;
+} // EOM
+
+// Macro for residue computation of the resolution of linear systems
+macro writeResidue(residue,message) {
+    cout << message << residue << endl;
+	ffLog << message << residue << endl;
 } // EOM
 
 // Print a message follows by the time since last clocking time (and clocks automatically)

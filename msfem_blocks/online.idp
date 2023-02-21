@@ -17,7 +17,8 @@
 // - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
 // - plots -- (int) indicates whether the P1 solution should be plotted
 // - debug -- (int) provide helpful debugging output
-// - residue -- (macro[4]) compute and write residues for the resolution of linear systems
+// - residue -- (macro[4]) compute and store the residue of the solution of a linear system
+// - writeResidue -- (macro[2]) compute and write residues for the resolution of linear systems
 // - bcType -- (string) indicates the type of global P1 space
 // - TH -- (square) the coarse mesh of the global domain
 // - VH -- (fespace) the relevant P1 space for the macroscopic problem
@@ -80,6 +81,8 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
     // output message for online phase
     string writeGlobalRes="The global linear system was solved with residue = ";
 
+    real onlineRes; //residue for the online stage
+
     if (treatB == "out_system") {
         if (useB) {
             // Include bubbles in the equation for the nodal DOF for consistency
@@ -89,7 +92,8 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
         }
         if (debug) cout << "Solving macroscopic linear system" << endl;
         uH[]=A^-1*FH;  
-        residue(A,FH,uH[],writeGlobalRes)
+        residue(A,FH,uH[],onlineRes)
+        writeResidue(onlineRes,writeGlobalRes)
         if (debug) cout << "-- End of online phase" << endl;
     } else {
         // Add unknowns and test equations for bubble functions to the linear system..
@@ -124,7 +128,8 @@ if (iproc==0) { //in case of parallel computing, only the main process solves th
             if (debug) cout << "Solving macroscopic linear system" << endl;
             uHB=C^-1*FHB;
             if (debug) cout << "Inversion completed" << endl;
-            residue(C,FHB,uHB,writeGlobalRes)
+            residue(C,FHB,uHB,onlineRes)
+            writeResidue(onlineRes,writeGlobalRes)
             uH[]=uHB(0:VH.ndof-1);
             if (debug) cout << "Nodal DOF has been stored" << endl;
             uB[]=uHB(VH.ndof:VH.ndof+VH0.ndof-1);

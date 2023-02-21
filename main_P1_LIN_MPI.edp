@@ -51,8 +51,8 @@ mpiBarrier(comm);
 
 ///////////////////////////////////////////////////////////////////////
 // OFFLINE STAGE                                                     //
-// (msfem_blocks/offline_effective_tensors_MPI.idp)                  //
-// (msfem_blocks/offline_effective_tensors_MPI_reduce.idp)           //
+// (msfem_blocks/offline_effective_tensors.idp)                      //
+// (msfem_blocks/offline_effective_tensors_reduce_MPI.idp)           //
 // (msfem_blocks/offline_save_effective_tensors.idp)                 //
 ///////////////////////////////////////////////////////////////////////
 // -- Computation of the effective coefficients on a fine mesh
@@ -72,7 +72,7 @@ if (iproc == i%nbproc) {
     fespace VK(K,P1); //P1 finite element space on the triangle K
     VK Vc=0, Vx=0, Vy=0, B=0, uHx=x-xb[][i], uHy=y-yb[][i];
     // Compute effective coefficient on K
-    include "msfem_blocks/offline_effective_tensors_MPI.idp"
+    include "msfem_blocks/offline_effective_tensors.idp"
     
     if (debug) if (i%(2*n)==0) cout << endl;
     phi[][i]=0;
@@ -80,7 +80,7 @@ if (iproc == i%nbproc) {
 }
 }
 // send all information for the global problem to the main process
-include "msfem_blocks/offline_effective_tensors_MPI_reduce.idp"
+include "msfem_blocks/offline_effective_tensors_reduce_MPI.idp"
 if (iproc==0) { //the main process saves the effective coefficients (for the entire coarse mesh)
     include "msfem_blocks/offline_save_effective_tensors.idp" 
 }
