@@ -131,6 +131,8 @@
 // - (macro)  aadvAdj[2] -- bilinear form for an adjoint advection term
 // - (macro)  amass[2] -- bilinear form for reaction term
 // - (macro)  asupg[2] -- bilinear form adding supg stabilization to the bilinear form in the discrete problem
+//                        we ignore the diffusion term in the residue of the pde even when the diffusion is not piecewise constant
+//                        Strictly speaking, this only provides SUPG for the MsFEM-lin
 // - (macro)  rhssupg[1] -- linear form adding supg stabilization to the linear form in the discrete problem (consistency terms)
 // - (VH0)    tau -- stabilization parameter that can be tuned element-by-element
 // - (string) stabExpression -- description of the formula used to determine the stabilization coefficient
