@@ -20,6 +20,7 @@
 // - TH -- (square) the coarse mesh of the global domain
 // - VH0 -- (fespace) P0 space on TH
 // - Vh -- (fespace) P1 space on the fine mesh
+// - Lx, Ly -- (real) dimensions of the domain
 // - aComplete -- (macro[2])
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - useB -- (int) indicates whether bubbles are to be used
@@ -122,9 +123,9 @@ for(int i=0; i<VH0.ndof; i++) {
     error[](R)=errK[];
 
     // Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme)
-    VK obl = (x<1.-widthMadiot && y<1.-widthMadiot);
+    VK obl = (x<Lx-widthMadiot && y<Ly-widthMadiot);
     VK0 conditionMadiot = (obl>0.9);
-    VK olme = (x<1.-Hx && y<1.-Hy);
+    VK olme = (x<Lx-Hx && y<Ly-Hy);
     VK0 conditionMesh = (olme>0.9);
 
     // Error computations on K

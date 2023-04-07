@@ -60,7 +60,7 @@
 //                An error arises if these are not available
 //                Effective coefficients are loaded or recomputed if not all available
 // - (real)   L -- size of the square domain
-// - (int)    Lx, Ly
+// - (real)   Lx, Ly
 // - (int)    Ndiscr -- number of segments per dimension for the fine mesh
 // - (int)    n -- number of segments per dimension for the coarse mesh
 // - (int)    Nx, Ny, nx, ny
@@ -307,18 +307,18 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 ///////////////////////////////////////////////////////////////////////
 
 // Diffusion coefficient
-real delta = (cont-1.)/(cont+1.);
+// real delta = (cont-1.)/(cont+1.);
 // func nu=alpha*(1+delta*cos(2*pi/eps*x));
-func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
-// func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+// func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
+func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // func nu=(1+cos(2*pi*x)^2)*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // func nu=1+(cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2)*cos((x^2+y^2)/eps)^2;
 // Advection field
 // func bx=1+0.5*cos(0.1*pi*y/eps);
 // func by=1+0.5*sin(0.1*pi*x/eps);
 // Constant advection field coefficients
-real bx=cos(2*pi*theta);
-real by=sin(2*pi*theta);
+real bx=50.*cos(2*pi*theta);
+real by=50.*sin(2*pi*theta);
 // real bx=cos(2*pi*theta)/alpha;
 // real by=sin(2*pi*theta)/alpha;
 // real bx=0;
