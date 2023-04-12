@@ -1,0 +1,126 @@
+// main_LIN_effective_stabilization.edp
+//
+// run with   FreeFem++ main_LIN.edp -o [offline_mode]
+//            -o specifies the option for the offline stage: either "compute" (default) or "load"
+// The user must ensure at all times that the appropriate mode is used for correct results
+//
+// Computation of a effective tensors and stabilization terms
+//
+// Parameters are read from parameters.txt
+// Local and global variational forms are read from vffile.idp
+//
+// 
+////// Sequential version //////////////////////////////////////////////
+//
+//
+// Global variables declared in this script ////////////////////////////
+// - (string)  bcType -- a string to set the correct boundary conditions in the macroscopic problem (Lin/CR) 
+// - (string)  name -- abbreviation for  MsFEM underlying affine space
+// - (string)  nameMPI -- must be empty for sequential script; "_MPI" for parallel script
+// - (int)     iproc -- index of the current process (always 0 for sequential script)
+// - (int)     nbproc -- number of processes (always 1 for sequential script)
+// - (fespace) VH -- the relevant P1 space for the macroscopic problem
+///////////////////////////////////////////////////////////////////////
+
+
+///////////////////////////////////////////////////////////////////////
+// INITIALIZATION                                                    //
+// (msfem_blocks/init.idp)                                           //
+///////////////////////////////////////////////////////////////////////
+string bcType = "Lin"; //type of boundary condtitions, relevant for the macroscopic problem
+string name = bcType; //abbreviation used for the MsFEM output
+string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
+
+int iproc=0, nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
+macro mpiReduce(a,b,c,d) assert(0) // EOM //"WARNING: mpiReduce was erroneously called with sequential MsFEM"
+    //defined for compatibility with the parallel version in the offline loading stage
+
+include "msfem_blocks/init.idp"
+// Declaration of effective advection tensor in the stabilization term
+VH0 Bstabxx=0, Bstabxy=0, Bstabyx=0, Bstabyy=0;
+macro bstab(u,v) ( (bx*dx(u)+by*dy(u)) * (bx*dx(v)+by*dy(v)) ) //EOM 
+assert(testMS==1); //the macro above corresponds to multiscale test functions
+assert(useB==0);
+assert(vfname == "adv_diffusion_MsFEM");
+// Computation of the stabilization parameter element per element
+VH0 bx0=bx; //interpolation at the barycentre
+VH0 by0=by; //interpolation at the barycentre
+for (int i=0; i<VH0.ndof; i++) {
+    phi[][i]=2;
+
+    mesh K = trunc(TH,phi>1,split=1,label=1);
+    real bxK = bx0[][i];
+    real byK = by0[][i];
+    real bK = sqrt(bxK^2+byK^2);
+    
+    fespace VK(K,P1);
+    VK psi=0;
+    real sumdphi=0;
+    for(int j=0; j<VK.ndof; j++) {
+        psi[][j]=1.;
+        sumdphi += abs(bxK*dx(psi) + byK*dy(psi));
+        psi[][j]=0.;
+    }
+    real diamK = 2.*bK/sumdphi; 
+    real PeK = bK*diamK*0.5/(50*alpha); // VALUE USED FOR LARGE CONTRAST
+    real tauK = cosh(PeK)/sinh(PeK) - 1./PeK; 
+    tauK = tauK*0.5*diamK/bK; 
+    tau[][i] = tauK;
+
+    phi[][i]=0;
+}
+
+
+///////////////////////////////////////////////////////////////////////
+// OFFLINE STAGE                                                     //
+// (msfem_blocks/local_problems_LIN[_OS].idp                         //
+//  or msfem_blocks/offline_load.idp)                                //
+// (msfem_blocks/offline_effective_tensors.idp)                      //
+// (msfem_blocks/offline_save_effective_tensors.idp)                 //
+///////////////////////////////////////////////////////////////////////
+// -- Computation of numerical correctors V[c/x/y] and bubble function B per coarse mesh element
+// -- The discrete RHS is also computed via the inclusion of msfem_blocks/offline_effective_RHS.idp in the files for the offline stage
+// -- Data structures storeVx, storeVy, store B are declared in init.idp
+
+for(int i=0; i<VH0.ndof; i++) {
+    if (i%(2*n)==0) {
+        cout <<"construction ms coefficients on tri "<<i<<endl;
+        // ffLog <<"construction ms coefficients on tri "<<i<<endl;
+    }
+    phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
+
+    if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
+        include "msfem_blocks/local_problems_LIN.idp"
+        // Save (internally) the offline computations on K
+        if (useVcOnK[i]) storeVc(i,:)=Vc[];
+        // storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+        // if (useB) storeB(i,:)=B[];
+        // Compute effective coefficient on K
+        include "msfem_blocks/offline_effective_tensors.idp"
+        // the above script defines phix = uHx + Vx, phiy = uHy + Vy
+        Bstabxx[][i]=int2d(K)(bstab(phix,phix))/K.measure;
+        Bstabyx[][i]=int2d(K)(bstab(phix,phiy))/K.measure; 
+        Bstabxy[][i]=int2d(K)(bstab(phiy,phix))/K.measure; 
+        Bstabyy[][i]=int2d(K)(bstab(phiy,phiy))/K.measure;
+    } else { //OS case
+        include "msfem_blocks/local_problems_LIN_OS.idp"
+        // Save (internally) the offline computations on K
+        if (useVcOnK[i]) storeVc(i,:)=Vc[];
+        // storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+        // if (useB) storeB(i,:)=B[];
+        // Compute effective coefficient on K
+        include "msfem_blocks/offline_effective_tensors.idp"
+    }
+
+    if (debug) if (i%(2*n)==0) cout << endl;
+    phi[][i]=0;
+}
+include "msfem_blocks/offline_effective_tensors_reduce.idp" //compatibility with parallel version
+include "msfem_blocks/offline_save_effective_tensors.idp" //save effective coefficients (for the entire coarse mesh)
+//also save the Vc pattern over all coarse mesh elements
+writeVec2File("/Bstabxx.txt", Bstabxx[])
+writeVec2File("/Bstabyx.txt", Bstabyx[])
+writeVec2File("/Bstabxy.txt", Bstabxy[])
+writeVec2File("/Bstabyy.txt", Bstabyy[])
+writeVec2File("/tau.txt", tau[])
+
