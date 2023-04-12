@@ -1,4 +1,4 @@
-// Compute eference solution for MsFEM tests
+// Compute reference solution for MsFEM tests
 // run with   ff-mpirun -np 1 main_REF.edp  
 load "MUMPS"
 
