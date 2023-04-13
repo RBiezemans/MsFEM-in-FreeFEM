@@ -125,7 +125,7 @@ for(int i=0; i<VH0.ndof; i++) {
     // Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme)
     VK obl = (x<Lx-widthMadiot && y<Ly-widthMadiot);
     VK0 conditionMadiot = (obl>0.9);
-    VK olme = (x<Lx-Hx && y<Ly-Hy);
+    VK olme = (x<Lx-Hx+hx/2 && y<Ly-Hy+hy/2);
     VK0 conditionMesh = (olme>0.9);
 
     // Error computations on K
