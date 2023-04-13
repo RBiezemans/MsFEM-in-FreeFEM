@@ -88,13 +88,13 @@ if (offlineMode == "compute")
     include "msfem_blocks/offline_effective_tensors_reduce.idp" //compatibility with parallel version
     include "msfem_blocks/offline_save_effective_tensors.idp" //save effective coefficients (for the entire coarse mesh)
     //also save the Vc pattern over all coarse mesh elements
+    printTime("Offline phase (computing + storing) lasted ")
 } 
 else if (offlineMode == "load") 
 {
     include "msfem_blocks/offline_load.idp"
 }
 
-printTime("Offline phase (computing + storing) lasted ")
 
 ///////////////////////////////////////////////////////////////////////
 // ONLINE STAGE                                                      //

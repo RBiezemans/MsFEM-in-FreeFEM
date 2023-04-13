@@ -397,6 +397,7 @@ parametersFine = parametersFine + "_N_" + Ndiscr;
 parameters = parameters + "_N_" + Ndiscr + "_n_" + nx;
 
 // Update name string to characterize specific MsFEM options
+string nameBasis = name; // to be used to check if an output directory should be created
 if (osCoef >= osThr) {
 	//osCoef should be 0 when no oversampling is applied and larger than 1 if it is to be applied
 	name = name + "OS";
@@ -412,7 +413,7 @@ if (bcType=="CR" || osCoef>osThr) {
 // Directory names for storage of offline phase
 string basisDir = output + "basis_" + name + parameters;
 string coeffDir = output + "effective_coeff_" + name + parameters;
-if (iproc==0) {
+if (iproc==0 && nameBasis != "REF") {
     string createDir = "mkdir -p " + output;
     exec(createDir);
 	if (bcType != "") { //exclude the code used for the computation of the reference solution
@@ -448,7 +449,7 @@ real ResOnline=0; //residue of the online stage in the online stage -- restricte
 if (iproc==0) {
 	cout << "////////////////////////////////////////////////////////////////" << endl;
 	ffLog << "////////////////////////////////////////////////////////////////" << endl;
-	if (ARGV[1] == "main_REF.edp") {
+	if (nameBasis == "REF") {
 		cout << "// Computing reference solution with parameters " + parametersFine << endl;
 		ffLog << "// Computing reference solution with parameters " + parametersFine << endl;
 		ffRes << "// Computing reference solution with parameters " + parametersFine << endl;

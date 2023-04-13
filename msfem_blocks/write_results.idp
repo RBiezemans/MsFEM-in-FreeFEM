@@ -26,9 +26,6 @@
 // - name -- (string) abbreviation for  MsFEM underlying affine space
 // - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
 // - uHh -- (Vh) reconstructed, fine-scale solution (but must be processed during element-per-element reconstruction)
-// - uHhGl -- (Vh) global reconstructed solution, to be gathered by the main process
-// - uref -- (Vh) reference solution
-// - error -- (Vh) error between uHh and uref
 // - (real) eL1, eL2, eH1, eMax         -- errors on the entire domain
 // - (real) eML1,  eML2,  eMH1,  eMMax  -- errors OBL according to the definition of Madiot
 // - (real) eOL1,  eOL2,  eOH1,  eOMax  -- errors outside the mesh elements at the outflow
@@ -36,41 +33,6 @@
 // - (real) erML1, erML2, erMH1, erMMax -- relative errors OBL according to the definition of Madiot
 // - (real) erOL1, erOL2, erOH1, erOMax -- relative errors outside the mesh elements at the outflow
 ////////////////////////////////////////////////////////////////////////
-
-
-// Computing norms of the reference solution
-real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
-nL1=int2d(Th)(abs(uref));
-nL2=sqrt(int2d(Th)(uref*uref));
-nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
-uref = abs(uref);
-nMax=uref[].max;
-string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-ffLog << printNorms;
-// Taking square roots, determining the relative errors
-eL2=sqrt(eL2);
-eML2=sqrt(eML2);
-eOL2=sqrt(eOL2);
-eH1=sqrt(eH1);
-eMH1=sqrt(eMH1);
-eOH1=sqrt(eOH1);
-try{ 
-    erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
-    erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
-    erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1; erOMax=eOMax/nMax;
-}
-catch (...) {
-    cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
-    ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
-}
-
-if (plots) {
-    plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
-    plot(error, value=1, cmm="Error");
-}
-
-ffLog << "  Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
-printTime("Reconstruction + error computation lasted ")
 
 
 {// Saving coarse scale solution
@@ -81,7 +43,7 @@ printTime("Reconstruction + error computation lasted ")
     ff << uH[] << endl;
     ff << endl;
 }
-if (treatB == "in_system") {// Saving bubble coefficients
+if (treatB == "in_system" && name != "REF") {// Saving bubble coefficients
     string solBname = output+"solCoarseB_" + name + parameters;
     solBname = solBname + ".txt";
     ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
@@ -89,7 +51,7 @@ if (treatB == "in_system") {// Saving bubble coefficients
     ff << uB[] << endl;
     ff << endl;
 }
-{// Saving reconstructed micro-scale solution
+if (name != "REF") {// Saving reconstructed micro-scale solution
     string solname = output+"sol_" + name + parameters;
     solname = solname + ".txt";
     ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
@@ -100,6 +62,9 @@ if (treatB == "in_system") {// Saving bubble coefficients
 
 {// Writing errors to an external file
     string errname = output + "err_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
+    if (name == "REF") {
+        errname = output + "err_best_approximation.txt";
+    }
     ffLog << "Writing errors to " << errname << endl;
     ofstream ff(errname, append);
     ff  << rhsDescription

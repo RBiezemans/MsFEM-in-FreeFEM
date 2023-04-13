@@ -22,20 +22,19 @@ TEST_P1_LIN=0
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_L="1."
-TOTEST_LARGE_N="20" 
+TOTEST_LARGE_N="40" 
 TOTEST_LARGER_N="40" # unused in this experiment 
 TOTEST_SMALL_N="5"
 TOTEST_EPS="0.1" # 2^-7
-TOTEST_2LOGALP="-2 -8" # -8" # 2^-2 ... 2^-8
+TOTEST_2LOGALP="-2 -5" # -8" # 2^-2 ... 2^-8
 TOTEST_THETA="0.15"
 TOTEST_CONT="7"
 TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_p1_supg.idp "
-TOTEST_OSCOEF="0"
+TOTEST_OSCOEF="0 2"
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
-TOTEST_STR_DIR="0 1 2"
+TOTEST_STR_DIR="0"
 TOTEST_USE_B="1 0" # it is important to treat bubbes first, so the offline stages without bubbles can be loaded
 TOTEST_TREAT_B="in_system out_system"
-## TOTEST_ADV_MS="1" # has become irrelevant
 TOTEST_MS="1 0"
 
 ## SOME PARAMETER RULES
@@ -66,6 +65,7 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     if [ $COMPUTE_REF == 0 ]
     then
         /usr/bin/mpirun -np 1 /usr/local/bin/FreeFem++-mpi main_REF.edp -v 0
+        FreeFem++ main_REF_projections.edp -v 0
     fi
 
     for TEST_VFFILE in $TOTEST_VFFILE; do cp variational_forms/$TEST_VFFILE vffile.idp

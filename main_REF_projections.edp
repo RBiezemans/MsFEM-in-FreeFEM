@@ -1,0 +1,94 @@
+// Compute projections of the reference solution in the semi-H1 norms on the Lagrange and CR P1 spaces
+// run with   FreeFem++ main_REF_projections.edp  
+
+string name = "REF";
+string nameMPI = ""; //empty string for compatibility with init.idp
+string bcType = ""; //empty string for compatibility with init.idp
+
+int iproc=0, nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
+
+include "./msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
+name = "REF"; // undo adaptations due to method settings
+
+Vh uref; //the reference solution is a standard FE on the fine mesh
+{
+    string solname = "sol_" + name + parametersFine + ".txt";
+    ifstream ff(solname);
+    ff >> uref[];
+}
+
+fespace VHcont(TH,P1); //Lagrange P1 space
+VHcont uHcont=0, vHcont;
+fespace VHcr(TH,P1nc); //Crouzeix-Raviart P1 space
+VHcr uHcr, vHcr;
+
+macro semiH1(u,v) (dx(u)*dx(v) + dy(u)*dy(v)) //EOM
+
+solve projectionCont(uHcont,vHcont) = int2d(TH)(semiH1(uHcont,vHcont)) //bilinear form associated to the projection
+                                      + int1d(TH)(tgv*uHcont*vHcont) //boundary condition
+                                      - int2d(Th,qft=qf1pT)(semiH1(uref,vHcont)); //note that both gradients are piecewise constant on the fine mesh
+solve projectionCR(uHcr,vHcr) = int2d(TH)(semiH1(uHcr,vHcr)) //bilinear form associated to the projection
+                                + int1d(TH,qfe=qf1pE)(tgv*uHcr*vHcr) //boundary condition imposed only in the centroid
+                                - int2d(Th,qft=qf1pT)(semiH1(uref,vHcr)); //note that both gradients are piecewise constant on the fine mesh
+
+if (plots) {
+    if (plots==1) plot(uref,fill=1,value=1,wait=1, cmm="Reference solution");
+    if (plots==1) plot(uHcont,fill=1,value=1,wait=1, cmm="Projection on Lagrange space");
+    if (plots==1) plot(uHcr,fill=1,value=1,wait=1, cmm="Projection on Crouzeix-Raviart space");
+}
+
+// Compute norms of uref
+real nL1=0, nL2=0, nH1=0;
+nL1=int2d(Th)(abs(uref));
+nL2=sqrt(int2d(Th)(uref*uref));
+nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
+// Declaration of best approximation errors
+real eL1=0,   eL2=0,   eH1=0,   eMax=0; //errors on the entire domain
+real eML1=0,  eML2=0,  eMH1=0,  eMMax=0; //errors OBL according to the definition of Madiot -- for compatibility with post-processing only
+real eOL1=0,  eOL2=0,  eOH1=0,  eOMax=0; //errors outside the mesh elements at the outflow
+real erL1=0,  erL2=0,  erH1=0,  erMax=0; //relative errors on the entire domain
+real erML1=0, erML2=0, erMH1=0, erMMax=0; //relative errors OBL according to the definition of Madiot -- for compatibility with post-processing only
+real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh elements at the outflow
+// Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme)
+VHcont olme = (x<Lx-Hx+hx/2. && y<Ly-Hy+hy/2.);
+VH0 conditionMesh = (olme>0.9);
+// macro for error computation with respect to a function approx
+macro computeErrors(approx) {
+    eL1  = int2d(Th)(abs(uref-approx));
+    eOL1 = int2d(Th)(abs(uref-approx)*conditionMesh);
+    eL2  = int2d(Th)((uref-approx)^2);
+    eOL2 = int2d(Th)((uref-approx)^2*conditionMesh);
+    eH1  = int2d(Th)(  (uref-approx)^2 + (dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2);
+    eOH1 = int2d(Th)( ((uref-approx)^2 + (dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2)*conditionMesh );
+    eL2  = sqrt(eL2);
+    eOL2 = sqrt(eOL2);
+    eH1  = sqrt(eH1);
+    eOH1 = sqrt(eOH1);
+    try{ 
+        erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1;
+        erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1;
+    }
+    catch (...) {
+        cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+        ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+    }
+} 
+//EOM
+macro makedirectory(dirname) exec("mkdir -p " + output); //EOM
+
+computeErrors(uHcont)
+VH0 uB, uHh; //for compatibility with writing only
+{
+    name = 
+    output = "sol_REF_Lin/"; // undo adaptation due to method settings
+    makedirectory(output)
+    VHcont uH; uH[]=uHcont[];
+    include "./msfem_blocks/write_results.idp"
+}
+computeErrors(uHcr)
+{
+    output = "sol_REF_CR/"; // undo adaptation due to method settings
+    makedirectory(output)
+    VHcr uH; uH[]=uHcr[];
+    include "./msfem_blocks/write_results.idp"
+}
