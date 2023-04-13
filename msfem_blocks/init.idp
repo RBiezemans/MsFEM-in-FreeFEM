@@ -316,6 +316,8 @@ func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
 // func bx=1+0.5*cos(0.1*pi*y/eps);
 // func by=1+0.5*sin(0.1*pi*x/eps);
+// func bx=(1+y)/sqrt(5+2*y-4*x+y^2+x^2);
+// func by=(2-x)/sqrt(5+2*y-4*x+y^2+x^2);
 // Constant advection field coefficients
 real bx=50.*cos(2*pi*theta);
 real by=50.*sin(2*pi*theta);
