@@ -60,11 +60,11 @@ VH olme = (x<1.-H+H/2 && y<1.-H+H/2);
 VH0 conditionMesh = (olme>0.9);
 
 // Macro for norm computations on a specific mesh
-macro computeErrors(mesh,fnc) {
-    real eL2 = int2d(Th)(fnc*fnc);
-    real eL2olme = int2d(Th)(fnc*fnc*conditionMesh);
-    real eH1 = int2d(Th)(dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc)) + eL2;
-    real eH1olme = int2d(Th)((dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc))*conditionMesh) + eL2olme;
+macro computeErrors(grid,fnc) {
+    real eL2 = int2d(grid)(fnc*fnc);
+    real eL2olme = int2d(grid)(fnc*fnc*conditionMesh);
+    real eH1 = int2d(grid)(dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc)) + eL2;
+    real eH1olme = int2d(grid)((dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc))*conditionMesh) + eL2olme;
     eL2 = sqrt(eL2);
     eL2olme = sqrt(eL2olme);
     eH1 = sqrt(eH1);

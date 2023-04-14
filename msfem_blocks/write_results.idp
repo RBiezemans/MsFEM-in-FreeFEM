@@ -13,6 +13,7 @@
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - coarseerrors -- (string) decides whether solutions are stored (only if == 0)
 // - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
 // - plots -- (int) indicates whether solutions should be plotted
 // - useB -- (int) indicates whether bubbles are to be used
@@ -34,34 +35,37 @@
 // - (real) erOL1, erOL2, erOH1, erOMax -- relative errors outside the mesh elements at the outflow
 ////////////////////////////////////////////////////////////////////////
 
-
-{// Saving coarse scale solution
-    string solCname = output+"solCoarse_" + name + parameters;
-    solCname = solCname + ".txt";
-    ffLog << "Writing solution in P1 basis to " << solCname << endl; 
-    ofstream ff(solCname, append);
-    ff << uH[] << endl;
-    ff << endl;
-}
-if (treatB == "in_system" && name != "REF") {// Saving bubble coefficients
-    string solBname = output+"solCoarseB_" + name + parameters;
-    solBname = solBname + ".txt";
-    ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
-    ofstream ff(solBname, append);
-    ff << uB[] << endl;
-    ff << endl;
-}
-if (name != "REF") {// Saving reconstructed micro-scale solution
-    string solname = output+"sol_" + name + parameters;
-    solname = solname + ".txt";
-    ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
-    ofstream ff(solname, append);
-    ff << uHh[] << endl;
-    ff << endl;
+if (coarseerrors == 0) {
+    {// Saving coarse scale solution
+        string solCname = output+"solCoarse_" + name + parameters;
+        solCname = solCname + ".txt";
+        ffLog << "Writing solution in P1 basis to " << solCname << endl; 
+        ofstream ff(solCname, append);
+        ff << uH[] << endl;
+        ff << endl;
+    }
+    if (treatB == "in_system" && name != "REF") {// Saving bubble coefficients
+        string solBname = output+"solCoarseB_" + name + parameters;
+        solBname = solBname + ".txt";
+        ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
+        ofstream ff(solBname, append);
+        ff << uB[] << endl;
+        ff << endl;
+    }
+    if (name != "REF") {// Saving reconstructed micro-scale solution
+        string solname = output+"sol_" + name + parameters;
+        solname = solname + ".txt";
+        ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
+        ofstream ff(solname, append);
+        ff << uHh[] << endl;
+        ff << endl;
+    }
 }
 
 {// Writing errors to an external file
-    string errname = output + "err_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
+    string errname = output + "err";
+    if (coarseerrors == 1) errname = errname + "Coarse";
+    errname = errname + "_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
     if (name == "REF") {
         errname = output + "err_best_approximation.txt";
     }

@@ -25,7 +25,18 @@
 ////////////////////////////////////////////////////////////////////////
 
 
+// Macros for loading external files
+macro loadRef(target) {
+    string refname = "sol_REF" + parametersFine + ".txt";
+    ifstream ff(refname);
+    ff>>uref[];
+} // EOM
 
+macro loadCoarse(target) {
+    string refname = "sol_REF_" + bcType + "/solCoarse_REF" + parameters + ".txt";
+    ifstream ff(refname);
+    ff>>target[];
+} // EOM
 
 
 // Macro for residue computation of the resolution of linear systems

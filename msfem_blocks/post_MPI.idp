@@ -67,16 +67,13 @@ Vh uHhGl=0; //global reconstructed solution, contributions will be reduced to th
 
 if(iproc==0) { //on the main process, load reference solution on Th
     try {
-        string refname = "sol_REF" + parametersFine + ".txt";
-        ifstream ff(refname);
-        ff>>uref[];
+        loadRef(uref)
     }
     catch (...) { //or compute the referece solution if the file is not found
         cout << "WARNING: No reference solution was found and it is recomputed" << endl;
         ffLog << "WARNING: No reference solution was found and it is recomputed" << endl;
-        Vh vh;
-        solve pb(uref,vh)=int2d(Th)(aref(uref,vh)) +int1d(Th)(tgv*uref*vh)
-                -int2d(Th)(fRHS*vh);
+        exec("FreeFem++ main_REF.edp -v 0 -ng");
+        loadRef(uref)
     }
     if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");
     for (int i=1; i<nbproc; i++) { 
@@ -221,6 +218,13 @@ mpiReduce(eOH1,  eOH1Gl,  processor(0,comm), mpiSUM);
 mpiReduce(eOMax, eOMaxGl, processor(0,comm), mpiMAX);
 
 if (iproc==0) {
+    // Taking square roots, determining the relative errors
+    eL2Gl[0]=sqrt(eL2Gl[0]);
+    eML2Gl[0]=sqrt(eML2Gl[0]);
+    eOL2Gl[0]=sqrt(eOL2Gl[0]);
+    eH1Gl[0]=sqrt(eH1Gl[0]);
+    eMH1Gl[0]=sqrt(eMH1Gl[0]);
+    eOH1Gl[0]=sqrt(eOH1Gl[0]);
     // Computing norms of the reference solution
     real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
     nL1=int2d(Th)(abs(uref));
@@ -230,13 +234,6 @@ if (iproc==0) {
     nMax=uref[].max;
     string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
     ffLog << printNorms;
-    // Taking square roots, determining the relative errors
-    eL2Gl[0]=sqrt(eL2Gl[0]);
-    eML2Gl[0]=sqrt(eML2Gl[0]);
-    eOL2Gl[0]=sqrt(eOL2Gl[0]);
-    eH1Gl[0]=sqrt(eH1Gl[0]);
-    eMH1Gl[0]=sqrt(eMH1Gl[0]);
-    eOH1Gl[0]=sqrt(eOH1Gl[0]);
     try {
         erL1Gl[0]=eL1Gl[0]/nL1; erL2Gl[0]=eL2Gl[0]/nL2; erH1Gl[0]=eH1Gl[0]/nH1; erMaxGl[0]=eMaxGl[0]/nMax;
         erML1Gl[0]=eML1Gl[0]/nL1; erML2Gl[0]=eML2Gl[0]/nL2; erMH1Gl[0]=eMH1Gl[0]/nH1; erMMaxGl[0]=eMMaxGl[0]/nMax;

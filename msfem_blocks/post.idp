@@ -62,16 +62,13 @@ VH0 uHdx=dx(uH), uHdy=dy(uH); //interpolation of derivatives of uH (which in fac
 Vh uHh=0, uref=0, error=0; //reconstructed solution, reference solution, error
 
 try { //load reference solution on Th
-    string refname = "sol_REF" + parametersFine + ".txt";
-    ifstream ff(refname);
-    ff>>uref[];
+    loadRef(uref)
 }
 catch (...) { //or compute the referece solution if the file is not found
     cout << "WARNING: No reference solution was found and it is recomputed" << endl;
     ffLog << "WARNING: No reference solution was found and it is recomputed" << endl;
-    Vh vh;
-    solve pb(uref,vh)=int2d(Th)(aref(uref,vh)) +int1d(Th)(tgv*uref*vh)
-            -int2d(Th)(fRHS*vh);
+    exec("FreeFem++ main_REF.edp -v 0 -ng");
+    loadRef(uref)
 }
 if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");
 
@@ -154,6 +151,13 @@ for(int i=0; i<VH0.ndof; i++) {
     
     phi[][i]=0;
 }
+// Taking square roots, determining the relative errors
+eL2=sqrt(eL2);
+eML2=sqrt(eML2);
+eOL2=sqrt(eOL2);
+eH1=sqrt(eH1);
+eMH1=sqrt(eMH1);
+eOH1=sqrt(eOH1);
 
 // Computing norms of the reference solution
 real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
@@ -164,13 +168,7 @@ uref = abs(uref);
 nMax=uref[].max;
 string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
 ffLog << printNorms;
-// Taking square roots, determining the relative errors
-eL2=sqrt(eL2);
-eML2=sqrt(eML2);
-eOL2=sqrt(eOL2);
-eH1=sqrt(eH1);
-eMH1=sqrt(eMH1);
-eOH1=sqrt(eOH1);
+
 try{ 
     erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
     erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
