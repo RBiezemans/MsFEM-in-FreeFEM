@@ -74,20 +74,19 @@ macro computeErrors(approx) {
     }
 } 
 //EOM
-macro makedirectory(dirname) exec("mkdir -p " + output); //EOM
+macro makedirectory(dirname) exec("mkdir -p " + dirname); //EOM
 
 computeErrors(uHcont)
 VH0 uB, uHh; //for compatibility with writing only
 {
-    name = 
-    output = "sol_REF_Lin/"; // undo adaptation due to method settings
+    output = "sol_REF_Lin/"; // undo adaptations due to method settings
     makedirectory(output)
     VHcont uH; uH[]=uHcont[];
     include "./msfem_blocks/write_results.idp"
 }
 computeErrors(uHcr)
 {
-    output = "sol_REF_CR/"; // undo adaptation due to method settings
+    output = "sol_REF_CR/"; // undo adaptations due to method settings
     makedirectory(output)
     VHcr uH; uH[]=uHcr[];
     include "./msfem_blocks/write_results.idp"
