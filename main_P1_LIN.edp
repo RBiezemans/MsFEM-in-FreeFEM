@@ -86,6 +86,7 @@ include "msfem_blocks/online.idp"
 ///////////////////////////////////////////////////////////////////////
 // POST-PROCESSING                                                   //
 // (msfem_blocks/post.idp)                                           //
+// (msfem_blocks/post_coarse_error.idp)                              //
 // (msfem_blocks/write_results.idp)                                  //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation

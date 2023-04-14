@@ -114,8 +114,13 @@ if (iproc>0) {
 ///////////////////////////////////////////////////////////////////////
 // POST-PROCESSING                                                   //
 // (msfem_blocks/post_MPI.idp)                                       //
-// (msfem_blocks/write_results_MPI.idp)                              //
+// (msfem_blocks/post_coarse_error.idp)                              //
+// (msfem_blocks/write_results[/_MPI].idp)                           //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
 include "msfem_blocks/post_MPI.idp"
 include "msfem_blocks/write_results_MPI.idp"
+if (iproc==0) {
+    include "msfem_blocks/post_coarse_error.idp"
+    include "msfem_blocks/write_results.idp"
+}

@@ -97,6 +97,7 @@ else if (offlineMode == "load")
 ///////////////////////////////////////////////////////////////////////
 // ONLINE STAGE                                                      //
 // (msfem_blocks/online.idp                                          //
+// (msfem_blocks/post_coarse_error.idp)                              //
 // (msfem_blocks/write_results.idp)                                  //
 ///////////////////////////////////////////////////////////////////////
 // -- Solving the effective problem  

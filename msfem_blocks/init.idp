@@ -458,6 +458,24 @@ real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
 real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
 real[int,int] storeB(storeLen,ndofOffline); storeB=0;
 
+// Initialize data structures to save errors on the global process
+// These reals can be used when no communication between processes is required
+real eL1=0,   eL2=0,   eH1=0,   eMax=0; //errors on the entire domain
+real eML1=0,  eML2=0,  eMH1=0,  eMMax=0; //errors OBL according to the definition of Madiot
+real eOL1=0,  eOL2=0,  eOH1=0,  eOMax=0; //errors outside the mesh elements at the outflow
+real erL1=0,  erL2=0,  erH1=0,  erMax=0; //relative errors on the entire domain
+real erML1=0, erML2=0, erMH1=0, erMMax=0; //relative errors OBL according to the definition of Madiot
+real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh elements at the outflow
+// MPI reduce can only handle arrays in FreeFem
+real[int] eL1Gl(1),   eL2Gl(1),   eH1Gl(1),   eMaxGl(1); //errors on the entire domain
+real[int] eML1Gl(1),  eML2Gl(1),  eMH1Gl(1),  eMMaxGl(1); //errors OBL according to the definition of Madiot
+real[int] eOL1Gl(1),  eOL2Gl(1),  eOH1Gl(1),  eOMaxGl(1); //errors outside the mesh elements at the outflow
+real[int] erL1Gl(1),  erL2Gl(1),  erH1Gl(1),  erMaxGl(1); //relative errors on the entire domain
+real[int] erML1Gl(1), erML2Gl(1), erMH1Gl(1), erMMaxGl(1); //relative errors OBL according to the definition of Madiot
+real[int] erOL1Gl(1), erOL2Gl(1), erOH1Gl(1), erOMaxGl(1); //relative errors outside the mesh elements at the outflow
+// For the various norms of uref
+real nL1=0, nL2=0, nH1=0, nMax=0; 
+
 
 ///////////////////////////////////////////////////////////////////////
 // Effective coefficients for the macroscopic problem                //

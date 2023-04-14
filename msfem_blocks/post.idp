@@ -72,15 +72,7 @@ catch (...) { //or compute the referece solution if the file is not found
 }
 if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");
 
-
-// Initialize error variables
-real eL1=0,   eL2=0,   eH1=0,   eMax=0; //errors on the entire domain
-real eML1=0,  eML2=0,  eMH1=0,  eMMax=0; //errors OBL according to the definition of Madiot
-real eOL1=0,  eOL2=0,  eOH1=0,  eOMax=0; //errors outside the mesh elements at the outflow
-real erL1=0,  erL2=0,  erH1=0,  erMax=0; //relative errors on the entire domain
-real erML1=0, erML2=0, erMH1=0, erMMax=0; //relative errors OBL according to the definition of Madiot
-real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh elements at the outflow
-
+resetNormsErrors() //(re)set global error variables and norms to zero
 
 // Reconstruction and error computation
 // Error computation does not yet apply square roots, because these are to be taken once..
@@ -160,7 +152,6 @@ eMH1=sqrt(eMH1);
 eOH1=sqrt(eOH1);
 
 // Computing norms of the reference solution
-real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
 nL1=int2d(Th)(abs(uref));
 nL2=sqrt(int2d(Th)(uref*uref));
 nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));

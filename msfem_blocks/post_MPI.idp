@@ -49,9 +49,9 @@
 // - (Vh)      uHhGl -- global reconstructed solution, to be gathered by the main process
 // - (Vh)      uref -- reference solution
 // - (Vh)      error -- error between uHh and uref
-// - (real[1]) eL1[/Gl], eL2[/Gl], eH1[/Gl], eMax[/Gl]         -- errors on the entire domain
-// - (real[1]) eML1[/Gl],  eML2[/Gl],  eMH1[/Gl],  eMMax[/Gl]  -- errors OBL according to the definition of Madiot
-// - (real[1]) eOL1[/Gl],  eOL2[/Gl],  eOH1[/Gl],  eOMax[/Gl]  -- errors outside the mesh elements at the outflow
+// - (real[1]) eL1cur[/Gl], eL2cur[/Gl], eH1cur[/Gl], eMaxcur[/Gl]         -- errors on the entire domain
+// - (real[1]) eML1cur[/Gl],  eML2cur[/Gl],  eMH1cur[/Gl],  eMMaxcur[/Gl]  -- errors OBL according to the definition of Madiot
+// - (real[1]) eOL1cur[/Gl],  eOL2cur[/Gl],  eOH1cur[/Gl],  eOMaxcur[/Gl]  -- errors outside the mesh elements at the outflow
 // - (real[1]) erL1[/Gl],  erL2[/Gl],  erH1[/Gl],  erMax[/Gl]  -- relative errors on the entire domain
 // - (real[1]) erML1[/Gl], erML2[/Gl], erMH1[/Gl], erMMax[/Gl] -- relative errors OBL according to the definition of Madiot
 // - (real[1]) erOL1[/Gl], erOL2[/Gl], erOH1[/Gl], erOMax[/Gl] -- relative errors outside the mesh elements at the outflow
@@ -88,25 +88,11 @@ if (iproc>0) { //receive reference solution from main process
 
 
 // Initialize data structures for error contributions of the current process
-real[int] eL1(1),  eL2(1),  eH1(1),  eMax(1); //errors on the entire domain
-real[int] eML1(1), eML2(1), eMH1(1), eMMax(1); //errors OBL according to the definition of Madiot
-real[int] eOL1(1), eOL2(1), eOH1(1), eOMax(1); //errors outside the mesh elements at the outflow
+real[int] eL1cur(1),  eL2cur(1),  eH1cur(1),  eMaxcur(1); //errors on the entire domain
+real[int] eML1cur(1), eML2cur(1), eMH1cur(1), eMMaxcur(1); //errors OBL according to the definition of Madiot
+real[int] eOL1cur(1), eOL2cur(1), eOH1cur(1), eOMaxcur(1); //errors outside the mesh elements at the outflow
 
-// Initialize data structures to reduce error computations to the main process
-real[int] eL1Gl(1),   eL2Gl(1),   eH1Gl(1),   eMaxGl(1); //errors on the entire domain
-real[int] eML1Gl(1),  eML2Gl(1),  eMH1Gl(1),  eMMaxGl(1); //errors OBL according to the definition of Madiot
-real[int] eOL1Gl(1),  eOL2Gl(1),  eOH1Gl(1),  eOMaxGl(1); //errors outside the mesh elements at the outflow
-real[int] erL1Gl(1),  erL2Gl(1),  erH1Gl(1),  erMaxGl(1); //relative errors on the entire domain
-real[int] erML1Gl(1), erML2Gl(1), erMH1Gl(1), erMMaxGl(1); //relative errors OBL according to the definition of Madiot
-real[int] erOL1Gl(1), erOL2Gl(1), erOH1Gl(1), erOMaxGl(1); //relative errors outside the mesh elements at the outflow
-
-eL1Gl=0;   eL2Gl=0;   eH1Gl=0;   eMaxGl=0; //errors on the entire domain
-eML1Gl=0;  eML2Gl=0;  eMH1Gl=0;  eMMaxGl=0; //errors OBL according to the definition of Madiot
-eOL1Gl=0;  eOL2Gl=0;  eOH1Gl=0;  eOMaxGl=0; //errors outside the mesh elements at the outflow
-erL1Gl=0;  erL2Gl=0;  erH1Gl=0;  erMaxGl=0; //relative errors on the entire domain
-erML1Gl=0; erML2Gl=0; erMH1Gl=0; erMMaxGl=0; //relative errors OBL according to the definition of Madiot
-erOL1Gl=0; erOL2Gl=0; erOH1Gl=0; erOMaxGl=0; //relative errors outside the mesh elements at the outflow
-
+resetNormsErrors() //(re)set global error variables and norms to zero
 
 // Reconstruction and error computation
 // Error computation does not yet apply square roots, because these are to be taken once..
@@ -160,28 +146,28 @@ if (iproc == i%nbproc) {
     VK0 conditionMesh = (olme>0.9);
 
     // Error computations on K
-    eL1[0]  += int2d(K)(abs(errK));
-    eML1[0] += int2d(K)(abs(errK)*conditionMadiot);
-    eOL1[0] += int2d(K)(abs(errK)*conditionMesh);
+    eL1cur[0]  += int2d(K)(abs(errK));
+    eML1cur[0] += int2d(K)(abs(errK)*conditionMadiot);
+    eOL1cur[0] += int2d(K)(abs(errK)*conditionMesh);
     real elocL2=0, elocML2=0, elocOL2=0; //local variables to temporarily store local L2 error contributions
     elocL2  = int2d(K)(errK*errK);
     elocML2 = int2d(K)(errK*errK*conditionMadiot);
     elocOL2 = int2d(K)(errK*errK*conditionMesh);
-    eL2[0]  += elocL2;
-    eML2[0] += elocML2;
-    eOL2[0] += elocOL2;
-    eH1[0]  += elocL2  + int2d(K)(  dx(errK)*dx(errK) + dy(errK)*dy(errK));
-    eMH1[0] += elocML2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
-    eOH1[0] += elocOL2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
+    eL2cur[0]  += elocL2;
+    eML2cur[0] += elocML2;
+    eOL2cur[0] += elocOL2;
+    eH1cur[0]  += elocL2  + int2d(K)(  dx(errK)*dx(errK) + dy(errK)*dy(errK));
+    eMH1cur[0] += elocML2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
+    eOH1cur[0] += elocOL2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
     errK = abs(errK);
     //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
-    eMax[0]  = max(eMax[0],errK[].max);
+    eMaxcur[0]  = max(eMaxcur[0],errK[].max);
     VK errKK  = errK*conditionMadiot;
     //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
-    eMMax[0] = max(eMMax[0],errKK[].max);
+    eMMaxcur[0] = max(eMMaxcur[0],errKK[].max);
     errKK  = errK*conditionMesh;
     //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
-    eOMax[0] = max(eOMax[0],errKK[].max);
+    eOMaxcur[0] = max(eOMaxcur[0],errKK[].max);
 
     countOffline++;
 
@@ -204,18 +190,18 @@ real[int] correctReduceGl(Vh.ndof); correctReduceGl=0;
 mpiReduce(correctReduce, correctReduceGl, processor(0,comm), mpiSUM);
 if (iproc==0) uHhGl[] = uHhGl[]./correctReduceGl; // Correcting the reconstructed solution for double used edges
 // Errors
-mpiReduce(eL1,   eL1Gl,   processor(0,comm), mpiSUM);
-mpiReduce(eL2,   eL2Gl,   processor(0,comm), mpiSUM);
-mpiReduce(eH1,   eH1Gl,   processor(0,comm), mpiSUM);
-mpiReduce(eMax,  eMaxGl,  processor(0,comm), mpiMAX);
-mpiReduce(eML1,  eML1Gl,  processor(0,comm), mpiSUM);
-mpiReduce(eML2,  eML2Gl,  processor(0,comm), mpiSUM);
-mpiReduce(eMH1,  eMH1Gl,  processor(0,comm), mpiSUM);
-mpiReduce(eMMax, eMMaxGl, processor(0,comm), mpiMAX);
-mpiReduce(eOL1,  eOL1Gl,  processor(0,comm), mpiSUM);
-mpiReduce(eOL2,  eOL2Gl,  processor(0,comm), mpiSUM);
-mpiReduce(eOH1,  eOH1Gl,  processor(0,comm), mpiSUM);
-mpiReduce(eOMax, eOMaxGl, processor(0,comm), mpiMAX);
+mpiReduce(eL1cur,   eL1Gl,   processor(0,comm), mpiSUM);
+mpiReduce(eL2cur,   eL2Gl,   processor(0,comm), mpiSUM);
+mpiReduce(eH1cur,   eH1Gl,   processor(0,comm), mpiSUM);
+mpiReduce(eMaxcur,  eMaxGl,  processor(0,comm), mpiMAX);
+mpiReduce(eML1cur,  eML1Gl,  processor(0,comm), mpiSUM);
+mpiReduce(eML2cur,  eML2Gl,  processor(0,comm), mpiSUM);
+mpiReduce(eMH1cur,  eMH1Gl,  processor(0,comm), mpiSUM);
+mpiReduce(eMMaxcur, eMMaxGl, processor(0,comm), mpiMAX);
+mpiReduce(eOL1cur,  eOL1Gl,  processor(0,comm), mpiSUM);
+mpiReduce(eOL2cur,  eOL2Gl,  processor(0,comm), mpiSUM);
+mpiReduce(eOH1cur,  eOH1Gl,  processor(0,comm), mpiSUM);
+mpiReduce(eOMaxcur, eOMaxGl, processor(0,comm), mpiMAX);
 
 if (iproc==0) {
     // Taking square roots, determining the relative errors
@@ -226,14 +212,15 @@ if (iproc==0) {
     eMH1Gl[0]=sqrt(eMH1Gl[0]);
     eOH1Gl[0]=sqrt(eOH1Gl[0]);
     // Computing norms of the reference solution
-    real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
     nL1=int2d(Th)(abs(uref));
     nL2=sqrt(int2d(Th)(uref*uref));
     nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
     uref = abs(uref);
     nMax=uref[].max;
-    string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-    ffLog << printNorms;
+    {//for compatibility reasons, printNorms is kept a local variable
+        string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+        ffLog << printNorms;
+    }
     try {
         erL1Gl[0]=eL1Gl[0]/nL1; erL2Gl[0]=eL2Gl[0]/nL2; erH1Gl[0]=eH1Gl[0]/nH1; erMaxGl[0]=eMaxGl[0]/nMax;
         erML1Gl[0]=eML1Gl[0]/nL1; erML2Gl[0]=eML2Gl[0]/nL2; erMH1Gl[0]=eMH1Gl[0]/nH1; erMMaxGl[0]=eMMaxGl[0]/nMax;

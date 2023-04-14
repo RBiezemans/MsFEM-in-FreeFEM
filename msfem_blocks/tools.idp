@@ -109,3 +109,15 @@ macro ip(u,v,w) (u*w[0] + v*w[1])// //EOM
 // Check if (x,y) - u2 points in the same direction as a normal vector u1
 // A positive value means that this condition is indeed satisfied
 macro ipcheck(u1, u2) ( u1[0]*(x-u2[0]) + u1[1]*(y-u2[1]) )// EOM
+
+
+// Resetting errors and norms
+macro resetNormsErrors(unused) {
+    nL1=0;   nL2=0;   nH1=0;   nMax=0;
+    eL1=0;   eL2=0;   eH1=0;   eMax=0; 
+    eML1=0;  eML2=0;  eMH1=0;  eMMax=0;
+    eOL1=0;  eOL2=0;  eOH1=0;  eOMax=0;
+    erL1=0;  erL2=0;  erH1=0;  erMax=0;
+    erML1=0; erML2=0; erMH1=0; erMMax=0;
+    erOL1=0; erOL2=0; erOH1=0; erOMax=0;
+} // EOM

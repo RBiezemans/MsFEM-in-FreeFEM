@@ -7,7 +7,7 @@ string bcType = ""; //empty string for compatibility with init.idp
 
 int iproc=0, nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
 
-include "./msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
+include "msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
 name = "REF"; // undo adaptations due to method settings
 cout << "// Projections on coarse spaces" << endl;
 ffLog << "// Projections on coarse spaces" << endl;
@@ -40,17 +40,11 @@ if (plots) {
 }
 
 // Compute norms of uref
-real nL1=0, nL2=0, nH1=0;
+resetNormsErrors() //(re)set global error variables and norms to zero
 nL1=int2d(Th)(abs(uref));
 nL2=sqrt(int2d(Th)(uref*uref));
 nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
-// Declaration of best approximation errors
-real eL1=0,   eL2=0,   eH1=0,   eMax=0; //errors on the entire domain
-real eML1=0,  eML2=0,  eMH1=0,  eMMax=0; //errors OBL according to the definition of Madiot -- for compatibility with post-processing only
-real eOL1=0,  eOL2=0,  eOH1=0,  eOMax=0; //errors outside the mesh elements at the outflow
-real erL1=0,  erL2=0,  erH1=0,  erMax=0; //relative errors on the entire domain
-real erML1=0, erML2=0, erMH1=0, erMMax=0; //relative errors OBL according to the definition of Madiot -- for compatibility with post-processing only
-real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh elements at the outflow
+
 // Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme)
 VHcont olme = (x<Lx-Hx+hx/2. && y<Ly-Hy+hy/2.);
 VH0 conditionMesh = (olme>0.9);

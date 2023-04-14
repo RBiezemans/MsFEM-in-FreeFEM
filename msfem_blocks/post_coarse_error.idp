@@ -1,4 +1,4 @@
-// post.idp
+// post_coarse_errors.idp
 //
 // //         //          ////////  ////////  //         //
 // ////      ///  //////  //        //        ////      ///
@@ -73,13 +73,7 @@ if (plots) plot(urefH,wait=1,value=1, cmm="Reference solution");
 
 coarseerrors=1; //to get the correct behaviour of write_results[/_MPI].idp
 
-// Reset all error variables to zero
-eL1=0;   eL2=0;   eH1=0;   eMax=0;
-eML1=0;  eML2=0;  eMH1=0;  eMMax=0;
-eOL1=0;  eOL2=0;  eOH1=0;  eOMax=0;
-erL1=0;  erL2=0;  erH1=0;  erMax=0;
-erML1=0; erML2=0; erMH1=0; erMMax=0;
-erOL1=0; erOL2=0; erOH1=0; erOMax=0;
+resetNormsErrors() //(re)set global error variables and norms to zero
 
 // Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme)
 VH errCoarse = urefH-uH;
@@ -122,14 +116,15 @@ eMH1=sqrt(eMH1);
 eOH1=sqrt(eOH1);
 
 // Computing norms of the reference solution
-nL1=0; nL2=0; nH1=0; nMax=0; //various norms of uref
 nL1=int2d(TH)(abs(urefH));
 nL2=sqrt(int2d(TH)(urefH*urefH));
 nH1=sqrt(int2d(TH)(urefH*urefH + dx(urefH)*dx(urefH) + dy(urefH)*dy(urefH)));
 urefH = abs(urefH);
 nMax=urefH[].max;
-printNorms = "norms coarse projection: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-ffLog << printNorms;
+{//for compatibility reasons, printNorms is kept a local variable
+    string printNorms = "norms coarse projection: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+    ffLog << printNorms;
+}
 try{ 
     erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
     erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
