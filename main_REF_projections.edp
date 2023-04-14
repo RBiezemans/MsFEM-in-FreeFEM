@@ -58,8 +58,8 @@ macro computeErrors(approx) {
     eOL1 = int2d(Th)(abs(uref-approx)*conditionMesh);
     eL2  = int2d(Th)((uref-approx)^2);
     eOL2 = int2d(Th)((uref-approx)^2*conditionMesh);
-    eH1  = int2d(Th)(  (uref-approx)^2 + (dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2);
-    eOH1 = int2d(Th)( ((uref-approx)^2 + (dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2)*conditionMesh );
+    eH1  = eL2  + int2d(Th)(  (dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2);
+    eOH1 = eOL2 + int2d(Th)( ((dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2)*conditionMesh );
     eL2  = sqrt(eL2);
     eOL2 = sqrt(eOL2);
     eH1  = sqrt(eH1);
