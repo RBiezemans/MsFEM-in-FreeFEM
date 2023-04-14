@@ -144,7 +144,7 @@ if (iproc == i%nbproc) {
     uHhK+=uHdx[][i]*storeVx(countOffline,:); //reconstructing the numerical corrector for the x-direction
     if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx");}
     uHhK+=uHdy[][i]*storeVy(countOffline,:); //reconstructing the numerical corrector for the y-direction
-    if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx + Vy");}
+    if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx + Vy");}
 
     int[int] R=restrict(VK, Vh, n2o);
     uHh[](R)=uHhK;
@@ -166,12 +166,16 @@ if (iproc == i%nbproc) {
     eL1[0]  += int2d(K)(abs(errK));
     eML1[0] += int2d(K)(abs(errK)*conditionMadiot);
     eOL1[0] += int2d(K)(abs(errK)*conditionMesh);
-    eL2[0]  += int2d(K)(errK*errK);
-    eML2[0] += int2d(K)(errK*errK*conditionMadiot);
-    eOL2[0] += int2d(K)(errK*errK*conditionMesh);
-    eH1[0]  += int2d(K)(  errK*errK + dx(errK)*dx(errK) + dy(errK)*dy(errK));
-    eMH1[0] += int2d(K)( (errK*errK + dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
-    eOH1[0] += int2d(K)( (errK*errK + dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
+    real elocL2=0, elocML2=0, elocOL2=0; //local variables to temporarily store local L2 error contributions
+    elocL2  = int2d(K)(errK*errK);
+    elocML2 = int2d(K)(errK*errK*conditionMadiot);
+    elocOL2 = int2d(K)(errK*errK*conditionMesh);
+    eL2[0]  += elocL2;
+    eML2[0] += elocML2;
+    eOL2[0] += elocOL2;
+    eH1[0]  += elocL2  + int2d(K)(  dx(errK)*dx(errK) + dy(errK)*dy(errK));
+    eMH1[0] += elocML2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
+    eOH1[0] += elocOL2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
     errK = abs(errK);
     //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
     eMax[0]  = max(eMax[0],errK[].max);
@@ -218,7 +222,7 @@ mpiReduce(eOMax, eOMaxGl, processor(0,comm), mpiMAX);
 
 if (iproc==0) {
     // Computing norms of the reference solution
-    real nL1=0, nL2=0, nH1=0, nMax=0;
+    real nL1=0, nL2=0, nH1=0, nMax=0; //various norms of uref
     nL1=int2d(Th)(abs(uref));
     nL2=sqrt(int2d(Th)(uref*uref));
     nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));

@@ -64,7 +64,7 @@ if (iproc==0) {
     }
 
     {// Writing errors to an external file
-        string errname = output + "err_" + vfname + "_"+ name + "_OS" + osCoef + ".txt";
+        string errname = output + "err_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
         if (name == "REF") {
             errname = output + "err_best_approximation.txt";
         }
