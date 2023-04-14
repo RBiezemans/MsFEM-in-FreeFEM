@@ -1,0 +1,51 @@
+// define here a "pdefile.idp" -->
+//
+// The following coefficients for the PDE must be defined here
+// - nu -- scalar diffusion coefficient
+// - bx,by -- scalar components of the advection field
+// - sigma -- reaction coefficient (may include div(b) if a skew-symmetric formulation is used)
+// The right-hand side of the PDE is also defined here as
+// - fRHS -- function of (x,y) defining the RHS
+// - rhsDescription -- string containing a description of fRHS to be saved with error output
+//////////////////////////////////////////////////////////////////////// 
+
+// pde_230414_advdiff_large_contrast.idp
+
+// Diffusion coefficient ///////////////////////////////////////////////
+
+// real delta = (cont-1.)/(cont+1.);
+// func nu=alpha*(1+delta*cos(2*pi/eps*x));
+// func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
+func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+// func nu=(1+cos(2*pi*x)^2)*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
+// func nu=1+(cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2)*cos((x^2+y^2)/eps)^2;
+
+// Advection field /////////////////////////////////////////////////////
+
+// real bx=0;
+// real by=0;
+// real bx=cos(2*pi*theta);
+// real by=sin(2*pi*theta);
+real bx=cont/2.*cos(2*pi*theta);
+real by=cont/2.*sin(2*pi*theta);
+// func bx=1+0.5*cos(0.1*pi*y/eps);
+// func by=1+0.5*sin(0.1*pi*x/eps);
+// func bx=(1+y)/sqrt(5+2*y-4*x+y^2+x^2);
+// func by=(2-x)/sqrt(5+2*y-4*x+y^2+x^2);
+
+// Reaction coefficient/divergence of the advection field //////////////
+
+func sigma=0; 
+
+// RHS of the PDE to be solved /////////////////////////////////////////
+
+func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
+string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
+// func fRHS=sin(x)*sin(y);
+// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
+// func fRHS=2+sin(x)*sin(y);
+// string rhsDescription = "-- Tests for RHS f = 2+sin(x)sin(y) --";
+// VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
+// string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
+// func fRHS=1;
+// string rhsDescription = "-- Tests for RHS f = 1 --";

@@ -21,6 +21,8 @@
 // Scripts loaded ////////////////////////////////////////////////////////
 // - getARGV.idp 
 //   -- use command line arguments
+// - pdefile.idp
+//   -- define PDE coefficients (nu, bx, by, sigma) and RHS (fRHS, rhsDescription)
 // - vffile.idp
 //   -- define vf of global and local problems (aComplete, aTest1 and aBasis)
 //   -- specify computation options for the offline phase (useVc, fullVF)
@@ -122,10 +124,6 @@
 // - (real)     PeGlob, PeLoc, PeFine, widthMadiot
 //
 // Define the PDE and the MsFEM ///////////////////////////////////////
-// - (real)   delta -- convert contrast to coefficient in front of a cosine
-// - (func)   nu -- diffusion field
-// - (func)   bx, by -- functions defining the two components of the advection field
-// - (func)   sigma -- coefficient for reaction term
 // - (macro)  adif[2] -- bilinear form for diffusion term
 // - (macro)  aadv[2] -- bilinear form for advection term
 // - (macro)  aadvAdj[2] -- bilinear form for an adjoint advection term
@@ -136,8 +134,6 @@
 // - (macro)  rhssupg[1] -- linear form adding supg stabilization to the linear form in the discrete problem (consistency terms)
 // - (VH0)    tau -- stabilization parameter that can be tuned element-by-element
 // - (string) stabExpression -- description of the formula used to determine the stabilization coefficient
-// - (func)   fRHS -- right-hand side function of the variational formulation
-// - (string) rhsDescription -- description of the function fRHS
 // - (int)    useVc [default == 1]
 //            == 1
 //            Compute (some) numerical correctors for constants
@@ -306,27 +302,9 @@ real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 // Define the PDE and the MsFEM                                      //
 ///////////////////////////////////////////////////////////////////////
 
-// Diffusion coefficient
-// real delta = (cont-1.)/(cont+1.);
-// func nu=alpha*(1+delta*cos(2*pi/eps*x));
-// func nu=alpha*(1+delta*cos(2*pi/eps*x)*sin(2*pi*y/eps));
-func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
-// func nu=(1+cos(2*pi*x)^2)*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
-// func nu=1+(cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2)*cos((x^2+y^2)/eps)^2;
-// Advection field
-// func bx=1+0.5*cos(0.1*pi*y/eps);
-// func by=1+0.5*sin(0.1*pi*x/eps);
-// func bx=(1+y)/sqrt(5+2*y-4*x+y^2+x^2);
-// func by=(2-x)/sqrt(5+2*y-4*x+y^2+x^2);
-// Constant advection field coefficients
-real bx=50.*cos(2*pi*theta);
-real by=50.*sin(2*pi*theta);
-// real bx=cos(2*pi*theta)/alpha;
-// real by=sin(2*pi*theta)/alpha;
-// real bx=0;
-// real by=0;
-// Divergence of the advection field
-func sigma=0; 
+// Definition of the PDE coefficient and 
+// the necessary bilinear forms for the variational formulation as macros
+include "pdefile.idp"
  
 macro adif(u,v) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu)// EOM
 //bilinear form associated to diffusion
@@ -347,6 +325,7 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 //bilinear form for supg stabilization
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
+
 include "vffile.idp"
 
 real[int] useVcOnK(VH0.ndof); //an array to keep track of the computation of Vc at the bounday of Omega for strong Dirichlet conditions
@@ -357,19 +336,6 @@ if (name=="CR" && strongDir==1) {
 }
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
-
-// RHS of the PDE to be solved
-func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
-string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
-  //string used to document the tests performed in the error file
-// func fRHS=sin(x)*sin(y);
-// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
-// func fRHS=2+sin(x)*sin(y);
-// string rhsDescription = "-- Tests for RHS f = 2+sin(x)sin(y) --";
-// VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
-// string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
-// func fRHS=1;
-// string rhsDescription = "-- Tests for RHS f = 1 --";
 
 // Stabilization to be used at the RHS of the variational problem
 macro rhssupg(v) (fRHS * tau * (bx*dx(v)+by*dy(v)))// EOM
