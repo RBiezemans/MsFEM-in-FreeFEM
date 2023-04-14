@@ -41,7 +41,9 @@
 if (iproc==0) {
     if (coarseerrors == 0)
         {// Saving coarse scale solution
-            string solCname = output+"solCoarse_" + name + parameters;
+            string solCname = output + "solCoarse_" + name;
+            if (name != "REF") solCname = solCname + parameters;
+            else solCname = solCname + parametersFine;
             solCname = solCname + ".txt";
             ffLog << "Writing solution in P1 basis to " << solCname << endl; 
             ofstream ff(solCname, append);

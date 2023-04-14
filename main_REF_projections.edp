@@ -9,6 +9,8 @@ int iproc=0, nbproc=1; //defined for compatibility with init.idp in the case of 
 
 include "./msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
 name = "REF"; // undo adaptations due to method settings
+cout << "// Projections on coarse spaces" << endl;
+ffLog << "// Projections on coarse spaces" << endl;
 
 Vh uref; //the reference solution is a standard FE on the fine mesh
 {
