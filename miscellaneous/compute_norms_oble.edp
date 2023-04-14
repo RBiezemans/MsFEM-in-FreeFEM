@@ -1,59 +1,113 @@
 // FreeFEM++ script to compute norms of precomputed reference solutions 
 
-int smallN = 16;
+// Parameters defining the domain
+real L, Lx, Ly;
+// Parameters defining the mesh sizes
+int largeN, smallN;
+// Parameters defining the PDE
+real eps, alpha, cont;
+//threshold to decide whether oversampling is to be employed
+int logalpha, logeps;
+{
+	ifstream f("parameters.txt");
+	string read;
+	f >> read >> L;        Lx=L; Ly=L;
+	f >> read >> largeN;
+	f >> read >> smallN;
+	f >> read >> eps;
+	f >> read >> logalpha; alpha=2.^logalpha;
+	f >> read >> read; // position of theta
+	f >> read >> cont;
+}
 real H=1./smallN;
 
-real[int] alphaList = [32, 16, 8, 4, 2, 1, 0.5, 0.25, 0.125, 0.0625, 0.03125, 0.015625, 0.0078125, 0.00390625, 0.00195312, 0.000976562];
-real[int] Nlist(alphaList.n);
-Nlist=2048;
-Nlist(alphaList.n-1)=4096;
-string outfile="sol_REF_norms.dat";
-string[int] labels = ["diffusion", "L2-norm", "L2-norm-OLME", "H1-norm", "H1-norm-OLME"];
+string solname = "sol_REF_alpha_"+alpha+"_cont_"+cont+"_eps_"+eps+"_N_"+largeN+".txt";
+string solnameLIN = "sol_REF_Lin/solCoarse_REF_alpha_"+alpha+"_cont_"+cont+"_eps_"+eps+"_N_"+largeN+"_n_"+smallN+".txt";
+string solnameCR = "sol_REF_CR/solCoarse_REF_alpha_"+alpha+"_cont_"+cont+"_eps_"+eps+"_N_"+largeN+"_n_"+smallN+".txt";
 
-real[int] LtwoNorm(alphaList.n);
-real[int] LtwoNormOLME(alphaList.n);
-real[int] HoneNorm(alphaList.n);
-real[int] HoneNormOLME(alphaList.n);
-mesh TH = square(smallN,smallN,[1.*x,1.*y]);
+string outfile="sol_REF_norms.dat";
+string outfileLIN="sol_REF_Lin/sol_REF_LIN_norms.dat";
+string outfileCR="sol_REF_CR/sol_REF_CR_norms.dat";
+string[int] labels = ["diffusion \t eps \t cont \t largeN", "L2-norm", "L2-norm-OLME", "H1-norm", "H1-norm-OLME"];
+
+macro firstline(writefile) {
+    ofstream ff(writefile,append);
+    ff << labels[0] << "\t" << labels[1] << "\t" << labels[2] << "\t" << labels[3] << "\t" << labels[4] << endl;
+}
+//EOM
+macro searchfile(writefile) {
+    try {
+        ifstream ff(writefile);
+    }
+    catch (...) {
+        firstline(writefile)
+    }
+}
+//EOM
+searchfile(outfile)
+searchfile(outfileLIN)
+searchfile(outfileCR)
+
+// Variables to store the errors
+real LtwoNorm;
+real LtwoNormOLME;
+real HoneNorm;
+real HoneNormOLME;
+mesh TH = square(smallN,smallN,[Lx*x,Ly*y]);
 fespace VH0(TH,P0);
 fespace VH(TH,P1);
 VH olme = (x<1.-H+H/2 && y<1.-H+H/2);
 VH0 conditionMesh = (olme>0.9);
-plot(TH,conditionMesh,fill=1);
 
-for (int i=0; i<alphaList.n; i++) {
-    real alpha = alphaList[i];
-    int largeN = Nlist[i];
-    string solname = "sol_REF_alpha_"+alpha+"_cont_7_eps_0.0078125_N_"+largeN+".txt";
-    cout << "Reading and computing errors of " << solname << endl;
-    
-    mesh Th = square(largeN,largeN,[1.*x,1.*y]);
-    fespace Vh(Th,P1);
-    Vh uref;
-    {
-        ifstream ff(solname);
-        ff >> uref[];
-    }
-    
-    // Norm computations
-    real eL2 = int2d(Th)(uref*uref);
-    real eL2olme = int2d(Th)(uref*uref*conditionMesh);
-    real eH1 = int2d(Th)(dx(uref)*dx(uref) + dy(uref)*dy(uref)) + eL2;
-    real eH1olme = int2d(Th)((dx(uref)*dx(uref) + dy(uref)*dy(uref))*conditionMesh) + eL2olme;
+// Macro for norm computations on a specific mesh
+macro computeErrors(mesh,fnc) {
+    real eL2 = int2d(Th)(fnc*fnc);
+    real eL2olme = int2d(Th)(fnc*fnc*conditionMesh);
+    real eH1 = int2d(Th)(dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc)) + eL2;
+    real eH1olme = int2d(Th)((dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc))*conditionMesh) + eL2olme;
     eL2 = sqrt(eL2);
     eL2olme = sqrt(eL2olme);
     eH1 = sqrt(eH1);
     eH1olme = sqrt(eH1olme);
-    LtwoNorm[i] = eL2;
-    LtwoNormOLME[i] = eL2olme;
-    HoneNorm[i] = eH1;
-    HoneNormOLME[i] = eH1olme;
+    LtwoNorm = eL2;
+    LtwoNormOLME = eL2olme;
+    HoneNorm = eH1;
+    HoneNormOLME = eH1olme;
 }
+//EOM 
 
-{
-    ofstream ff(outfile,append);
-    ff << labels[0] << "\t" << labels[1] << "\t" << labels[2] << "\t" << labels[3] << "\t" << labels[4] << endl;
-    for (int i=0; i<alphaList.n; i++) {
-        ff << alphaList[i] << "\t" << LtwoNorm[i] << "\t" << LtwoNormOLME[i] << "\t" << HoneNorm[i] << "\t" << HoneNormOLME[i] << endl;
-    }
+macro writeErrors(writefile) {
+    ofstream ff(writefile,append);
+    ff << alpha << "\t" << eps << "\t" << cont << "\t" << largeN << "\t" 
+       << LtwoNorm << "\t" << LtwoNormOLME << "\t" << HoneNorm << "\t" << HoneNormOLME << endl;
 }
+//EOM 
+
+cout << "Reading and computing errors of " << solname << endl;
+
+mesh Th = square(largeN,largeN,[Lx*x,Ly*y]);
+fespace Vh(Th,P1);
+Vh uref;
+{
+    ifstream ff(solname);
+    ff >> uref[];
+}
+computeErrors(Th,uref)
+writeErrors(outfile)
+
+VH urefLIN;
+{
+    ifstream ff(solnameLIN);
+    ff >> urefLIN[];
+}
+computeErrors(TH,urefLIN)
+writeErrors(outfileLIN)
+
+fespace VHcr(TH,P1nc);
+VHcr urefCR;
+{
+    ifstream ff(solnameCR);
+    ff >> urefCR[];
+}
+computeErrors(TH,urefCR)
+writeErrors(outfileCR)

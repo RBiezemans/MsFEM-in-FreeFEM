@@ -53,13 +53,13 @@ real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh ele
 VHcont olme = (x<Lx-Hx+hx/2. && y<Ly-Hy+hy/2.);
 VH0 conditionMesh = (olme>0.9);
 // macro for error computation with respect to a function approx
-macro computeErrors(approx) {
-    eL1  = int2d(Th)(abs(uref-approx));
-    eOL1 = int2d(Th)(abs(uref-approx)*conditionMesh);
-    eL2  = int2d(Th)((uref-approx)^2);
-    eOL2 = int2d(Th)((uref-approx)^2*conditionMesh);
-    eH1  = eL2  + int2d(Th)(  (dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2);
-    eOH1 = eOL2 + int2d(Th)( ((dx(uref)-dx(approx))^2 + (dy(uref)-dy(approx))^2)*conditionMesh );
+macro computeErrors(exact, approx) {
+    eL1  = int2d(Th)(abs(exact-approx));
+    eOL1 = int2d(Th)(abs(exact-approx)*conditionMesh);
+    eL2  = int2d(Th)((exact-approx)^2);
+    eOL2 = int2d(Th)((exact-approx)^2*conditionMesh);
+    eH1  = eL2  + int2d(Th)(  (dx(exact)-dx(approx))^2 + (dy(exact)-dy(approx))^2);
+    eOH1 = eOL2 + int2d(Th)( ((dx(exact)-dx(approx))^2 + (dy(exact)-dy(approx))^2)*conditionMesh );
     eL2  = sqrt(eL2);
     eOL2 = sqrt(eOL2);
     eH1  = sqrt(eH1);
@@ -76,7 +76,7 @@ macro computeErrors(approx) {
 //EOM
 macro makedirectory(dirname) exec("mkdir -p " + dirname); //EOM
 
-computeErrors(uHcont)
+computeErrors(uref,uHcont)
 VH0 uB, uHh; //for compatibility with writing only
 {
     output = "sol_REF_Lin/"; // undo adaptations due to method settings
@@ -84,7 +84,7 @@ VH0 uB, uHh; //for compatibility with writing only
     VHcont uH; uH[]=uHcont[];
     include "./msfem_blocks/write_results.idp"
 }
-computeErrors(uHcr)
+computeErrors(uref,uHcr)
 {
     output = "sol_REF_CR/"; // undo adaptations due to method settings
     makedirectory(output)
