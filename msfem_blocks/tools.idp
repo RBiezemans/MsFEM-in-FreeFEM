@@ -33,7 +33,7 @@ macro loadRef(target) {
 } // EOM
 
 macro loadCoarse(target) {
-    string refname = "sol_REF_" + bcType + "/solCoarse_REF" + parametersFine + ".txt";
+    string refname = "sol_REF_" + bcType + "/solCoarse_REF" + parametersFine + "_n_" + n + ".txt";
     ifstream ff(refname);
     ff>>target[];
 } // EOM
