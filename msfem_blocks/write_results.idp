@@ -15,7 +15,6 @@
 // Variables not defined in this script /////////////////////////////////
 // - coarseerrors -- (string) decides whether solutions are stored (only if == 0)
 // - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
-// - plots -- (int) indicates whether solutions should be plotted
 // - useB -- (int) indicates whether bubbles are to be used
 // - vfname -- (string) description of (global and local) VF used
 // - rhsDescription -- (string) description of the function fRHS
@@ -25,6 +24,7 @@
 // - output -- (string) name of the directory (possibly to be created) where all output will be stored
 // - parameters -- (string) parameters tuning the PDE and the MsFEM applied
 // - name -- (string) abbreviation for  MsFEM underlying affine space
+// - n -- (int) integer related to the coarse mesh discretization
 // - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
 // - uHh -- (Vh) reconstructed, fine-scale solution (but must be processed during element-per-element reconstruction)
 // - (real) eL1, eL2, eH1, eMax         -- errors on the entire domain
@@ -35,6 +35,8 @@
 // - (real) erOL1, erOL2, erOH1, erOMax -- relative errors outside the mesh elements at the outflow
 ////////////////////////////////////////////////////////////////////////
 
+
+// Saving and writing test results 
 if (coarseerrors == 0) {
     {// Saving coarse scale solution
         string solCname = output + "solCoarse_" + name;

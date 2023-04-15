@@ -14,47 +14,28 @@
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - VH -- (fespace) the relevant P1 space for the macroscopic problem
+// - loadCoarse -- (macro[1]) load coarse projection of the reference solution
+// - resetNormsErrors -- (macro[1]) reset norms and error variables for the current process to 0 
 // - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
 // - plots -- (int) indicates whether solutions should be plotted
 // - coarseerrors -- (string) controls what is saved in write_results[/_MPI].idp
-// - debug -- (int) provide helpful debugging output
 // - TH -- (square) the coarse mesh of the global domain
 // - VH0 -- (fespace) P0 space on TH
-// - Vh -- (fespace) P1 space on the fine mesh
 // - Lx, Ly -- (real) dimensions of the domain
-// - aComplete -- (macro[2])
-// - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
-// - useB -- (int) indicates whether bubbles are to be used
-// - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
-// - vfname -- (string) description of (global and local) VF used
-// - rhsDescription -- (string) description of the function fRHS
-// - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
-// - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
 // - uH -- (VH) P1 solution of the effective problem
-// - uB -- (VH0) bubble coefficients computed from the effective problem
-// - storeV[c/x/y] -- (real[int]) structures to store the DOF of numerical correctors
-// - storeB -- (real[int]) structures to store the DOF of bubbles
-// - output -- (string) name of the directory (possibly to be created) where all output will be stored
 // - widthMadiot -- (real) size of the boundary layer used by Madiot et al.
-// - parametersFine -- (string) parameters tuning the PDE without coarse mesh information
-// - parameters -- (string) parameters tuning the PDE and the MsFEM applied
-// - name -- (string) abbreviation for  MsFEM underlying affine space
-// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
+// - eL1, eL2, eH1, eMax -- (real) errors on the entire domain
+// - eML1,  eML2,  eMH1,  eMMax -- (real) errors OBL according to the definition of Madiot
+// - eOL1,  eOL2,  eOH1,  eOMax -- (real) errors outside the mesh elements at the outflow
+// - erL1,  erL2,  erH1,  erMax -- (real) relative errors on the entire domain
+// - erML1, erML2, erMH1, erMMax -- (real) relative errors OBL according to the definition of Madiot
+// - erOL1, erOL2, erOH1, erOMax -- (real) relative errors outside the mesh elements at the outflow
 //
-// VH, ...
 //
 // Global variables declared in this script ////////////////////////////
-// - (VH0)  uH0 -- piecewise evaluation of uH at the barycentre
-// - (VH0)  uHd[x/y] -- piecewise constant gradient of uH
-// - (Vh)   uHh -- reconstructed, fine-scale solution (but must be processed during element-per-element reconstruction)
-// - (Vh)   uref -- reference solution
-// - (Vh)   error -- error between uHh and uref
-// - (real) eL1, eL2, eH1, eMax         -- errors on the entire domain
-// - (real) eML1,  eML2,  eMH1,  eMMax  -- errors OBL according to the definition of Madiot
-// - (real) eOL1,  eOL2,  eOH1,  eOMax  -- errors outside the mesh elements at the outflow
-// - (real) erL1,  erL2,  erH1,  erMax  -- relative errors on the entire domain
-// - (real) erML1, erML2, erMH1, erMMax -- relative errors OBL according to the definition of Madiot
-// - (real) erOL1, erOL2, erOH1, erOMax -- relative errors outside the mesh elements at the outflow
+// - (VH)   urefH -- projection of the reference solution on VH
+// - (VH)   errCoarse -- different between urefH and uH
 ////////////////////////////////////////////////////////////////////////
 
 
@@ -71,7 +52,7 @@ catch (...) { //or compute the projections first if they were not found
 }
 if (plots) plot(urefH,wait=1,value=1, cmm="Reference solution");
 
-coarseerrors=1; //to get the correct behaviour of write_results[/_MPI].idp
+coarseerrors=1; //to set the correct behaviour of write_results[/_MPI].idp
 
 resetNormsErrors() //(re)set global error variables and norms to zero
 
@@ -99,13 +80,10 @@ eOL1 = int2d(TH)(abs(errCoarse)*conditionMesh);
     eOH1 = elocOL2 + int2d(TH)( (dx(errCoarse)*dx(errCoarse) + dy(errCoarse)*dy(errCoarse))*conditionMesh );
 }
 errCoarse = abs(errCoarse);
-//if (debug) plot(Th, errCoarse, wait=1, value=1, fill=1);
 eMax  = errCoarse[].max;
 VH errCoarseK  = errCoarse*conditionMadiot;
-//if (debug) plot(Th, errCoarse, wait=1, value=1, fill=1);
 eMMax = errCoarseK[].max;
 errCoarseK  = errCoarse*conditionMesh;
-//if (debug) plot(Th, errCoarse, wait=1, value=1, fill=1);
 eOMax = errCoarseK[].max;
 // Taking square roots, determining the relative errors
 eL2=sqrt(eL2);

@@ -166,6 +166,9 @@
 // - (int)    ndofOffline -- number of DOF for each numerical corrector/bubble
 // - (int)    storeLen -- numberof coarse mesh elements to be treated by a single process
 // - (real[int]) storeVc, storeVx, storeVy, storeB -- structures to store the DOF of numerical correctors and bubbles
+// - (real)   e[./r][L1,ML1,OL1,L2,ML2,OL2,H1,MH1,OH1,Max,OMax,MMlax] -- variables to save errors of the current process
+// - (real[1]) e[./r][L1,ML1,OL1,L2,ML2,OL2,H1,MH1,OH1,Max,OMax,MMlax]Gl -- arrays to collect errors on the global process
+// - (real)   n[L1,L2,H1,Max] -- variables to store reference solution norms for normalization
 //
 // Effective coefficients for the macroscopic problem /////////////////
 // - (VH0) AH[xx/xy/yx/yy] -- will hold the 2x2 matrix that captures the effective (physical + upscaling) diffusion due to multiscale trial functions
@@ -405,7 +408,8 @@ if (useB) {
 }
 else name = name + "_nB";
 
-int coarseerrors=0; //to be set to 1 if coarse errors have been computed and no solutions are to be saved in write_results[/_MPI].idp
+int coarseerrors=0; //to be set to 1 if the script considers coarse errors 
+                    //and no solutions are to be saved in write_results[/_MPI].idp
 
 
 // Define residue output stream and data structures

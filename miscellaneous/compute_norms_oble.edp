@@ -60,7 +60,7 @@ VH olme = (x<1.-H+H/2 && y<1.-H+H/2);
 VH0 conditionMesh = (olme>0.9);
 
 // Macro for norm computations on a specific mesh
-macro computeErrors(grid,fnc) {
+macro computeNorms(grid,fnc) {
     real eL2 = int2d(grid)(fnc*fnc);
     real eL2olme = int2d(grid)(fnc*fnc*conditionMesh);
     real eH1 = int2d(grid)(dx(fnc)*dx(fnc) + dy(fnc)*dy(fnc)) + eL2;
@@ -76,7 +76,7 @@ macro computeErrors(grid,fnc) {
 }
 //EOM 
 
-macro writeErrors(writefile) {
+macro writeNorms(writefile) {
     ofstream ff(writefile,append);
     ff << alpha << "\t" << eps << "\t" << cont << "\t" << largeN << "\t" 
        << LtwoNorm << "\t" << LtwoNormOLME << "\t" << HoneNorm << "\t" << HoneNormOLME << endl;
@@ -92,16 +92,16 @@ Vh uref;
     ifstream ff(solname);
     ff >> uref[];
 }
-computeErrors(Th,uref)
-writeErrors(outfile)
+computeNorms(Th,uref)
+writeNorms(outfile)
 
 VH urefLIN;
 {
     ifstream ff(solnameLIN);
     ff >> urefLIN[];
 }
-computeErrors(TH,urefLIN)
-writeErrors(outfileLIN)
+computeNorms(TH,urefLIN)
+writeNorms(outfileLIN)
 
 fespace VHcr(TH,P1nc);
 VHcr urefCR;
@@ -109,5 +109,5 @@ VHcr urefCR;
     ifstream ff(solnameCR);
     ff >> urefCR[];
 }
-computeErrors(TH,urefCR)
-writeErrors(outfileCR)
+computeNorms(TH,urefCR)
+writeNorms(outfileCR)

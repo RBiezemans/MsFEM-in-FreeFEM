@@ -13,6 +13,8 @@
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - loadRef -- (macro[1]) load the reference solution from a ".txt" file
+// - resetNormsErrors -- (macro[1]) reset norms and error variables for the current process to 0 
 // - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
 // - plots -- (int) indicates whether solutions should be plotted
 // - debug -- (int) provide helpful debugging output
@@ -20,26 +22,22 @@
 // - VH0 -- (fespace) P0 space on TH
 // - Vh -- (fespace) P1 space on the fine mesh
 // - Lx, Ly -- (real) dimensions of the domain
-// - aComplete -- (macro[2])
-// - countOffline -- (int) counter for the number of triangles associated to the current process
 // - iproc -- (int) local index of the current process
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - useB -- (int) indicates whether bubbles are to be used
 // - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
-// - vfname -- (string) description of (global and local) VF used
 // - rhsDescription -- (string) description of the function fRHS
-// - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
-// - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
 // - uH -- (VH) P1 solution of the effective problem
 // - uB -- (VH0) bubble coefficients computed from the effective problem
 // - storeV[c/x/y] -- (real[int]) structures to store the DOF of numerical correctors
 // - storeB -- (real[int]) structures to store the DOF of bubbles
-// - output -- (string) name of the directory (possibly to be created) where all output will be stored
 // - widthMadiot -- (real) size of the boundary layer used by Madiot et al.
-// - parametersFine -- (string) parameters tuning the PDE without coarse mesh information
-// - parameters -- (string) parameters tuning the PDE and the MsFEM applied
-// - name -- (string) abbreviation for  MsFEM underlying affine space
-// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
+// - eL1cur[/Gl], eL2cur[/Gl], eH1cur[/Gl], eMaxcur[/Gl] -- (real[1]) errors on the entire domain
+// - eML1cur[/Gl],  eML2cur[/Gl],  eMH1cur[/Gl],  eMMaxcur[/Gl] -- (real[1]) errors OBL according to the definition of Madiot
+// - eOL1cur[/Gl],  eOL2cur[/Gl],  eOH1cur[/Gl],  eOMaxcur[/Gl] -- (real[1]) errors outside the mesh elements at the outflow
+// - erL1[/Gl],  erL2[/Gl],  erH1[/Gl],  erMax[/Gl] -- (real[1]) relative errors on the entire domain
+// - erML1[/Gl], erML2[/Gl], erMH1[/Gl], erMMax[/Gl] -- (real[1]) relative errors OBL according to the definition of Madiot
+// - erOL1[/Gl], erOL2[/Gl], erOH1[/Gl], erOMax[/Gl] -- (real[1]) relative errors outside the mesh elements at the outflow
 //
 //
 // Global variables declared in this script ////////////////////////////
@@ -49,12 +47,6 @@
 // - (Vh)      uHhGl -- global reconstructed solution, to be gathered by the main process
 // - (Vh)      uref -- reference solution
 // - (Vh)      error -- error between uHh and uref
-// - (real[1]) eL1cur[/Gl], eL2cur[/Gl], eH1cur[/Gl], eMaxcur[/Gl]         -- errors on the entire domain
-// - (real[1]) eML1cur[/Gl],  eML2cur[/Gl],  eMH1cur[/Gl],  eMMaxcur[/Gl]  -- errors OBL according to the definition of Madiot
-// - (real[1]) eOL1cur[/Gl],  eOL2cur[/Gl],  eOH1cur[/Gl],  eOMaxcur[/Gl]  -- errors outside the mesh elements at the outflow
-// - (real[1]) erL1[/Gl],  erL2[/Gl],  erH1[/Gl],  erMax[/Gl]  -- relative errors on the entire domain
-// - (real[1]) erML1[/Gl], erML2[/Gl], erMH1[/Gl], erMMax[/Gl] -- relative errors OBL according to the definition of Madiot
-// - (real[1]) erOL1[/Gl], erOL2[/Gl], erOH1[/Gl], erOMax[/Gl] -- relative errors outside the mesh elements at the outflow
 ////////////////////////////////////////////////////////////////////////
 
 
@@ -125,7 +117,7 @@ if (iproc == i%nbproc) {
     if (useVcOnK[i]) uHhK+=uH0[][i]*storeVc(countOffline,:); //reconstructing the numerical corrector constants
     if (debug && useVcOnK[i]) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc");}
     uHhK+=uHdx[][i]*storeVx(countOffline,:); //reconstructing the numerical corrector for the x-direction
-    if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vx");}
+    if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx");}
     uHhK+=uHdy[][i]*storeVy(countOffline,:); //reconstructing the numerical corrector for the y-direction
     if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx + Vy");}
 

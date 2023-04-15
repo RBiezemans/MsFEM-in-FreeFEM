@@ -7,13 +7,14 @@
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
 // Fine-scale reconstruction of the coarse solution, error computation
-// Writing solution and errors to external files (all writes appended)
 //
 //
 // Compatible with sequential version only
 //
 //
 // Variables not defined in this script /////////////////////////////////
+// - loadRef -- (macro[1]) load the reference solution from a ".txt" file
+// - resetNormsErrors -- (macro[1]) reset norms and error variables for the current process to 0 
 // - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
 // - plots -- (int) indicates whether solutions should be plotted
 // - debug -- (int) provide helpful debugging output
@@ -21,24 +22,21 @@
 // - VH0 -- (fespace) P0 space on TH
 // - Vh -- (fespace) P1 space on the fine mesh
 // - Lx, Ly -- (real) dimensions of the domain
-// - aComplete -- (macro[2])
 // - phi -- (VH0) function on the coarse mesh that is used to partition the global domain
 // - useB -- (int) indicates whether bubbles are to be used
 // - useVcOnK -- (real[int]) indicates whether the correctors for constants are to be used on a specific coarse mesh element
-// - vfname -- (string) description of (global and local) VF used
 // - rhsDescription -- (string) description of the function fRHS
-// - stabExpression -- (string) description of the formula used to determine the stabilization coefficient
-// - xb, yb -- (VH0) [x/y]-coordinate of the barycentres of the triangles of TH
 // - uH -- (VH) P1 solution of the effective problem
 // - uB -- (VH0) bubble coefficients computed from the effective problem
 // - storeV[c/x/y] -- (real[int]) structures to store the DOF of numerical correctors
 // - storeB -- (real[int]) structures to store the DOF of bubbles
-// - output -- (string) name of the directory (possibly to be created) where all output will be stored
 // - widthMadiot -- (real) size of the boundary layer used by Madiot et al.
-// - parametersFine -- (string) parameters tuning the PDE without coarse mesh information
-// - parameters -- (string) parameters tuning the PDE and the MsFEM applied
-// - name -- (string) abbreviation for  MsFEM underlying affine space
-// - osCoef -- (real) the homothety coefficient chosen for the oversampling patch
+// - eL1, eL2, eH1, eMax -- (real) errors on the entire domain
+// - eML1,  eML2,  eMH1,  eMMax -- (real) errors OBL according to the definition of Madiot
+// - eOL1,  eOL2,  eOH1,  eOMax -- (real) errors outside the mesh elements at the outflow
+// - erL1,  erL2,  erH1,  erMax -- (real) relative errors on the entire domain
+// - erML1, erML2, erMH1, erMMax -- (real) relative errors OBL according to the definition of Madiot
+// - erOL1, erOL2, erOH1, erOMax -- (real) relative errors outside the mesh elements at the outflow
 //
 //
 // Global variables declared in this script ////////////////////////////
@@ -47,12 +45,6 @@
 // - (Vh)   uHh -- reconstructed, fine-scale solution (but must be processed during element-per-element reconstruction)
 // - (Vh)   uref -- reference solution
 // - (Vh)   error -- error between uHh and uref
-// - (real) eL1, eL2, eH1, eMax         -- errors on the entire domain
-// - (real) eML1,  eML2,  eMH1,  eMMax  -- errors OBL according to the definition of Madiot
-// - (real) eOL1,  eOL2,  eOH1,  eOMax  -- errors outside the mesh elements at the outflow
-// - (real) erL1,  erL2,  erH1,  erMax  -- relative errors on the entire domain
-// - (real) erML1, erML2, erMH1, erMMax -- relative errors OBL according to the definition of Madiot
-// - (real) erOL1, erOL2, erOH1, erOMax -- relative errors outside the mesh elements at the outflow
 ////////////////////////////////////////////////////////////////////////
 
 
@@ -132,13 +124,10 @@ for(int i=0; i<VH0.ndof; i++) {
     eMH1 += elocML2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
     eOH1 += elocOL2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
     errK = abs(errK);
-    //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
     eMax  = max(eMax,errK[].max);
     VK errKK  = errK*conditionMadiot;
-    //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
     eMMax = max(eMMax,errKK[].max);
     errKK  = errK*conditionMesh;
-    //if (debug) plot(Th, errK, wait=1, value=1, fill=1);
     eOMax = max(eOMax,errKK[].max);
     
     phi[][i]=0;
@@ -157,9 +146,10 @@ nL2=sqrt(int2d(Th)(uref*uref));
 nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
 uref = abs(uref);
 nMax=uref[].max;
-string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
-ffLog << printNorms;
-
+{//for compatibility reasons, printNorms is kept a local variable
+    string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+    ffLog << printNorms;
+}
 try{ 
     erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
     erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
@@ -169,7 +159,6 @@ catch (...) {
     cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
     ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
 }
-
 if (plots) {
     plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
     plot(error, value=1, cmm="Error");

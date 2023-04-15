@@ -14,6 +14,8 @@
 //
 //
 // Global variables declared in this script ////////////////////////////
+// - (macro) loadRef[1] -- load reference solution to the argument FE function
+// - (macro) loadCoarse[1] -- load the relevant projection of the reference solution to the argument FE function
 // - (macro) residue[4] -- compute residue of the solution of a linear system and store in a predeclared variable
 // - (macro) writeResidue[2] -- write a precomputed residue + message to the terminal and MsFEM log
 // - (macro) printTime[1] -- print a message follows by the time since last clocking time (and clocks automatically)
@@ -22,6 +24,7 @@
 // - (macro) printIntegralsTri[2] -- write integrals of a function over all edges of the specified triangle to command line
 // - (macro) ip[3] -- inner product between two components and a vector
 // - (macro) ipcheck[2] -- compute the inner product of (x,y)-#2 and #1
+// - (macro) resetNormErrors[unused] -- reset errors and norm variables on the current process to 0
 ////////////////////////////////////////////////////////////////////////
 
 
@@ -111,7 +114,7 @@ macro ip(u,v,w) (u*w[0] + v*w[1])// //EOM
 macro ipcheck(u1, u2) ( u1[0]*(x-u2[0]) + u1[1]*(y-u2[1]) )// EOM
 
 
-// Resetting errors and norms
+// Reset errors and norm variables on the current process to 0
 macro resetNormsErrors(unused) {
     nL1=0;   nL2=0;   nH1=0;   nMax=0;
     eL1=0;   eL2=0;   eH1=0;   eMax=0; 
