@@ -58,11 +58,12 @@ for TEST_2LOGALP in $TOTEST_2LOGALP; do sed -i "s/2logalpha=.*/2logalpha= $TEST_
 for TEST_THETA in $TOTEST_THETA; do sed -i "s/theta=.*/theta= $TEST_THETA/" "experiment/parameters.txt" 
 for TEST_CONT in $TOTEST_CONT; do sed -i "s/cont=.*/cont= $TEST_CONT/" "experiment/parameters.txt" 
 for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "experiment/parameters.txt"
-    if [ $TEST_2LOGALP = $TOTEST_SWITCHLOGALPHA ] # the last test requires a finer reference solution (skipped here)
+for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt"
+    if [ $TEST_2LOGALP = $TOTEST_SWITCHLOGALPHA ] # the last test requires a finer reference solution
     then sed -i "s/N=.*/N= $TOTEST_LARGER_N/" "experiment/parameters.txt" 
     fi
 
-    # The above loops contain all parameters related to the reference solution
+    # The above loops contain all parameters related to the reference solution and its projection on the coarse spaces
     sed -i "s/treatB=.*/treatB= out_system/" "experiment/parameters.txt"
     # The reference solution does not involve any bubble computations
     cp experiment/parameters.txt parameters.txt
@@ -78,7 +79,6 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     fi
 
     for TEST_VFFILE in $TOTEST_VFFILE; do cp variational_forms/$TEST_VFFILE vffile.idp
-    for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "experiment/parameters.txt"
     for TEST_OSCOEF in $TOTEST_OSCOEF; do sed -i "s/osCoef=.*/osCoef= $TEST_OSCOEF/" "experiment/parameters.txt"
     for TEST_STR_DIR in $TOTEST_STR_DIR; do sed -i "s/strong_Dirichlet=.*/strong_Dirichlet= $TEST_STR_DIR/" "experiment/parameters.txt"
     for TEST_GLUE in $TOTEST_GLUE; do sed -i "s/glue=.*/glue= $TEST_GLUE/" "experiment/parameters.txt"
@@ -122,5 +122,5 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     if (( $(echo "$TEST_OSCOEF < 0.1" | bc) )) # basic calculator is used for decimal arithmetic
         then break # break the loop over GLUE option if no oversamling is actually used
     fi
-    done done done done done # end of loops over basis specification
-done done done done done done # end of loops over reference solution/physical parameters + fine mesh + vf form used
+    done done done done # end of loops over basis specification
+done done done done done done done # end of loops over reference solution/physical parameters + fine mesh + vf form used
