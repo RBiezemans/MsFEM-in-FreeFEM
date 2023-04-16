@@ -9,7 +9,7 @@
 // - rhsDescription -- string containing a description of fRHS to be saved with error output
 //////////////////////////////////////////////////////////////////////// 
 
-// pde_230414_advdiff_large_contrast.idp
+// pde_230414_advdiff_adv_nonconstant_normalized.idp
 
 // Diffusion coefficient ///////////////////////////////////////////////
 

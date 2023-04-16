@@ -20,7 +20,7 @@ TEST_P1_LIN=0
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
 TOTEST_PDEFILE="pde_230414_advdiff_large_contrast.idp"
-TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_msfem_supg.idp advection_diffusion_p1_supg.idp" # advection_diffusion_msfem.idp advection_diffusion_p1.idp advection_diffusion_skew_symmetric.idp"
+TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_msfem_supg_for_large_contrast.idp advection_diffusion_p1_supg_for_large_contrast.idp" # advection_diffusion_msfem.idp advection_diffusion_p1.idp advection_diffusion_skew_symmetric.idp"
 TOTEST_L="1."
 TOTEST_EPS="0.020944" # 2^-7
 TOTEST_2LOGALP="2 1 0 -1 -2 -3 -4 -5 -6"
