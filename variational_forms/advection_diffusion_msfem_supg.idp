@@ -14,7 +14,7 @@
 //   - put a description of the choice of stabilization parameter in the variable 'stabExpression'
 //////////////////////////////////////////////////////////////////////// 
 
-// advection_diffusion_direct.idp
+// advection_diffusion_msfem_supg.idp
 // resolution of the advection-diffusion equation 
 // the basis functions resolve only the diffusion terms
 // the effective scheme is stabilized by SUPG, assuming that diffusion

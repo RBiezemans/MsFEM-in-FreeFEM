@@ -104,7 +104,7 @@ for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "exper
             fi
 
             # MsFEM-CR
-            if [ $TEST_MSFEM_CR -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ] && [[ $TEST_VFFILE != *p1* ]]
+            if [ $TEST_MSFEM_CR -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg_for_large_contrast.idp" ] && [[ $TEST_VFFILE != *p1* ]]
             then
                 /usr/bin/mpirun -np $NUMBER_OF_PROC ~/etienne/freefem/bin/FreeFem++-mpi -v 0 main_CR_MPI.edp -o $OFFLINE_MODE
             fi 
