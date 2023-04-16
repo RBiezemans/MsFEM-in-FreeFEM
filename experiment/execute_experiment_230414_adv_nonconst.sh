@@ -69,7 +69,7 @@ for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "exper
     cp experiment/parameters.txt parameters.txt
     for TEST_VFFILE in $TOTEST_VFFILE
         do cp variational_forms/$TEST_VFFILE vffile.idp
-        break # the availibility of a vffile is only needed for compatibility with initialization, but not actually used in the computation of the reference solution
+        break # the vffile is needed to define the variational formulation for the reference solution
     done
     if [ $COMPUTE_REF == 0 ]
     then
@@ -88,7 +88,7 @@ for TEST_SMALL_N in $TOTEST_SMALL_N; do sed -i "s/n=.*/n= $TEST_SMALL_N/" "exper
     for TEST_USE_B in $TOTEST_USE_B; do sed -i "s/useB=.*/useB= $TEST_USE_B/" "experiment/parameters.txt"
     for TEST_TREAT_B in $TOTEST_TREAT_B; do sed -i "s/treatB=.*/treatB= $TEST_TREAT_B/" "experiment/parameters.txt"
 
-        if [ $TEST_USE_B == 0 -a $TEST_TREAT_B = "out_system" ] || [ $TEST_USE_B == 1 -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" ] # Not all parameter combinations are allowed
+        if [ $TEST_USE_B == 0 -a $TEST_TREAT_B = "out_system" ] || [ $TEST_USE_B == 1 -a ! $TEST_VFFILE = "advection_diffusion_msfem_supg.idp" -a ! $TEST_VFFILE = "advection_diffusion_p1_supg.idp" ] # Not all parameter combinations are allowed
         then
             cp experiment/parameters.txt parameters.txt
             OFFLINE_MODE="compute"
