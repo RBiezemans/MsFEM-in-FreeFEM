@@ -9,7 +9,7 @@
 # Number of processors to be used
 NUMBER_OF_PROC=25
 
-LOAD_OPTION=0 #0 : first offline stage is computed for each set of parameters -- 1 : offline stage is loaded from the very first test
+LOAD_OPTION=1 #0 : first offline stage is computed for each set of parameters -- 1 : offline stage is loaded from the very first test
 COMPUTE_REF=0 #0 : reference solution is computed -- 1 : reference solution is not computed
 
 # FEM variants to be tested: 0 if yes, 1 if no
@@ -19,13 +19,13 @@ TEST_P1_LIN=0
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
-TOTEST_PDEFILE="pde_230414_advdiff_adv_nonconstant_normalized.idp"
+TOTEST_PDEFILE="pde_230423_advdiff_adv_constant_rhs.idp"
 TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_msfem_supg.idp advection_diffusion_p1_supg.idp" # advection_diffusion_msfem.idp advection_diffusion_p1.idp advection_diffusion_skew_symmetric.idp"
 TOTEST_L="1."
 TOTEST_EPS="0.0078125" # 2^-7
-TOTEST_2LOGALP="2 1 0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -10"
-TOTEST_SWITCHLOGALPHA="-10" # value for which the mesh size TOTEST_LARGER_N should be used for the fine mesh
-TOTEST_THETA="0.0"
+TOTEST_2LOGALP="2 1 0 -1 -2 -3 -4 -5 -6 -7 -8 -9 -10 -11"
+TOTEST_SWITCHLOGALPHA="-11" # value for which the mesh size TOTEST_LARGER_N should be used for the fine mesh
+TOTEST_THETA="0.15"
 TOTEST_CONT="7"
 TOTEST_LARGE_N="2048" 
 TOTEST_LARGER_N="4096"  
