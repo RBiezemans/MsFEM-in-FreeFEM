@@ -102,10 +102,15 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
 include "../variational_forms/advection_diffusion_direct.idp"
+
+real[int] useVcOnK(VH0.ndof); //an array to keep track of the computation of Vc at the bounday of Omega for strong Dirichlet conditions
+useVcOnK=useVc;
+if (name=="CR" && strongDir==1) {
+	useVc=1; //we need at least some non-trivial Vc functions because of non-homogeneous BC..
+	fullVF=1; //..if we want to enforce strong conditions on the boundary of Omega
+}
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
-if (FEtype=="CR" && osCoef > osThr) useVc=1; //we need non-trivial Vc functions..
-	//..because of non-homogeneous BC if we want to enforce strong conditions on the boundaty of Omega
 
 // RHS of the PDE to be solved
 // func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);

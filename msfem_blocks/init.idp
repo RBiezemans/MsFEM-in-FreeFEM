@@ -101,9 +101,13 @@
 //               CR elements are defined with weak boundary conditions on the boundary of the global domain (i.e. in the average sense)
 //            == 1
 //               CR basis functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain 
+//				 This is the 'affine boundary condition' variant of the thesis, 
+//				   but only implemented for homogeneous boundary conditions of the solution
 //               CR bubble functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain
 //			  == 2
 //               CR correctors are defined with strong, homogeneous boundary conditions on the boundary of the global domain 
+//				 This is the 'affine boundary condition' variant of the thesis, 
+//				   correctly implemented for any Dirichlet condition on the coarse space
 //               CR bubble functions are defined with strong, homogeneous boundary conditions on the boundary of the global domain
 // - (string) glue
 //            == "dof"
