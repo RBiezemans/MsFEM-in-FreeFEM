@@ -1,0 +1,573 @@
+// post_processing.idp
+//
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Macros to perform reconstruction of multiscale solution, error computation, 
+// projection on the coarse P1 space, etc.
+//
+////////////////////////////////////////////////////////////////////////
+
+macro postWriteResults(uH,uB,coarseerrors) {
+    /* Saving and writing test results */
+    if (coarseerrors == 0) {
+        {/* Saving coarse scale solution */
+            string solCname = output + "solCoarse_" + name;
+            if (name != "REF") solCname = solCname + parameters;
+            else solCname = solCname + parametersFine + "_n_" + n;
+            solCname = solCname + ".txt";
+            ffLog << "Writing solution in P1 basis to " << solCname << endl; 
+            ofstream ff(solCname, append);
+            ff << uH[] << endl;
+            ff << endl;
+        }
+        if (treatB == "in_system" && name != "REF") {/* Saving bubble coefficients */
+            string solBname = output+"solCoarseB_" + name + parameters;
+            solBname = solBname + ".txt";
+            ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
+            ofstream ff(solBname, append);
+            ff << uB[] << endl;
+            ff << endl;
+        }
+        if (name != "REF") {/* Saving reconstructed micro-scale solution */
+            string solname = output+"sol_" + name + parameters;
+            solname = solname + ".txt";
+            ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
+            ofstream ff(solname, append);
+            ff << uHh[] << endl;
+            ff << endl;
+        }
+    }
+
+    {/* Writing errors to an external file */
+        string errname = output + "err";
+        if (coarseerrors == 1) errname = errname + "Coarse";
+        errname = errname + "_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
+        if (name == "REF") {
+            errname = output + "err_best_approximation.txt";
+        }
+        ffLog << "Writing errors to " << errname << endl;
+        ofstream ff(errname, append);
+        ff  << rhsDescription
+            << endl
+            << stabExpression
+            << endl
+            << "\t\t"
+            << "n    " << n << "\t\t"
+            << "N    " << Ndiscr << "\t\t"
+            << "eps  " << eps << "\t\t"
+            << "alp  " << alpha << "\t\t"
+            << "cont " << cont << "\t\t"
+            << "the  " << theta << "\t\t"
+            << endl
+            << "\t\t"
+            << "useB     " << useB << "\t\t"
+            << "testMS   " << testMS << "\t\t"
+            << "strongD  " << strongDir << "\t\t"
+            << "OScoef   " << osCoef << "\t\t"
+            << endl
+            << "\t\t"
+            << "PeGlob   " << PeGlob << "\t\t"
+            << "PeLoc    " << PeLoc  << "\t\t"
+            << "PeFine   " << PeFine << "\t\t"
+            << endl
+            << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
+            << endl;        
+        
+        ff  << "all \t"
+            << eL1  <<"\t"<< eL2  <<"\t"<< eH1  <<"\t"<< eMax  <<"\t"
+            << erL1 <<"\t"<< erL2 <<"\t"<< erH1 <<"\t"<< erMax
+            << endl
+            << "OBL \t"
+            << eML1  <<"\t"<< eML2  <<"\t"<< eMH1  <<"\t"<< eMMax  <<"\t"
+            << erML1 <<"\t"<< erML2 <<"\t"<< erMH1 <<"\t"<< erMMax
+            << endl
+            << "OLME \t"
+            << eOL1  <<"\t"<< eOL2  <<"\t"<< eOH1  <<"\t"<< eOMax  <<"\t"
+            << erOL1 <<"\t"<< erOL2 <<"\t"<< erOH1 <<"\t"<< erOMax
+            << endl;
+
+        ff<<endl;
+    }
+
+    cout << endl;
+    ffLog << endl << endl; /* end of MsFEM routine */
+} // EOM
+
+macro postWriteResultsMPI(uH,uB,coarseerrors) {
+    if (iproc==0) {
+        if (coarseerrors == 0)
+            {/* Saving coarse scale solution */
+                string solCname = output + "solCoarse_" + name;
+                if (name != "REF") solCname = solCname + parameters;
+                else solCname = solCname + parametersFine + "_n_" + n;
+                solCname = solCname + ".txt";
+                ffLog << "Writing solution in P1 basis to " << solCname << endl; 
+                ofstream ff(solCname, append);
+                ff << uH[] << endl;
+                ff << endl;
+            }
+            if (treatB == "in_system" && name != "REF") {/* Saving bubble coefficients */
+                string solBname = output+"solCoarseB_" + name + parameters;
+                solBname = solBname + ".txt";
+                ffLog << "Writing coefficients for the bubble functions to " << solBname << endl; 
+                ofstream ff(solBname, append);
+                ff << uB[] << endl;
+                ff << endl;
+            }
+            if (name != "REF") {/* Saving reconstructed micro-scale solution */
+                string solname = output+"sol_" + name + parameters;
+                solname = solname + ".txt";
+                ffLog << "Writing reconstructed fine scale solution to " << solname << endl; 
+                ofstream ff(solname, append);
+                ff << uHhGl[] << endl;
+                ff << endl;
+            }
+
+        {/* Writing errors to an external file */
+            string errname = output + "err";
+            if (coarseerrors == 1) errname = errname + "Coarse";
+            errname = errname + "_" + vfname + "_" + name + "_OS" + osCoef + ".txt";
+            if (name == "REF") {
+                errname = output + "err_best_approximation.txt";
+            }
+            ffLog << "Writing errors to " << errname << endl;
+            ofstream ff(errname, append);
+            ff  << rhsDescription
+                << endl
+                << stabExpression
+                << endl
+                << "\t\t"
+                << "n    " << n << "\t\t"
+                << "N    " << Ndiscr << "\t\t"
+                << "eps  " << eps << "\t\t"
+                << "alp  " << alpha << "\t\t"
+                << "cont " << cont << "\t\t"
+                << "the  " << theta << "\t\t"
+                << endl
+                << "\t\t"
+                << "useB     " << useB << "\t\t"
+                << "testMS   " << testMS << "\t\t"
+                << "strongD  " << strongDir << "\t\t"
+                << "OScoef   " << osCoef << "\t\t"
+                << endl
+                << "\t\t"
+                << "PeGlob   " << PeGlob << "\t\t"
+                << "PeLoc    " << PeLoc  << "\t\t"
+                << "PeFine   " << PeFine << "\t\t"
+                << endl
+                << "\t\t L1\t\t\t L2\t\t\t H1\t\t\t max\t\t L1rel\t\t L2rel\t\t H1rel\t\t maxrel\t\t"
+                << endl;        
+            
+            ff  << "all \t"
+                << eL1Gl[0]   <<"\t"<< eL2Gl[0]   <<"\t"<< eH1Gl[0]   <<"\t"<< eMaxGl[0]   <<"\t"
+                << erL1Gl[0]  <<"\t"<< erL2Gl[0]  <<"\t"<< erH1Gl[0]  <<"\t"<< erMaxGl[0]
+                << endl
+                << "OBL \t"
+                << eML1Gl[0]  <<"\t"<< eML2Gl[0]  <<"\t"<< eMH1Gl[0]  <<"\t"<< eMMaxGl[0]  <<"\t"
+                << erML1Gl[0] <<"\t"<< erML2Gl[0] <<"\t"<< erMH1Gl[0] <<"\t"<< erMMaxGl[0]
+                << endl
+                << "OLME \t"
+                << eOL1Gl[0]  <<"\t"<< eOL2Gl[0]  <<"\t"<< eOH1Gl[0]  <<"\t"<< eOMaxGl[0]  <<"\t"
+                << erOL1Gl[0] <<"\t"<< erOL2Gl[0] <<"\t"<< erOH1Gl[0] <<"\t"<< erOMaxGl[0]
+                << endl;
+
+            ff<<endl;
+        }
+
+        cout << endl;
+        ffLog << endl << endl; /* end of MsFEM routine */
+    }
+} // EOM
+
+macro postReconstructionError(uH,uB){
+    VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions */
+    VH0 uHdx=dx(uH), uHdy=dy(uH); /* interpolation of derivatives of uH (which in fact are piecewise constant) */
+
+    Vh uref=0, error=0; /* reconstructed solution, reference solution, error */
+
+    try { /* load reference solution on Th */
+        loadRef(uref)
+    }
+    catch (...) { /* or compute the referece solution if the file is not found */
+        cout << "WARNING: No reference solution was found and it is recomputed" << endl;
+        ffLog << "WARNING: No reference solution was found and it is recomputed" << endl;
+        exec("FreeFem++ main_REF.edp -v 0 -ng");
+        loadRef(uref)
+    }
+    if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");
+
+    resetNormsErrors() /* (re)set global error variables and norms to zero */
+
+    /* Reconstruction and error computation
+    /* Error computation does not yet apply square roots, because these are to be taken once..
+    /* ..all contributions are added at the end of the next for loop */
+    for(int i=0; i<VH0.ndof; i++) {
+        /* build fine mesh of the current coarse mesh element K */
+        if (i%(2*n)==0) {
+            cout <<"reconstruction on tri "<<i<<endl;
+        }
+        phi[][i]=2;
+        int[int] n2o;
+        mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
+        fespace VK(K,P1);
+        fespace VK0(K,P0);
+        
+        VK uHK;
+        uHK=uH0[][i] + uHdx[][i]*(x-xb[][i]) + uHdy[][i]*(y-yb[][i]);
+        /* copying the coarse scale solution to the fine scale without interpolating it */
+        if (debug) plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution");
+        real[int] uHhK=uHK[]; /* array currently representing the coarse solution on K */
+        if (useB) uHhK+=uB[][i]*storeB(i,:); /* reconstructing the bubble function */
+        if (debug && useB) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B");}
+        if (useVcOnK[i]) uHhK+=uH0[][i]*storeVc(i,:); /* reconstructing the numerical corrector constants */
+        if (debug && useVcOnK[i]) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc");}
+        uHhK+=uHdx[][i]*storeVx(i,:); /* reconstructing the numerical corrector for the x-direction */
+        if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx");}
+        uHhK+=uHdy[][i]*storeVy(i,:); /* reconstructing the numerical corrector for the y-direction */
+        if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx + Vy");}
+
+        int[int] R=restrict(VK, Vh, n2o);
+        uHh[](R)=uHhK;
+
+        VK errK=0;
+        errK[] = uref[](R);
+        errK[] = errK[]-uHhK;
+        error[](R)=errK[];
+
+        /* Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme) */
+        VK obl = (x<Lx-widthMadiot && y<Ly-widthMadiot);
+        VK0 conditionMadiot = (obl>0.9);
+        VK olme = (x<Lx-Hx+hx/2 && y<Ly-Hy+hy/2);
+        VK0 conditionMesh = (olme>0.9);
+
+        /* Error computations on K */
+        eL1  += int2d(K)(abs(errK));
+        eML1 += int2d(K)(abs(errK)*conditionMadiot);
+        eOL1 += int2d(K)(abs(errK)*conditionMesh);
+        real elocL2=0, elocML2=0, elocOL2=0; /* local variables to temporarily store local L2 error contributions */
+        elocL2  = int2d(K)(errK*errK);
+        elocML2 = int2d(K)(errK*errK*conditionMadiot);
+        elocOL2 = int2d(K)(errK*errK*conditionMesh);
+        eL2  += elocL2;
+        eML2 += elocML2;
+        eOL2 += elocOL2;
+        eH1  += elocL2  + int2d(K)(  dx(errK)*dx(errK) + dy(errK)*dy(errK));
+        eMH1 += elocML2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
+        eOH1 += elocOL2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
+        errK = abs(errK);
+        eMax  = max(eMax,errK[].max);
+        VK errKK  = errK*conditionMadiot;
+        eMMax = max(eMMax,errKK[].max);
+        errKK  = errK*conditionMesh;
+        eOMax = max(eOMax,errKK[].max);
+        
+        phi[][i]=0;
+    }
+    /* Taking square roots, determining the relative errors */
+    eL2=sqrt(eL2);
+    eML2=sqrt(eML2);
+    eOL2=sqrt(eOL2);
+    eH1=sqrt(eH1);
+    eMH1=sqrt(eMH1);
+    eOH1=sqrt(eOH1);
+
+    /* Computing norms of the reference solution */
+    nL1=int2d(Th)(abs(uref));
+    nL2=sqrt(int2d(Th)(uref*uref));
+    nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
+    uref = abs(uref);
+    nMax=uref[].max;
+    {/* for compatibility reasons, printNorms is kept a local variable */
+        string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+        ffLog << printNorms;
+    }
+    try{ 
+        erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
+        erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
+        erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1; erOMax=eOMax/nMax;
+    }
+    catch (...) {
+        cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+        ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+    }
+    if (plots) {
+        plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
+        plot(error, value=1, cmm="Error");
+    }
+
+    ffLog << "  Relative errors L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
+    printTime("Reconstruction + error computation lasted ")
+
+    int coarseerrors=0;
+    postWriteResults(uH,uB,coarseerrors)
+} // EOM
+
+macro postReconstructionErrorMPI(uH,uB) {
+    VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions */
+        /* every process will use this information, albeit on different triangles */
+    VH0 uHdx=dx(uH), uHdy=dy(uH); /* interpolation of derivatives of uH (which in fact are piecewise constant) */
+
+    Vh uref=0, error=0; /* reconstructed solution, reference solution, error (on the current process) */
+    Vh uHhGl=0; /* global reconstructed solution, contributions will be reduced to the main process */
+
+    if(iproc==0) { /* on the main process, load reference solution on Th */
+        try {
+            loadRef(uref)
+        }
+        catch (...) { /* or compute the referece solution if the file is not found */
+            cout << "WARNING: No reference solution was found and it is recomputed" << endl;
+            ffLog << "WARNING: No reference solution was found and it is recomputed" << endl;
+            exec("FreeFem++ main_REF.edp -v 0 -ng");
+            loadRef(uref)
+        }
+        if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");
+        for (int i=1; i<nbproc; i++) { 
+            /* each process needs the reference solution, so send it */
+            Send(processor(i,comm), uref[]);
+        }
+    }
+
+    if (iproc>0) { /* receive reference solution from main process */
+        Recv(processor(0,comm), uref[]);
+    }
+
+
+    /* Initialize data structures for error contributions of the current process */
+    real[int] eL1cur(1),  eL2cur(1),  eH1cur(1),  eMaxcur(1); /* errors on the entire domain */
+    real[int] eML1cur(1), eML2cur(1), eMH1cur(1), eMMaxcur(1); /* errors OBL according to the definition of Madiot */
+    real[int] eOL1cur(1), eOL2cur(1), eOH1cur(1), eOMaxcur(1); /* errors outside the mesh elements at the outflow */
+
+    resetNormsErrors() /* (re)set global error variables and norms to zero */
+
+    /* Reconstruction and error computation */
+    /* Error computation does not yet apply square roots, becuse these are to be taken once.. */
+    /* ..everyhing is reduced and added on the main process */
+    countOffline=0; /* counter used to retrieve the result from the local computations per triangle */
+    real[int] correctReduce(Vh.ndof); correctReduce=0;
+    /* correctReduce will be increased by 1 on each triangle associated to the current process */
+    /* it will be used below to correct for mpiReduce on repeated edges */
+    if (timing) time=clock();
+    for(int i=0; i<VH0.ndof; i++) {
+    if (iproc == i%nbproc) {
+        /* build fine mesh of the coarse mesh element K treated by the current process */
+        if (i%(2*n)==0) {
+            cout <<"reconstruction on tri "<<i<<endl;
+        }
+        phi[][i]=2;
+        int[int] n2o;
+        mesh K=trunc(Th,phi>1,split=1,new2old=n2o);
+        fespace VK(K,P1);
+        fespace VK0(K,P0);
+        
+        VK uHK;
+        uHK=uH0[][i] + uHdx[][i]*(x-xb[][i]) + uHdy[][i]*(y-yb[][i]); 
+        /* copying the coarse scale solution to the fine scale without interpolating it */
+        if (debug) plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution");
+        real[int] uHhK=uHK[]; /* array currently representing the coarse solution on K */
+        if (useB) uHhK+=uB[][i]*storeB(countOffline,:); /* reconstructing the bubble function */
+        if (debug && useB) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B");}
+        if (useVcOnK[i]) uHhK+=uH0[][i]*storeVc(countOffline,:); /* reconstructing the numerical corrector constants */
+        if (debug && useVcOnK[i]) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc");}
+        uHhK+=uHdx[][i]*storeVx(countOffline,:); /* reconstructing the numerical corrector for the x-direction */
+        if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx");}
+        uHhK+=uHdy[][i]*storeVy(countOffline,:); /* reconstructing the numerical corrector for the y-direction */
+        if (debug) {uHK[]=uHhK; plot(TH, uHK, wait=1, value=1, fill=1, cmm="Reconstruction: coarse solution + B + Vc + Vx + Vy");}
+
+        int[int] R=restrict(VK, Vh, n2o);
+        uHh[](R)=uHhK;
+        real[int] unity(VK.ndof); unity=1;
+        correctReduce(R)=unity;
+
+        VK errK=0;
+        errK[] = uref[](R);
+        errK[] = errK[]-uHhK;
+        error[](R)=errK[];
+
+        /* Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme) */
+        VK obl = (x<Lx-widthMadiot && y<Ly-widthMadiot);
+        VK0 conditionMadiot = (obl>0.9);
+        VK olme = (x<Lx-Hx+hx/2 && y<Ly-Hy+hy/2);
+        VK0 conditionMesh = (olme>0.9);
+
+        /* Error computations on K */
+        eL1cur[0]  += int2d(K)(abs(errK));
+        eML1cur[0] += int2d(K)(abs(errK)*conditionMadiot);
+        eOL1cur[0] += int2d(K)(abs(errK)*conditionMesh);
+        real elocL2=0, elocML2=0, elocOL2=0; /* local variables to temporarily store local L2 error contributions */
+        elocL2  = int2d(K)(errK*errK);
+        elocML2 = int2d(K)(errK*errK*conditionMadiot);
+        elocOL2 = int2d(K)(errK*errK*conditionMesh);
+        eL2cur[0]  += elocL2;
+        eML2cur[0] += elocML2;
+        eOL2cur[0] += elocOL2;
+        eH1cur[0]  += elocL2  + int2d(K)(  dx(errK)*dx(errK) + dy(errK)*dy(errK));
+        eMH1cur[0] += elocML2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMadiot );
+        eOH1cur[0] += elocOL2 + int2d(K)( (dx(errK)*dx(errK) + dy(errK)*dy(errK))*conditionMesh );
+        errK = abs(errK);
+        /* if (debug) plot(Th, errK, wait=1, value=1, fill=1); */
+        eMaxcur[0]  = max(eMaxcur[0],errK[].max);
+        VK errKK  = errK*conditionMadiot;
+        /* if (debug) plot(Th, errK, wait=1, value=1, fill=1); */
+        eMMaxcur[0] = max(eMMaxcur[0],errKK[].max);
+        errKK  = errK*conditionMesh;
+        /* if (debug) plot(Th, errK, wait=1, value=1, fill=1); */
+        eOMaxcur[0] = max(eOMaxcur[0],errKK[].max);
+
+        countOffline++;
+
+        phi[][i]=0;
+        if (timing) {
+            ffLog << "Reconstruction on tri" << i << " lasted " << clock()-timing << endl;
+            timing=clock();
+        }
+    }
+    }
+    mpiBarrier(comm);
+
+
+    /* Reducing all computations to the main process */
+
+    /* Reconstructed solution */
+    mpiReduce(uHh[], uHhGl[], processor(0,comm), mpiSUM); /* uHhGl will be corrected by the main process */
+    /* Compute the correct correction of the reconstructed solution */
+    real[int] correctReduceGl(Vh.ndof); correctReduceGl=0;
+    mpiReduce(correctReduce, correctReduceGl, processor(0,comm), mpiSUM);
+    if (iproc==0) uHhGl[] = uHhGl[]./correctReduceGl; /* Correcting the reconstructed solution for double used edges */
+    /* Errors */
+    mpiReduce(eL1cur,   eL1Gl,   processor(0,comm), mpiSUM);
+    mpiReduce(eL2cur,   eL2Gl,   processor(0,comm), mpiSUM);
+    mpiReduce(eH1cur,   eH1Gl,   processor(0,comm), mpiSUM);
+    mpiReduce(eMaxcur,  eMaxGl,  processor(0,comm), mpiMAX);
+    mpiReduce(eML1cur,  eML1Gl,  processor(0,comm), mpiSUM);
+    mpiReduce(eML2cur,  eML2Gl,  processor(0,comm), mpiSUM);
+    mpiReduce(eMH1cur,  eMH1Gl,  processor(0,comm), mpiSUM);
+    mpiReduce(eMMaxcur, eMMaxGl, processor(0,comm), mpiMAX);
+    mpiReduce(eOL1cur,  eOL1Gl,  processor(0,comm), mpiSUM);
+    mpiReduce(eOL2cur,  eOL2Gl,  processor(0,comm), mpiSUM);
+    mpiReduce(eOH1cur,  eOH1Gl,  processor(0,comm), mpiSUM);
+    mpiReduce(eOMaxcur, eOMaxGl, processor(0,comm), mpiMAX);
+
+    if (iproc==0) {
+        /* Taking square roots, determining the relative errors */
+        eL2Gl[0]=sqrt(eL2Gl[0]);
+        eML2Gl[0]=sqrt(eML2Gl[0]);
+        eOL2Gl[0]=sqrt(eOL2Gl[0]);
+        eH1Gl[0]=sqrt(eH1Gl[0]);
+        eMH1Gl[0]=sqrt(eMH1Gl[0]);
+        eOH1Gl[0]=sqrt(eOH1Gl[0]);
+        /* Computing norms of the reference solution */
+        nL1=int2d(Th)(abs(uref));
+        nL2=sqrt(int2d(Th)(uref*uref));
+        nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));
+        uref = abs(uref);
+        nMax=uref[].max;
+        {/* for compatibility reasons, printNorms is kept a local variable */
+            string printNorms = "norms: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+            ffLog << printNorms;
+        }
+        try {
+            erL1Gl[0]=eL1Gl[0]/nL1; erL2Gl[0]=eL2Gl[0]/nL2; erH1Gl[0]=eH1Gl[0]/nH1; erMaxGl[0]=eMaxGl[0]/nMax;
+            erML1Gl[0]=eML1Gl[0]/nL1; erML2Gl[0]=eML2Gl[0]/nL2; erMH1Gl[0]=eMH1Gl[0]/nH1; erMMaxGl[0]=eMMaxGl[0]/nMax;
+            erOL1Gl[0]=eOL1Gl[0]/nL1; erOL2Gl[0]=eOL2Gl[0]/nL2; erOH1Gl[0]=eOH1Gl[0]/nH1; erOMaxGl[0]=eOMaxGl[0]/nMax;
+        } 
+        catch (...) {
+            cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+            ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+        }
+        if (plots) {
+            plot(uHh, wait=1, value=1, cmm="Reconstructed solution");
+            plot(error, value=1, cmm="Error");
+        }
+
+        ffLog << "  Relative errors L1, L2, H1, max: " << erL1Gl[0] <<"   "<< erL2Gl[0] <<"   "<< erH1Gl[0] <<"   "<< erMaxGl[0] << endl;
+        printTime("Reconstruction + error computation lasted ")
+    }
+
+    int coarseerrors=0;
+    postWriteResultsMPI(uH,uB,coarseerrors)
+} // EOM
+
+// Coarse errors
+macro postCoarseError(uH) {
+    VH urefH=0; /* projection of uref on VH */
+
+    try { /* load the relevant projection of the reference solution onto VH */
+        loadCoarse(urefH)
+    }
+    catch (...) { /* or compute the projections first if they were not found */
+        cout << "WARNING: " + bcType + " projection of reference solution was not found and we compute it now" << endl;
+        ffLog << "WARNING: " + bcType + " projection of reference solution was not found and we compute it now" << endl;
+        exec("FreeFem++ main_REF_projections.edp -v 0 -ng");
+        loadCoarse(urefH)
+    }
+    if (plots) plot(urefH,wait=1,value=1, cmm="Reference solution");
+
+    resetNormsErrors() /* (re)set global error variables and norms to zero */
+
+    /* Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme) */
+    VH errCoarse = urefH-uH;
+    VH obl = (x<Lx-widthMadiot && y<Ly-widthMadiot);
+    VH0 conditionMadiot = (obl>0.9);
+    VH olme = (x<Lx-Hx+hx/2 && y<Ly-Hy+hy/2);
+    VH0 conditionMesh = (olme>0.9);
+
+    /* Error computations */
+    eL1  = int2d(TH)(abs(errCoarse));
+    eML1 = int2d(TH)(abs(errCoarse)*conditionMadiot);
+    eOL1 = int2d(TH)(abs(errCoarse)*conditionMesh);
+    {
+        real elocL2=0, elocML2=0, elocOL2=0; /* local variables to temporarily store local L2 error contributions */
+        elocL2  = int2d(TH)(errCoarse*errCoarse);
+        elocML2 = int2d(TH)(errCoarse*errCoarse*conditionMadiot);
+        elocOL2 = int2d(TH)(errCoarse*errCoarse*conditionMesh);
+        eL2  = elocL2;
+        eML2 = elocML2;
+        eOL2 = elocOL2;
+        eH1  = elocL2  + int2d(TH)(  dx(errCoarse)*dx(errCoarse) + dy(errCoarse)*dy(errCoarse));
+        eMH1 = elocML2 + int2d(TH)( (dx(errCoarse)*dx(errCoarse) + dy(errCoarse)*dy(errCoarse))*conditionMadiot );
+        eOH1 = elocOL2 + int2d(TH)( (dx(errCoarse)*dx(errCoarse) + dy(errCoarse)*dy(errCoarse))*conditionMesh );
+    }
+    errCoarse = abs(errCoarse);
+    eMax  = errCoarse[].max;
+    VH errCoarseK  = errCoarse*conditionMadiot;
+    eMMax = errCoarseK[].max;
+    errCoarseK  = errCoarse*conditionMesh;
+    eOMax = errCoarseK[].max;
+    /* Taking square roots, determining the relative errors */
+    eL2=sqrt(eL2);
+    eML2=sqrt(eML2);
+    eOL2=sqrt(eOL2);
+    eH1=sqrt(eH1);
+    eMH1=sqrt(eMH1);
+    eOH1=sqrt(eOH1);
+
+    /* Computing norms of the reference solution */
+    nL1=int2d(TH)(abs(urefH));
+    nL2=sqrt(int2d(TH)(urefH*urefH));
+    nH1=sqrt(int2d(TH)(urefH*urefH + dx(urefH)*dx(urefH) + dy(urefH)*dy(urefH)));
+    urefH = abs(urefH);
+    nMax=urefH[].max;
+    {/* for compatibility reasons, printNorms is kept a local variable */
+        string printNorms = "norms coarse projection: " + nL1 + "  " + nL2 + "  " + nH1 + "  " + nMax;
+        ffLog << printNorms;
+    }
+    try{ 
+        erL1=eL1/nL1; erL2=eL2/nL2; erH1=eH1/nH1; erMax=eMax/nMax;
+        erML1=eML1/nL1; erML2=eML2/nL2; erMH1=eMH1/nH1; erMMax=eMMax/nMax;
+        erOL1=eOL1/nL1; erOL2=eOL2/nL2; erOH1=eOH1/nH1; erOMax=eOMax/nMax;
+    }
+    catch (...) {
+        cout << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+        ffLog << "ERROR: norms are equal to zero. No relative errors are computed." << endl;
+    }
+
+    ffLog << "  Relative errors coarse space L1, L2, H1, max: " << erL1 <<"   "<< erL2 <<"   "<< erH1 <<"   "<< erMax << endl;
+
+    VH null=0;
+    int coarseerrors=1;
+    postWriteResults(null,null,coarseerrors) /* first 2 arguments are unused when coarseerrors = 1 */
+} // EOM

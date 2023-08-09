@@ -27,6 +27,8 @@
 //   -- define vf of global and local problems (aComplete, aTest1 and aBasis)
 //   -- specify computation options for the offline phase (useVc, fullVF)
 //   -- define vfname
+// - pdefile.idp
+//   -- define PDE coefficients nu, bx, by, sigma, and the right-hand side and rhsDescription
 // - msfem_blocks/tools.idp
 //   -- tools for the offline phase common to multiple MsFEM variants
 //
@@ -164,7 +166,6 @@
 // - (string) parametersFine -- parameters tuning the PDE without coarse mesh information
 // - (string) basisDir -- name of directory where basis functions are stored
 // - (string) coeffDir -- name of directory where effective coefficients are stored
-// - (string) coarseerrors -- controls what is saved in write_results[/_MPI].idp
 //
 // Define internal data structures ////////////////////////////////////   
 // - (int)    ndofOffline -- number of DOF for each numerical corrector/bubble
@@ -298,8 +299,9 @@ real hx=Lx/Nx, hy=Ly/Ny;
 int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements
 mesh Th=square(Nx,Ny,[Lx*x,Ly*y], label=labs);
 fespace Vh(Th,P1); //fine global FE space
+Vh uHh=0; //fine-scale msfem reconstruction will be stored in this variable
 
-// Peclet numbers and boundary layer definition of F. Madiot
+// Peclet numbers and boundary layer as in the definition of the PhD thesis of F. Madiot
 real PeGlob = 1./2./alpha; //global Peclet number, computational domain
 real PeLoc = PeGlob*sqrt(2)/nx; //local Peclet number, coarse mesh
 real PeFine = PeGlob*sqrt(2)/Nx; //local Peclet number, fine mesh
@@ -412,8 +414,8 @@ if (useB) {
 }
 else name = name + "_nB";
 
-int coarseerrors=0; //to be set to 1 if the script considers coarse errors 
-                    //and no solutions are to be saved in write_results[/_MPI].idp
+// int coarseerrors=0; //to be set to 1 if the script considers coarse errors 
+//                     //and no solutions are to be saved in write_results[/_MPI].idp
 
 
 // Define residue output stream and data structures
@@ -542,3 +544,6 @@ varf lEffective(uH,v0) = // Effective form for P1 tested against bubbles
 
 //load some functions and macros for general purposes
 include "msfem_blocks/tools.idp" 
+include "msfem_blocks/offline_stage.idp"
+include "msfem_blocks/online_stage.idp"
+include "msfem_blocks/post_processing.idp"

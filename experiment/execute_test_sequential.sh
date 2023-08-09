@@ -18,6 +18,8 @@ TEST_P1_LIN=0
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
+TOTEST_PDEFILE="pde_230512_diff_periodic.idp"
+TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_p1_supg.idp"
 TOTEST_L="1."
 TOTEST_LARGE_N="40" 
 TOTEST_LARGER_N="40" # unused in this experiment 
@@ -26,7 +28,6 @@ TOTEST_EPS="0.1" # 2^-7
 TOTEST_2LOGALP="-2 -5" # -8" # 2^-2 ... 2^-8
 TOTEST_THETA="0.15"
 TOTEST_CONT="7"
-TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_p1_supg.idp "
 TOTEST_OSCOEF="0 2"
 TOTEST_GLUE="dof" # either "dof" or "restrict" -- without OS, this options is automatically ignored
 TOTEST_STR_DIR="0"
@@ -40,6 +41,7 @@ TOTEST_MS="1 0"
 ## - It is more efficient to use in_system before using out_system
 
 
+cp pde_coefficients/$TOTEST_PDEFILE pdefile.idp
 # LOOP OVER ALL PARAMETER VALUES AND FreeFem++ EXECUTION
 for TEST_L in $TOTEST_L; do sed -i "s/L=.*/L= $TEST_L/" "experiment/parameters.txt" 
 for TEST_EPS in $TOTEST_EPS; do sed -i "s/eps=.*/eps= $TEST_EPS/" "experiment/parameters.txt" 

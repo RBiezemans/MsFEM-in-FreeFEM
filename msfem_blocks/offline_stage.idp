@@ -1,0 +1,704 @@
+// offline_stage.idp
+//
+// //         //          ////////  ////////  //         //
+// ////      ///  //////  //        //        ////      ///
+// // //    ////  //      //////    //////    // //    ////
+// //  //  // //  //////  //        //        //  //  // //
+// //   ////  //      //  //        //        //   ////  //
+// //    //   //  //////  //        ////////  //    //   //
+// Macros to perform the offline stage of the MsFEM
+//
+////////////////////////////////////////////////////////////////////////
+
+
+// Save numerical correctors and bubble function to global data structures
+macro offlineSaveLocalComputations(i,Vc,Vx,Vy,B) {
+    if (useVcOnK[i]) storeVc(i,:)=Vc[];
+    storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
+    if (useB) storeB(i,:)=B[];
+} // EOM
+
+// Save numerical correctors and bubble function to external files
+macro offlineExportLocalComputations(i,Vc,Vx,Vy,B) {    
+    if (useVcOnK[i]) {
+        string basisname = basisDir + "/tri_" + i + "_Vc" + ".txt";
+        ofstream writeVc(basisname);
+        writeVc << Vc[];
+    }
+    {
+        string basisname = basisDir + "/tri_" + i + "_Vx" + ".txt";
+        ofstream writeVx(basisname);
+        writeVx << Vx[];
+    }
+    {
+        string basisname = basisDir + "/tri_" + i + "_Vy" + ".txt";
+        ofstream writeVy(basisname);
+        writeVy << Vy[];
+    }
+    if(useB) {
+        string basisname = basisDir + "/tri_" + i + "_B" + ".txt";
+        ofstream writeB(basisname);
+        writeB << B[];
+    }
+} // EOM
+
+macro offlineEffectiveRhs(K,i,Vc,Vx,Vy,B) {
+    if (useB) { 
+        if (treatB=="out_system") ifH[][i]=int2d(K)(fRHS)/K.measure; /* average of fRHS per element */
+        else ifB[][i]=int2d(K)(fRHS*B); /* no division by K.measure because this term does not appear in any effective varf */
+    }
+
+    if(testMS==1) {
+        ifHxTestMS[][i]=int2d(K)(fRHS*Vx)/K.measure;
+        ifHyTestMS[][i]=int2d(K)(fRHS*Vy)/K.measure;
+        if (useVcOnK[i]) ifHTestMS[][i]=int2d(K)(fRHS*Vc)/K.measure;
+        if (stabilization==1) {
+            ifHxTestMSsupg[][i]=int2d(K)(rhssupg(Vx))/K.measure;
+            ifHyTestMSsupg[][i]=int2d(K)(rhssupg(Vy))/K.measure;
+            if (useVcOnK[i]) ifHTestMSsupg[][i]=int2d(K)(rhssupg(Vc))/K.measure;
+        }
+    }
+} // EOM
+
+// Reduction of RHS quantities for sequential MsFEM (copying to other variables)
+macro offlineEffectiveRhsReduce() {
+    if (useB) { 
+        if (treatB=="out_system") fH[]=ifH[];
+        else fB[]=ifB[];
+    }
+
+    if(testMS==1) {
+        fHxTestMS[]=ifHxTestMS[];
+        fHyTestMS[]=ifHyTestMS[];
+        if (useVc) fHTestMS[]=ifHTestMS[];
+        if (stabilization==1) {
+            fHxTestMSsupg[]=ifHxTestMSsupg[];
+            fHyTestMSsupg[]=ifHyTestMSsupg[];
+            if (useVc) fHTestMSsupg[]=ifHTestMSsupg[];
+        }
+    }
+} // EOM
+
+// Reduction of RHS quantities to the main process for parallelized MsFEM
+macro offlineEffectiveRhsReduceMPI() {
+    if (useB) { 
+        if (treatB=="out_system") mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
+        else mpiReduce(ifB[], fB[], processor(0,comm), mpiSUM);
+    }
+
+    if(testMS==1) {
+        mpiReduce(ifHxTestMS[], fHxTestMS[], processor(0,comm), mpiSUM);
+        mpiReduce(ifHyTestMS[], fHyTestMS[], processor(0,comm), mpiSUM);
+        if (useVc) mpiReduce(ifHTestMS[], fHTestMS[], processor(0,comm), mpiSUM);
+        if (stabilization==1) {
+            mpiReduce(ifHxTestMSsupg[], fHxTestMSsupg[], processor(0,comm), mpiSUM);
+            mpiReduce(ifHyTestMSsupg[], fHyTestMSsupg[], processor(0,comm), mpiSUM);
+            if (useVc) mpiReduce(ifHTestMSsupg[], fHTestMSsupg[], processor(0,comm), mpiSUM);
+        }
+    }
+} // EOM
+
+// Compute the effective coefficients and effective right-hand side based on pre-computed
+// numerical correctors V[c/x/y] and a bubble function B (which may vanish) for one mesh element
+macro offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B) {
+    if (useVcOnK[i]) {
+        phi0[]+=Vc[]; /* sums of affine functions and numerical correctors */
+    }
+    phix[]=uHx[]+Vx[]; 
+    phiy[]=uHy[]+Vy[];
+
+    iAHxx[][i]=int2d(K)(aComplete(phix,uHx))/K.measure;
+    iAHyx[][i]=int2d(K)(aComplete(phix,uHy))/K.measure; 
+    iAHxy[][i]=int2d(K)(aComplete(phiy,uHx))/K.measure; 
+    iAHyy[][i]=int2d(K)(aComplete(phiy,uHy))/K.measure;
+    /* pay attention, AH.. is not symmetric when a is not */
+
+    iBHx[][i]=int2d(K)(aTest1(phix,1))/K.measure;
+    iBHy[][i]=int2d(K)(aTest1(phiy,1))/K.measure;
+
+    if (fullVF) {
+        iBAHx[][i]=int2d(K)(aComplete(phi0,uHx))/K.measure;
+        iBAHy[][i]=int2d(K)(aComplete(phi0,uHy))/K.measure;
+        iMH[][i]=int2d(K)(aTest1(phi0,1))/K.measure;
+    }
+
+    if (useB) {
+        irHx[][i]=int2d(K)(aComplete(B,uHx))/K.measure;
+        irHy[][i]=int2d(K)(aComplete(B,uHy))/K.measure;
+        irH[][i] =int2d(K)(aTest1(B,1))/K.measure;   
+        if (treatB=="in_system") {
+            iAHB[][i]=int2d(K)(aComplete(B,B)); 
+            /* no division by K.measure because this term does not appear in any effective varf */
+            ilHx[][i]=int2d(K)(aComplete(phix,B))/K.measure;
+            ilHy[][i]=int2d(K)(aComplete(phiy,B))/K.measure;
+            if (fullVF) ilH[][i]=int2d(K)(aComplete(phi0,B))/K.measure;
+        }
+    }
+
+    if(testMS) {
+        iAHxxTestMS[][i]=int2d(K)(aComplete(phix,Vx))/K.measure;
+        iAHyxTestMS[][i]=int2d(K)(aComplete(phix,Vy))/K.measure; 
+        iAHxyTestMS[][i]=int2d(K)(aComplete(phiy,Vx))/K.measure; 
+        iAHyyTestMS[][i]=int2d(K)(aComplete(phiy,Vy))/K.measure;
+        
+        if (useVcOnK[i]) {
+            iBHxTestMS[][i]=int2d(K)(aComplete(phix,Vc))/K.measure;
+            iBHyTestMS[][i]=int2d(K)(aComplete(phiy,Vc))/K.measure;
+        }
+
+        if (fullVF) {
+            iBAHxTestMS[][i]=int2d(K)(aComplete(phi0,Vx))/K.measure;
+            iBAHyTestMS[][i]=int2d(K)(aComplete(phi0,Vy))/K.measure;
+            if (useVcOnK[i]) iMHTestMS[][i]=int2d(K)(aComplete(phi0,Vc))/K.measure;
+        }
+
+        if (useB) {
+            /* No "AHBTestMS" -- we always use the (multiscale) precomputed bubbles B */
+            irHxTestMS[][i]=int2d(K)(aComplete(B,Vx))/K.measure;
+            irHyTestMS[][i]=int2d(K)(aComplete(B,Vy))/K.measure;
+            if (useVcOnK[i]) irHTestMS[][i] =int2d(K)(aComplete(B,Vc))/K.measure;   
+            /* No "lH[x/y]TestMS" -- we always use the (multiscale) precomputed bubbles B */
+        }
+    }
+
+    offlineEffectiveRhs(K,i,Vc,Vx,Vy,B)
+} // EOM
+
+// Macro that provides the writing procedure of the vector vec to a file with name coeffDir+filename
+macro writeVec2File(filename,vec) {
+    string matrixFile = coeffDir + filename; 
+    ofstream ffmat (matrixFile); 
+    ffmat << vec;
+} // EOM
+
+// Reduction of effective tensors for sequential MsFEM (copying to other variables)
+macro offlineEffectiveTensorsReduce() {
+    /* Retrieve the maximum residue of local computations over all processes */
+    maxResOffline=imaxResOffline;
+    if (bcType == "Lin" && osCoef > osThr) LINOSRes=iLINOSRes;
+
+    /* Effective tensors */
+    AHxx[]=iAHxx[];
+    AHyx[]=iAHyx[];
+    AHxy[]=iAHxy[];
+    AHyy[]=iAHyy[];
+    BHx[]=iBHx[];
+    BHy[]=iBHy[];
+    if (fullVF) {
+        BAHx[]=iBAHx[];
+        BAHy[]=iBAHy[];
+        MH[]=iMH[];
+    }
+    if (useB) {
+        rH[]=irH[];
+        rHx[]=irHx[];
+        rHy[]=irHy[];
+        if (treatB=="in_system") {
+            AHB[]=iAHB[];
+            lHx[]=ilHx[];
+            lHy[]=ilHy[];
+            if (fullVF) lH[]=ilH[];
+        } 
+    }
+
+    if (testMS) {
+        AHxxTestMS[]=iAHxxTestMS[];
+        AHyxTestMS[]=iAHyxTestMS[];
+        AHxyTestMS[]=iAHxyTestMS[];
+        AHyyTestMS[]=iAHyyTestMS[];
+        if (useVc) {
+            BHxTestMS[]=iBHxTestMS[];
+            BHyTestMS[]=iBHyTestMS[];
+        }
+        if (fullVF) {
+            BAHxTestMS[]=iBAHxTestMS[];
+            BAHyTestMS[]=iBAHyTestMS[];
+            if (useVc) MHTestMS[]=iMHTestMS[];
+        }
+        if(useB) {
+            if (useVc) rHTestMS[]=irHTestMS[];
+            rHxTestMS[]=irHxTestMS[];
+            rHyTestMS[]=irHyTestMS[];
+        }
+    }
+
+    /* Effective right-hand side terms */
+    offlineEffectiveRhsReduce
+} // EOM
+
+// Reduction of RHS quantities to the main process for parallelized MsFEM
+macro offlineEffectiveTensorsReduceMPI() {
+    /* Retrieve the maximum residue of local computations over all processes */
+    mpiReduce(imaxResOffline, maxResOffline, processor(0,comm), mpiMAX);
+    if (bcType == "Lin" && osCoef > osThr) mpiReduce(iLINOSRes, LINOSRes, processor(0,comm), mpiMAX);
+
+    /* Effective tensors */
+    mpiReduce(iAHxx[], AHxx[], processor(0,comm), mpiSUM);
+    mpiReduce(iAHyx[], AHyx[], processor(0,comm), mpiSUM);
+    mpiReduce(iAHxy[], AHxy[], processor(0,comm), mpiSUM);
+    mpiReduce(iAHyy[], AHyy[], processor(0,comm), mpiSUM);
+    mpiReduce(iBHx[], BHx[], processor(0,comm), mpiSUM);
+    mpiReduce(iBHy[], BHy[], processor(0,comm), mpiSUM);
+    if (fullVF) {
+        mpiReduce(iBAHx[], BAHx[], processor(0,comm), mpiSUM);
+        mpiReduce(iBAHy[], BAHy[], processor(0,comm), mpiSUM);
+        mpiReduce(iMH[], MH[], processor(0,comm), mpiSUM);
+    }
+    if (useB) {
+        mpiReduce(irH[], rH[], processor(0,comm), mpiSUM);
+        mpiReduce(irHx[], rHx[], processor(0,comm), mpiSUM);
+        mpiReduce(irHy[], rHy[], processor(0,comm), mpiSUM);
+        if (treatB=="in_system") {
+            mpiReduce(iAHB[], AHB[], processor(0,comm), mpiSUM);
+            mpiReduce(ilHx[], lHx[], processor(0,comm), mpiSUM);
+            mpiReduce(ilHy[], lHy[], processor(0,comm), mpiSUM);
+            if (fullVF) mpiReduce(ilH[], lH[], processor(0,comm), mpiSUM);
+        } 
+    }
+
+    if (testMS) {
+        mpiReduce(iAHxxTestMS[], AHxxTestMS[], processor(0,comm), mpiSUM);
+        mpiReduce(iAHyxTestMS[], AHyxTestMS[], processor(0,comm), mpiSUM);
+        mpiReduce(iAHxyTestMS[], AHxyTestMS[], processor(0,comm), mpiSUM);
+        mpiReduce(iAHyyTestMS[], AHyyTestMS[], processor(0,comm), mpiSUM);
+        if (useVc) {
+            mpiReduce(iBHxTestMS[], BHxTestMS[], processor(0,comm), mpiSUM);
+            mpiReduce(iBHyTestMS[], BHyTestMS[], processor(0,comm), mpiSUM);
+        }
+        if (fullVF) {
+            mpiReduce(iBAHxTestMS[], BAHxTestMS[], processor(0,comm), mpiSUM);
+            mpiReduce(iBAHyTestMS[], BAHyTestMS[], processor(0,comm), mpiSUM);
+            if (useVc) mpiReduce(iMHTestMS[], MHTestMS[], processor(0,comm), mpiSUM);
+        }
+        if(useB) {
+            if (useVc) mpiReduce(irHTestMS[], rHTestMS[], processor(0,comm), mpiSUM);
+            mpiReduce(irHxTestMS[], rHxTestMS[], processor(0,comm), mpiSUM);
+            mpiReduce(irHyTestMS[], rHyTestMS[], processor(0,comm), mpiSUM);
+        }
+    }
+
+    /* Effective right-hand side terms */
+    offlineEffectiveRhsReduceMPI
+} // EOM
+
+// Saving the effective coefficients of the PDE (can be called once all is reduced to the main process)
+macro offlineSaveEffectiveTensors() {    
+    /* Save residue information */
+    ffRes << "The maximum residue for the numerical correctors is " << maxResOffline << endl;
+    if (bcType == "Lin" && osCoef > osThr) ffRes << "The maximum residue for the LIN-OS 'DOF' option is " << LINOSRes << endl;
+    ffRes << endl;
+
+    { /* save Vc pattern for future loading of basis functions */
+        string vecFile = basisDir + "/Vc_pattern.txt";
+        ofstream ffvec (vecFile);
+        ffvec << useVcOnK;
+    }
+
+    cout << "saving effective coefficients" << endl;
+    ffLog << "saving effective coefficients" << endl;
+    writeVec2File("/AHxx.txt", AHxx[])
+    writeVec2File("/AHyx.txt", AHyx[])
+    writeVec2File("/AHxy.txt", AHxy[])
+    writeVec2File("/AHyy.txt", AHyy[])
+    writeVec2File("/BHx.txt", BHx[])
+    writeVec2File("/BHy.txt", BHy[])
+    if (fullVF) {
+        writeVec2File("/BAHx.txt", BAHx[])
+        writeVec2File("/BAHy.txt", BAHy[])
+        writeVec2File("/MH.txt", MH[])
+    }
+    if (useB) {
+        writeVec2File("/rH.txt",  rH[])
+        writeVec2File("/rHx.txt", rHx[])
+        writeVec2File("/rHy.txt", rHy[])
+        if (treatB=="in_system") {
+            writeVec2File("/AHB.txt", AHB[])
+            writeVec2File("/lHx.txt", lHx[])
+            writeVec2File("/lHy.txt", lHy[])
+            if (fullVF) writeVec2File("/lH.txt", lH[])
+        } 
+    }
+
+    if (testMS) {
+        writeVec2File("/AHxxTestMS.txt", AHxxTestMS[])
+        writeVec2File("/AHyxTestMS.txt", AHyxTestMS[])
+        writeVec2File("/AHxyTestMS.txt", AHxyTestMS[])
+        writeVec2File("/AHyyTestMS.txt", AHyyTestMS[])
+        if (useVc) {
+            writeVec2File("/BHxTestMS.txt", BHxTestMS[])
+            writeVec2File("/BHyTestMS.txt", BHyTestMS[])
+        }
+        if (fullVF) {
+            writeVec2File("/BAHxTestMS.txt", BAHxTestMS[])
+            writeVec2File("/BAHyTestMS.txt", BAHyTestMS[])
+            if (useVc) writeVec2File("/MHTestMS.txt", MHTestMS[])
+        }
+        if(useB) {
+            if (useVc) writeVec2File("/rHTestMS.txt",  rHTestMS[])
+            writeVec2File("/rHxTestMS.txt", rHxTestMS[])
+            writeVec2File("/rHyTestMS.txt", rHyTestMS[])
+        }
+    }
+} // EOM
+
+
+// Load variant of the offline stage suitable for any MsFEM
+
+// Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
+macro readBasis(filename,storage) {
+    string basisFile = basisDir + filename; 
+    ifstream ffbasis (basisFile); 
+    real[int] vec(ndofOffline);
+    ffbasis >> vec;
+    storage=vec;
+} // EOM
+// Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
+macro readFile2Vec(filename,vec) {string matrixFile = coeffDir + filename; ifstream ffmat (matrixFile); ffmat >> vec;} // EOM
+
+macro offlineLoad() {
+    int computeCoeff=0; /* variable to indicate whether or not the effective coefficients were found */
+        /* this is indeed possible when the basis was computed but the coefficients were determined */
+        /* with another type of test functions */
+
+    /* Try to open typical files from the directory with effective coefficients */
+    try {
+        string matrixFile = coeffDir + "/AHxx.txt";
+        ifstream ff(matrixFile);
+        if (fullVF) {
+                matrixFile = coeffDir + "/BAHx.txt";  {ifstream ff(matrixFile);}
+            }
+        if (testMS==1) {
+            string matrixFile = coeffDir + "/AHxxTestMS.txt";  {ifstream ff(matrixFile);}
+        }
+        if (useB) {
+            string matrixFile = coeffDir + "/rHx.txt";  {ifstream ff(matrixFile);}
+            if (testMS==1) {
+                matrixFile = coeffDir + "/rHxTestMS.txt";  {ifstream ff(matrixFile);}
+            }
+            if (treatB=="in_system") {
+                matrixFile = coeffDir + "/lHx.txt";  {ifstream ff(matrixFile);}
+            }
+        }
+    }
+    catch (...) {
+        computeCoeff=1; /* compute effective coefficients below if the correct version does not exist yet */
+    }
+
+    /* Load and store the basis for the current process in storeV[c/x/y] and storeB */
+    /* Compute effective coefficients per coarse mesh element if needed */
+    { /* Load Vc pattern over all coarse mesh elements */
+        string vecFile = basisDir + "/Vc_pattern.txt";
+        ifstream ffvec (vecFile);
+        ffvec >> useVcOnK;
+    }
+    for(int i=0; i<VH0.ndof; i++) {
+        if (iproc == i%nbproc) {
+            if (i%(2*n)==0) {
+                cout << "loading offline phase for tri " << i << endl;
+            }
+            phi[][i]=2;
+            if (useVcOnK[i]) { /* store numerical correctors associated to constants */
+                string basisname = "/tri_" + i + "_Vc.txt";
+                readBasis(basisname,storeVc(countOffline,:))
+            }
+            { /* store numerical correctors associated to the x-direction */
+                string basisname = "/tri_" + i + "_Vx.txt";
+                readBasis(basisname,storeVx(countOffline,:))
+            }
+            { /* store numerical correctors associated to the y-direction */
+                string basisname = "/tri_" + i + "_Vy.txt";
+                readBasis(basisname,storeVy(countOffline,:))
+            }
+            if (useB) { /* store bubble functions for the FE space */
+                string basisname = "/tri_" + i + "_B.txt";
+                readBasis(basisname,storeB(countOffline,:))
+            }
+
+            /* Define the numerical correctors on the current triangle in order to.. */
+            /* ..compute the necessary effective quantities */
+            mesh K=trunc(Th,phi>1,split=1); 
+            fespace VK(K, P1);
+            VK Vc=0, Vx, Vy, B=0;
+            if (useVcOnK[i]) Vc[]=storeVc(countOffline,:);
+            Vx[]=storeVx(countOffline,:);
+            Vy[]=storeVy(countOffline,:);
+            if (useB) B[]=storeB(countOffline,:);
+        
+            /* Compute effective coefficients (if needed) */
+            if (computeCoeff) {
+                VK uHx=x-xb[][i], uHy=y-yb[][i];
+                VK phi0=1, phix=0, phiy=0; 
+                offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B) /* also computes effective RHS quantities */
+            } else {
+            /* Anything related to the right-hand side cannot be loaded from the offline phase */
+            /* It must be computed regardless of the availability of the coefficients */
+                offlineEffectiveRhs(K,i,Vc,Vx,Vy,B)
+            }
+
+            phi[][i]=0;
+            countOffline++; /* countOffline coincides with the index i of the loop in the case of a single process */
+        }
+    }
+
+    /* Reduction of effective quantities to the main process, saving effective quantities if newly computed */
+    if (computeCoeff) {
+        cout << "reduce effective coefficients to main process" << endl;
+        if (nameMPI=="") {
+            offlineEffectiveTensorsReduce
+        } else {
+            offlineEffectiveTensorsReduceMPI
+        }
+        if (iproc==0) {
+            /* if nonexistent, the directory to store the effective coefficient was created by the main file */
+            offlineSaveEffectiveTensors
+        }
+    }
+    else {
+    /* The unavoidable reduction of quantities related to the RHS of the PDE */
+        if (nameMPI=="") {
+            offlineEffectiveRhsReduce
+        } else {
+            offlineEffectiveRhsReduceMPI
+        }
+    }
+
+    /* Loading the effective coefficients when possible */
+    /* Only to be done by the main process */
+    if (computeCoeff==0 && iproc==0) {
+        /* store the piecewise constant coefficients of the effective PDE */
+        cout << "loading effective coefficients" << endl;
+        ffLog << "loading effective coefficients" << endl;
+        readFile2Vec("/AHxx.txt", AHxx[])
+        readFile2Vec("/AHyx.txt", AHyx[])
+        readFile2Vec("/AHxy.txt", AHxy[])
+        readFile2Vec("/AHyy.txt", AHyy[])
+        readFile2Vec("/BHx.txt", BHx[])
+        readFile2Vec("/BHy.txt", BHy[])
+        if (fullVF) {
+            readFile2Vec("/BAHx.txt", BAHx[])
+            readFile2Vec("/BAHy.txt", BAHy[])
+            readFile2Vec("/MH.txt", MH[])
+        }
+        if (useB) {
+            readFile2Vec("/rH.txt",  rH[])
+            readFile2Vec("/rHx.txt", rHx[])
+            readFile2Vec("/rHy.txt", rHy[])
+            if (treatB=="in_system") {
+                readFile2Vec("/AHB.txt", AHB[])
+                readFile2Vec("/lHx.txt", lHx[])
+                readFile2Vec("/lHy.txt", lHy[])
+                if (fullVF) readFile2Vec("/lH.txt", lH[])
+            } 
+        }
+
+        if (testMS) {
+            readFile2Vec("/AHxxTestMS.txt", AHxxTestMS[])
+            readFile2Vec("/AHyxTestMS.txt", AHyxTestMS[])
+            readFile2Vec("/AHxyTestMS.txt", AHxyTestMS[])
+            readFile2Vec("/AHyyTestMS.txt", AHyyTestMS[])
+            if (useVc) {
+                readFile2Vec("/BHxTestMS.txt", BHxTestMS[])
+                readFile2Vec("/BHyTestMS.txt", BHyTestMS[])
+            }
+            if (fullVF) {
+                readFile2Vec("/BAHxTestMS.txt", BAHxTestMS[])
+                readFile2Vec("/BAHyTestMS.txt", BAHyTestMS[])
+                if (useVc) readFile2Vec("/MHTestMS.txt", MHTestMS[])
+            }
+            if(useB) {
+                if (useVc) readFile2Vec("/rHTestMS.txt",  rHTestMS[])
+                readFile2Vec("/rHxTestMS.txt", rHxTestMS[])
+                readFile2Vec("/rHyTestMS.txt", rHyTestMS[])
+            }
+        }
+    }
+
+    if (iproc==0) printTime("Offline phase (computing + storing, measured by main process) lasted ")
+} // EOM
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////                                                                           ////////// 
+//////////   LOCAL PROBLEMS                                                          //////////
+//////////   for MsFEM-LIN(-OS) and MsFEM-CR(-OS)                                    //////////
+//////////                                                                           ////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+
+macro localProblemsLIN(i) {
+    mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
+    fespace VK(K,P1); /* P1 finite element space on the triangle K */
+
+    VK Vc=0, Vx=0, Vy=0, uH=0, B=0, uHx=x-xb[][i], uHy=y-yb[][i];
+    /* V[c/x/y] -- the numerical corrector associated to constants/the [x/y]-direction */
+    /* B -- bubble function for the MsFEM space associated to RHS = 1 */
+    /* uH[x/y] -- the centered coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients */
+    /* uH -- serves as a dummy in the variational form pb to set the RHS for V[c/x/y] and B */
+
+    varf pb(uh,vh)=int2d(K)(aBasis(uh,vh)) + int1d(K)(tgv*uh*vh) /* variational formulation of local problems -- bilinear form */
+                -int2d(K)(aBasis(uH,vh)); /* variational formulation of local problems -- linear form for the RHS of the numerical correctors */
+    varf id(unused,vh) = int2d(K)(vh); /* variational formulation of local problems -- linear form of the RHS for the bubble functions */
+
+    /* Definition and resolution of the linear systems for the fine-scale problems */
+    matrix A=pb(VK,VK, solver=UMFPACK);
+    real[int] F(VK.ndof);
+
+    real locRes=0; /* residue in the computation of the numerical correctors */
+    if (useVcOnK[i]) {
+        uH[]=1;  F=pb(0,VK);  Vc[]=A^-1*F;
+        residue(A,F,Vc[],locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+    }
+    uH[]=uHx[];  F=pb(0,VK);  Vx[]=A^-1*F;
+    residue(A,F,Vx[],locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    uH[]=uHy[];  F=pb(0,VK);  Vy[]=A^-1*F;
+    residue(A,F,Vy[],locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (useB) {
+        F=id(0,VK);     B[]=A^-1*F;
+        residue(A,F,B[],locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+    }
+
+    if (plotBubbles) {
+        if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+        plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
+        plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
+        if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
+    }
+
+    offlineExportLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    VK phi0=1, phix=0, phiy=0; 
+    offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
+} // EOM
+
+macro localProblemsLINOS(i) {
+    /* Construction of the sampling patch S, the fine-scale P1 space VS on S */
+    /* Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain) */
+    real[int,int] Kx(3,2); 
+    saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
+    real[int,int] normS(3,2); /* to save the normals to the sides of S = ideal oversampling patch */
+    mesh S;
+    buildOversamplingPatch(Kx,normS,S)
+    fespace VS(S,P1);
+
+    /* Construction of the actual coarse mesh element K inside of the patch */
+    int[int] S2K;
+    mesh K=trunc(S,phi>1,split=1,label=1,new2old=S2K); 
+    fespace VK(K,P1);
+    int[int] RS2K = restrict(VK,VS,S2K); /* array for the restriction of a function on S to K */
+
+    VS VcS=0, VxS=0, VyS=0, BS=0, uH=0, uHxS=x-xb[][i], uHyS=y-yb[][i];
+    /* V[c/x/y]S -- the numerical corrector on the patch associated to constants/the [x/y]-direction */
+    /* BS -- bubble function on the patch for the MsFEM space associated to RHS = 1 */
+    /* uH[x/y]S -- the centered coordinate function in the [x/y]-direction on the patch that appears in the definition of the effective coefficients */
+    /* uH -- serves as a dummy in the variational form pb to set the RHS for V[c/x/y]S and B */
+
+    varf pb(uh,vh)=int2d(S)(aBasis(uh,vh)) + int1d(S)(tgv*uh*vh) /* variational formulation of local problems -- bilinear form */
+                -int2d(S)(aBasis(uH,vh)); /* variational formulation of local problems -- linear form for the RHS of the numerical correctors */
+    varf id(unused,vh) = int2d(S)(vh);  /* variational formulation of local problems -- linear form of the RHS for the bubble functions */
+
+    /* Definition and resolution of the linear systems for the fine-scale problems */
+    matrix A=pb(VS,VS, solver=UMFPACK);
+    real[int] F(VS.ndof);
+
+    real locRes=0; /* residue in the computation of the numerical correctors */
+    if (useVcOnK[i]) {
+        uH[]=1;  F=pb(0,VS);  VcS[]=A^-1*F;
+        residue(A,F,VcS[],locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+    }
+    uH[]=uHxS[];  F=pb(0,VS);  VxS[]=A^-1*F;
+    residue(A,F,VxS[],locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    uH[]=uHyS[];  F=pb(0,VS);  VyS[]=A^-1*F;
+    residue(A,F,VyS[],locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (useB) {
+        F=id(0,VS);     BS[]=A^-1*F;
+        residue(A,F,BS[],locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+    }
+
+    /* Restriction of the functions on the patch to the mesh element K */
+    VK Vc=0, Vx=0, Vy=0, B=0, uHx=0, uHy=0; /* restrictions of functions from S to K */
+    if (useVcOnK[i]) Vc[]=VcS[](RS2K);
+    Vx[]=VxS[](RS2K);    Vy[]=VyS[](RS2K);  
+    uHx[]=uHxS[](RS2K);  uHy[]=uHyS[](RS2K); 
+    if(useB) B[]=BS[](RS2K);
+
+    if (glue=="dof") {
+        /* Impose continuity on the vertices of K if desired */
+        /* This is done by adding the functions W[c/x/y] = [1/x/y]+V[c/x/y] */
+        real ndofK=3;
+        real[int,int] gval(ndofK,ndofK); /* matrix for W-values at the vertices */
+        real[int] Vcval(ndofK), Vxval(ndofK), Vyval(ndofK), Bval(ndofK); /* values to be corrected of the patch functions */
+
+        for(int i=0; i<ndofK; i++) {
+            /* Evaluation of patch functions at the vertices: values to be corrected */
+            Vxval(i)=-Vx(Kx(i,0),Kx(i,1));
+            Vyval(i)=-Vy(Kx(i,0),Kx(i,1));
+            if (useVcOnK[i]) Vcval(i)=-Vc(Kx(i,0),Kx(i,1));
+            if (useB) Bval(i)=-B(Kx(i,0),Kx(i,1));
+            /* Evaluation of 3 independent functions (W[c/x/y]) that solve the homogeneous PDE */
+            gval(i,0)=Kx(i,0) - Vxval(i);
+            gval(i,1)=Kx(i,1) - Vyval(i);
+            gval(i,2)=1;
+            if (useVcOnK[i]) gval(i,2)+=-Vcval(i);
+        }
+        matrix gmat=gval;
+        set(gmat, solver=UMFPACK);
+        real[int] c(ndofK);
+        /* Definition of the correcting functions W[c/x/y] */
+        VK Wc=1, Wx=x, Wy=y;
+        Wx[]+=Vx[]; Wy[]+=Vy[];
+        if (useVcOnK[i]) Wc[]+=Vc[];
+        /* Correction at the vertices by the resolution of linear systems */
+        /* Vc */
+        if (useVcOnK[i]) {
+            c=gmat^-1 * Vcval;
+            residue(gmat,Vcval,c,locRes); /* store residue of local linear combinations */
+            iLINOSRes=max(locRes,iLINOSRes);
+            if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (Vc): ")    
+            Vc[]+=c[0]*Wx[];    Vc[]+=c[1]*Wy[];    Vc[]+=c[2]*Wc[];
+        }
+        /* Vx */
+        c=gmat^-1 * Vxval;
+        residue(gmat,Vxval,c,locRes); /* store residue of local linear combinations */
+        iLINOSRes=max(locRes,iLINOSRes);
+        if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (Vx): ")
+        Vx[]+=c[0]*Wx[];    Vx[]+=c[1]*Wy[];    Vx[]+=c[2]*Wc[];
+        /* Vy */
+        c=gmat^-1 * Vyval;
+        residue(gmat,Vyval,c,locRes); /* store residue of local linear combinations */
+        iLINOSRes=max(locRes,iLINOSRes);
+        if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (Vy): ")
+        Vy[]+=c[0]*Wx[];    Vy[]+=c[1]*Wy[];    Vy[]+=c[2]*Wc[];
+        /* B */
+        if (useB) {
+            c=gmat^-1 * Bval;
+            residue(gmat,Bval,c,locRes); /* store residue of local linear combinations */
+            iLINOSRes=max(locRes,iLINOSRes);
+            if (debug) writeResidue(locRes, "Residue for imposing continuity at the nodes (B): ")
+            B[]+=c[0]*Wx[];    B[]+=c[1]*Wy[];    B[]+=c[2]*Wc[];
+        }
+    } else {
+        assert(glue=="restrict");
+    }
+
+    if (plotBubbles) {
+        if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+        plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
+        plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
+        if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
+    }
+
+    offlineExportLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    VK phi0=1, phix=0, phiy=0; 
+    offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
+} // EOM
