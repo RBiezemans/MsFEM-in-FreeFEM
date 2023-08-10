@@ -73,17 +73,18 @@ macro computeErrors(grid,exact,approx) {
 macro makedirectory(dirname) exec("mkdir -p " + dirname); //EOM
 
 computeErrors(Th,uref,uHcont)
-VH0 uB, uHh; //for compatibility with writing only
+VH0 uB; //for compatibility with writing only
+int coarseerrors=0;
 {
     output = "sol_REF_Lin/"; // undo adaptations due to method settings
     makedirectory(output)
     VHcont uH; uH[]=uHcont[];
-    include "./msfem_blocks/write_results.idp"
+    postWriteResults(uH,uB,coarseerrors)
 }
 computeErrors(Th,uref,uHcr)
 {
     output = "sol_REF_CR/"; // undo adaptations due to method settings
     makedirectory(output)
     VHcr uH; uH[]=uHcr[];
-    include "./msfem_blocks/write_results.idp"
+    postWriteResults(uH,uB,coarseerrors)
 }

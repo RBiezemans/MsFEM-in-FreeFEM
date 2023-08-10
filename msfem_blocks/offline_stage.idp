@@ -702,3 +702,345 @@ macro localProblemsLINOS(i) {
     VK phi0=1, phix=0, phiy=0; 
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 } // EOM
+
+macro localProblemsCR(i) {
+    /* Construct fine mesh, finite element space, normals */
+    mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
+    fespace VK(K,P1); /* P1 finite element space on the triangle K */
+
+    real[int,int] Kx(3,2); /* save the coordinates of the vertices belonging to K */
+    saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
+
+    real[int,int] normK(3,2); normK=consNormals(Kx); /* normal vectors associated to the edges of K */
+
+    /* Select edges of K on which to impose Crouzeix-Raviart BC */
+    /* (i.e. those not lying on the boundary of the global domain if strong Dirichlet conditions are chosen) */
+    /* We use that the global boundary was given the label -1, and the interior local boundaries the label 1 */
+    real[int] edges(3); edges=3; /* to store those indices corresponding to the edges where CR conditions are imposed */
+    int nedges=0; /* number of edges where CR conditions will be imposed */
+    if (strongDir) {
+        for (int k=0; k<3; k++) {
+            if (edgeIntegral(K,1,normK,k,1) > hx/10.) {
+                /* this condition tests positive iff the k-th edge does not lie on the boundary of the global domain */
+                edges[nedges]=k;
+                nedges+=1;
+            }
+        }
+    } else {
+        nedges=3;
+        for (int k=0; k<nedges; k++) edges[k]=k;
+    }
+    if (debug) cout << "Edges for CR conditions: " << edges << endl;
+
+
+    /* Construction of the local problems with Crouzeix-Raviart boundary conditions */
+    /* This is a sadlle point problem */
+    varf pb(uh,vh)=int2d(K)(aBasis(uh,vh)); /* variational formulation of local problems -- bilinear form -- LHS of the PDE of the saddle point problem */
+    matrix A=pb(VK,VK); /* linear system of the local problems -- matrix associated to the PDE */
+    if (strongDir) { /* add strong Dirichlet conditions to A if if S partially lies on the global boundary (with label 1) */
+        real testB = int1d(K,-1)(1.);
+        if (testB > hx/2.) {
+            if (strongDir==1) useVcOnK[i]=1; /* we need Vc on K if strongDir==1 to correct the BC of the basis functions */
+            varf pdeDir(uh,vh) = int1d(K,-1)(uh*vh*tgv);
+            matrix Adir = pdeDir(VK,VK);
+            A = A+Adir;
+            if (debug) cout << "Strong Dirichlet conditions are implemented on triangle " << i << endl;
+        }
+        else {
+            if (debug) cout << "No strong Dirichlet conditions are implemented on triangle " << i << endl;
+        }
+    } /* all weak boundary conditions are handled by the linear constraints */
+
+    int edg; /* a dummy in intEdge representing integrations over each respective edge */
+    varf intEdge(unused,vh) = edgeIntegral(K,1,normK,edg,vh) + edgeIntegral(K,-1,normK,edg,vh); 
+        /* variational formulation of local problems -- bilinear form -- Lagrange multipliers/linear constraints */
+    real[int,int] arrB(VK.ndof,nedges); /* linear system of the local problems -- matrix associated to the Lagrange multipliers/linear constraints */
+    for(int k=0; k<nedges; k++) { 
+        /* integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions */
+        edg=edges[k];
+        real[int] Bedge = intEdge(0,VK);
+        /* real meas=edgeIntegral(K,1,normK,edg,1) + edgeIntegral(K,-1,normK,edg,1);
+         * if (debug) {
+         *     cout << "Measure of coarse element edge: " << meas << endl;
+         * }
+         * Bedge = Bedge/meas; 
+         *   normalization is unnecessary since we are only imposing homogeneous constraints in the local problems */
+        arrB(:,k) = Bedge;
+        if (debug) {
+            VK test;
+            test[] = arrB(:,k);
+            plot(K, test, cmm="Edge selection on K for integration", fill=1, wait=1);
+        }
+    }
+    matrix Bcr = arrB;
+
+    matrix CRmat = [[A,Bcr],
+                [Bcr',0]]; /* matrix for local saddle-point problem on K */
+    set(CRmat, solver=UMFPACK);
+
+
+    /* Variational formulations for strong Dirichlet conditions on the corrector to obtain homogeneous Dirichlet for the basis functions
+     * (will be used if strongDir==1; the formulation below then corresponds to penalization) */
+    varf boundaryVx(unused,vh) = -int1d(K,-1)(tgv*(x-xb[][i])*vh);
+    varf boundaryVy(unused,vh) = -int1d(K,-1)(tgv*(y-yb[][i])*vh);
+    varf boundaryVc(unused,vh) = -int1d(K,-1)(tgv*vh);
+
+
+    /* Complete definition and resolution of the linear systems for the fine-scale problems */
+    VK Vc=0, Vx=0, Vy=0, B=0, uH=0, uHx=x-xb[][i], uHy=y-yb[][i];
+    /* V[c/x/y] -- the numerical corrector associated to constants/the [x/y]-direction
+     * B -- bubble function for the MsFEM space associated to RHS = 1
+     * uH[x/y] -- the coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
+     * uH -- serves as a dummy in the variational form pbRHS to set the RHS for V[c/x/y] and B */
+    real[int] F(VK.ndof+nedges), X(VK.ndof+nedges); F=0;
+    /* X is used to store the solutions to the linear systems. These contain the multi-scale basis functions
+     * and the Lagrange multipliers associated to the linear constraints */
+    varf pbRHS(unused,vh)=-int2d(K)(aBasis(uH,vh)); /* variational formulation of local problems -- linear form for the RHS of the numerical correctors */
+    varf id(unused,vh) = int2d(K)(vh); /* variational formulation of local problems -- linear form of the RHS for the bubble functions */
+
+    /* Resolution */
+    real locRes=0; /* residue in the computation of the numerical correctors */
+    if (useVcOnK[i]) {
+        uH[]=1;  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVc(0,VK);  X=CRmat^-1*F;   Vc[]=X;
+        residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+        if (debug) {
+            real testB = int1d(K,-1)(1.);
+            if (testB>hx/2.) {writeResidue(locRes,"Corrector 0 was computed with residue ")}
+        }
+        /* note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored */
+    }
+
+    uH[]=uHx[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVx(0,VK);  X=CRmat^-1*F;   Vx[]=X;
+    residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (debug) writeResidue(locRes,"Corrector 1 was computed with residue ")
+
+    uH[]=uHy[];  F(0:VK.ndof-1)=pbRHS(0,VK);  if (strongDir==1) F(0:VK.ndof-1)+=boundaryVy(0,VK);  X=CRmat^-1*F;   Vy[]=X;
+    residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (debug) writeResidue(locRes,"Corrector 2 was computed with residue ")
+
+    if (useB) {
+        F(0:VK.ndof-1)=id(0,VK);    X=CRmat^-1*F;   B[]=X; /* adapt if different Dirichlet conditions for bubbles are required */
+        residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+        if (debug) writeResidue(locRes,"Bubble was computed with residue ")
+    }
+
+    if (plotBubbles) {
+        if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+        plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
+        plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
+        if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
+    }
+
+    if (timing) {
+        cout << "Solving for the basis functions lasted " << clock()-time << " s" << endl;
+        time=clock();
+    }
+
+    offlineExportLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    VK phi0=1, phix=0, phiy=0; 
+    offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
+
+} // EOM
+
+macro localProblemsCROS(i) {
+    real[int,int] Kx(3,2); 
+    saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
+    real[int,int] normS(3,2); /* to save the normals to the sides of S = ideal oversampling patch */
+    mesh S;
+    buildOversamplingPatch(Kx,normS,S)
+    fespace VS(S,P1);
+
+    /* Construction of the actual coarse mesh element K inside of the patch */
+    int[int] S2K;
+    mesh K=trunc(S,phi>1,split=1,label=1,new2old=S2K); 
+    fespace VK(K,P1);
+    int[int] RS2K = restrict(VK,VS,S2K); /* array for the restriction of a function on S to K */
+
+    if (timing) {
+        cout << "Building the fine mesh locally lasted " << clock()-time << " s" << endl;
+        time=clock();
+    }
+
+    /* Select edges of S on which to impose Crouzeix-Raviart BC
+     * (i.e. those not lying on the boundary of the global domain if strong Dirichlet conditions are chosen)
+     * We use that the global boundary was given the label -1, and the interior local boundaries the label 1 */
+    real[int] edges(3); edges=3; /* to store those indices corresponding to the edges where CR conditions are imposed */
+    int nedges=0; /* number of edges where CR conditions will be imposed */
+    if (strongDir) {
+        for (int k=0; k<3; k++) {
+            if (edgeIntegral(K,1,normS,k,1) > hx/10.) {
+                /* this condition tests positive iff the k-th edge does not lie on the boundary of the global domain */
+                edges[nedges]=k;
+                nedges+=1;
+            }
+        }
+    } else {
+        nedges=3;
+        for (int k=0; k<nedges; k++) edges[k]=k;
+    }
+
+    if (debug) cout << "Edges for CR conditions: " << edges << endl;
+    if (timing) {
+        cout << "Selecting the edges lasted " << clock()-time << " s" << endl;
+        time=clock();
+    }
+
+
+    /* Construction of the local problems with Crouzeix-Raviart boundary conditions
+     * This is a sadlle point problem */
+    varf pdeLoc(uh,vh) = int2d(S)(aBasis(uh,vh)); /* variational formulation of local problems -- bilinear form -- LHS of the PDE on S of the saddle point problem */
+    matrix A = pdeLoc(VS,VS); /* linear system of the local problems -- matrix associated to the PDE */
+    if (strongDir) { /* add strong Dirichlet conditions to A if S partially lies on the global boundary (with label 1) */
+        real testB = int1d(S,-1)(1.);
+        if (testB > hx/2.) {
+            if (strongDir==1) useVcOnK[i]=1; /* we need Vc on K if strongDir==1 to correct the BC of the basis functions */
+            varf pdeDir(uh,vh) = int1d(S,-1)(uh*vh*tgv);
+            matrix Adir = pdeDir(VS,VS);
+            A = A+Adir;
+            if (debug) cout << "Strong Dirichlet conditions are implemented on triangle " << i << endl;
+        }
+        else {
+            if (debug) cout << "No strong Dirichlet conditions are implemented on triangle " << i << endl;
+        }
+    } /* all weak boundary conditions are handled by the linear constraints */
+
+    int edg; /* a dummy in linF1 and linF2 representing integrations over each respective edge */
+    varf linF1(unused,vh) = edgeIntegral(S,1,normS,edg,vh) + edgeIntegral(S,-1,normS,edg,vh);
+    real[int,int] arrB1(VS.ndof,nedges); /* Lagrange multiplier matrix (linear form 1, for integrations over the boundary of S) */
+    for(int k=0; k<nedges; k++) {
+        /* integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions */
+        edg=edges[k];
+        real[int] Bedge = linF1(0,VS);
+        /* real meas=edgeIntegral(S,1,normS,edg,1) + edgeIntegral(S,-1,normS,edg,1);
+         * if (debug) {
+         *     cout << "Measure of patch edge: " << meas << endl;
+         * }
+         * Bedge = Bedge/meas; 
+         * normalization is unnecessary since we are only imposing homogeneous constraints in the local problems */
+        arrB1(:,k) = Bedge;
+        if (debug) {
+            VS test;
+            test[] = arrB1(:,k);
+            plot(TH, S, test, cmm="Edge selection on S for integration", fill=1, wait=1);
+        }
+    }
+
+    matrix B1 = arrB1;
+    matrix B2;
+    if (glue=="restrict") B2 = arrB1;
+    varf linF2(unused,vh) = edgeIntegral(K,1,normS,edg,vh) + edgeIntegral(K,-1,normS,edg,vh);
+    if (glue=="dof") {
+        real[int,int] arrB2(VS.ndof,nedges); /* constraint matrix (linear form 2, for integrations over the boundary of K) */
+        for(int k=0; k<nedges; k++) {
+            /* integrations over the edges of K that correspond to Crouzeix-Raviart boundary conditions */
+            edg=edges[k];
+            real[int] Bedge = linF2(0,VS);
+            /* real meas=edgeIntegral(S,1,normS,edg,1) + edgeIntegral(S,-1,normS,edg,1);
+             * Bedge = Bedge/meas; 
+             * normalization is unnecessary since we are only imposing homogeneous constraints in the local problems */
+            arrB2(:,k) = Bedge;
+            if (debug) {
+                VS test;
+                test[] = arrB2(:,k);
+                plot(S, test, cmm="Edge selection on K for integration", fill=1, wait=1);
+            }
+        }
+        B2 = arrB2;
+    }
+
+    matrix CRmat = [[A,B1],
+                    [B2',0]]; /* matrix for local saddle-point problem on S */
+    set(CRmat, solver=UMFPACK);
+
+    if (timing) {
+        cout << "Building the matrix lasted " << clock()-time << " s" << endl;
+        time=clock();
+    }
+
+    /* Variational formulations for strong Dirichlet conditions on the corrector to obtain homogeneous Dirichlet for the basis functions
+     * (will be used if strongDir==1; the formulation below then corresponds to penalization) */
+    varf boundaryVx(unused,vh) = -int1d(S,-1)(tgv*(x-xb[][i])*vh);
+    varf boundaryVy(unused,vh) = -int1d(S,-1)(tgv*(y-yb[][i])*vh);
+    varf boundaryVc(unused,vh) = -int1d(S,-1)(tgv*vh);
+
+
+    /* Complete definition and resolution of the linear systems for the fine-scale problems */
+    VS VcS=0, VxS=0, VyS=0, BS=0, uH=0, uHxS=x-xb[][i], uHyS=y-yb[][i];
+    /* V[c/x/y]S -- the numerical corrector on the patch associated to constants/the [x/y]-direction
+     * BS -- bubble function on the patch for the MsFEM space associated to RHS = 1
+     * uH[x/y] -- the coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
+     * uH -- serves as a dummy in the variational form pbRHS to set the RHS for V[c/x/y]S and BS */
+    real[int] F(VS.ndof+nedges), X(VS.ndof+nedges); F=0;
+    /* X is used to store the solutions to the linear systems. These contain the multi-scale basis functions
+     * and the Lagrange multipliers associated to the linear constraints */
+    varf pbRHS(unused,vh)=-int2d(S)(aBasis(uH,vh));  /* variational formulation of local problems -- linear form for the RHS of the numerical correctors */
+    varf id(unused,vh) = int2d(K)(vh); /* variational formulation of local problems -- linear form of the RHS for the bubble functions */
+
+    /* Resolution: */
+    real locRes=0; /* residue in the computation of the numerical correctors */
+    if(useVcOnK[i]) {
+        uH[]=1;  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVc(0,VS);  X=CRmat^-1*F;   VcS[]=X;
+        residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+        if (debug) {
+            real testB = int1d(S,-1)(1.);
+            if (testB>hx/2.) {
+                    writeResidue(locRes,"Corrector 0 was computed with residue ")
+                }
+        }
+        if (debug) printIntegralsTri(K,VcS)
+        /* note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored */
+    }
+
+    uH[]=uHxS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVx(0,VS);  X=CRmat^-1*F;   VxS[]=X;
+    residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (debug) writeResidue(locRes,"Corrector 1 was computed with residue ")
+    if (debug) printIntegralsTri(K,VxS)
+
+    uH[]=uHyS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
+    residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+    imaxResOffline=max(locRes,imaxResOffline);
+    if (debug) writeResidue(locRes,"Corrector 2 was computed with residue ")
+    if (debug) printIntegralsTri(K,VyS)
+
+    if (useB) {
+        F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X; /* adapt if different Dirichlet conditions for bubbles are required */
+        residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
+        imaxResOffline=max(locRes,imaxResOffline);
+        if (debug) writeResidue(locRes,"Bubble was computed with residue ")
+        if (debug) printIntegralsTri(K,BS)
+    }
+
+    if (timing) {
+        cout << "Solving for the basis functions lasted " << clock()-time << " s" << endl;
+        time=clock();
+    }
+
+
+    /* Restriction of the functions on the patch to the mesh element K */
+    VK Vc=0, Vx=0, Vy=0, B=0, uHx=0, uHy=0;
+    /* V[c/x/y] -- is the numerical corrector associated to the .-direction
+     * B -- bubble function for the MsFEM space associated to RHS = 1 */
+    if (useVcOnK[i]) Vc[]=VcS[](RS2K);
+    Vx[]=VxS[](RS2K);    Vy[]=VyS[](RS2K);  
+    uHx[]=uHxS[](RS2K);  uHy[]=uHyS[](RS2K); 
+    if(useB) B[]=BS[](RS2K);
+
+    if (plotBubbles) {
+        if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
+        plot(TH, Vx, fill=1, value=1, wait=1, cmm="Bubble function for x-direction");
+        plot(TH, Vy, fill=1, value=1, wait=1, cmm="Bubble function for y-direction");
+        if (useB) plot(TH, B, fill=1, value=1, wait=1, cmm="Bubble function for the RHS");
+    }
+
+    offlineExportLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    VK phi0=1, phix=0, phiy=0; 
+    offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
+} // EOM

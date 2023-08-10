@@ -37,7 +37,7 @@ string name = bcType; //abbreviation used for the MsFEM output
 string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 
 int iproc=0, nbproc=1; //defined for compatibility with init.idp, that is also compatible with parallel computations
-macro mpiReduce(a,b,c,d) assert(0) // EOM //"WARNING: mpiReduce was erroneously called with sequential MsFEM"
+macro mpiReduce(a,b,c,d) cout << "WARNING: mpiReduce was erroneously called with sequential MsFEM" << endl //EOM 
     //defined for compatibility with the parallel version in the offline loading stage
 
 include "msfem_blocks/init.idp"
@@ -87,8 +87,8 @@ else if (offlineMode == "load")
 ///////////////////////////////////////////////////////////////////////
 // -- Solving the effective problem  
 fespace VH(TH,P1); //coarse global FE conforming P1 space
-VH uH; //the global problem is formulated on a standard FE P1-basis
-VH0 uB; //coefficients to be used for the bubble function per mesh element
+VH uH=0; //the global problem is formulated on a standard FE P1-basis
+VH0 uB=0; //coefficients to be used for the bubble function per mesh element
 solveGlobalProblem(uH,uB)
 
 

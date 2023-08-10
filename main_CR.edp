@@ -58,39 +58,26 @@ if (offlineMode == "compute")
     for(int i=0; i<VH0.ndof; i++) {
         if (i%(2*n)==0) {
             cout <<"construction ms coefficients on tri "<<i<<endl;
-            // ffLog <<"construction ms coefficients on tri "<<i<<endl;
         }
         phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
-            include "msfem_blocks/local_problems_CR.idp"
-            // Save (internally) the offline computations on K
-            if (useVcOnK[i]) storeVc(i,:)=Vc[];
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
-            if (useB) storeB(i,:)=B[];
-            // Compute effective coefficient on K
-            include "msfem_blocks/offline_effective_tensors.idp"
+            localProblemsCR(i)
         } else { //OS case
-            include "msfem_blocks/local_problems_CR_OS.idp"
-            // Save (internally) the offline computations on K
-            if (useVcOnK[i]) storeVc(i,:)=Vc[];
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
-            if (useB) storeB(i,:)=B[];
-            // Compute effective coefficient on K
-            include "msfem_blocks/offline_effective_tensors.idp"
+            localProblemsCROS(i)
         }
 
         if (debug) if (i%(2*n)==0) cout << endl;
         phi[][i]=0;
     }
-    include "msfem_blocks/offline_effective_tensors_reduce.idp" //compatibility with parallel version
-    include "msfem_blocks/offline_save_effective_tensors.idp" //save effective coefficients (for the entire coarse mesh)
+    offlineEffectiveTensorsReduce //compatibility with parallel version
+    offlineSaveEffectiveTensors //save effective coefficients (for the entire coarse mesh)
     //also save the Vc pattern over all coarse mesh elements
     printTime("Offline phase (computing + storing) lasted ")
 } 
 else if (offlineMode == "load") 
 {
-    include "msfem_blocks/offline_load.idp"
+    offlineLoad 
 }
 
 
@@ -102,8 +89,9 @@ else if (offlineMode == "load")
 ///////////////////////////////////////////////////////////////////////
 // -- Solving the effective problem  
 fespace VH(TH,P1nc); //coarse global FE Crouzeix-Raviart space 
-include "msfem_blocks/online.idp"
-// the P1 solution is stored in (VH) uH, the bubble coefficients in (VH0) uB
+VH uH=0; //the global problem is formulated on a standard FE P1-basis
+VH0 uB=0; //coefficients to be used for the bubble function per mesh element
+solveGlobalProblem(uH,uB)
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -111,7 +99,5 @@ include "msfem_blocks/online.idp"
 // (msfem_blocks/post.idp)                                           //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
-include "msfem_blocks/post.idp"
-include "msfem_blocks/write_results.idp"
-include "msfem_blocks/post_coarse_error.idp"
-include "msfem_blocks/write_results.idp"
+postReconstructionError(uH,uB)
+postCoarseError(uH)

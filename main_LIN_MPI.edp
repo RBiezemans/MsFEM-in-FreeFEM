@@ -103,8 +103,8 @@ else if (offlineMode == "load")
 ///////////////////////////////////////////////////////////////////////
 // -- Solving the effective problem  
 fespace VH(TH,P1); //coarse global FE conforming P1 space
-VH uH; //the global problem is formulated on a standard FE P1-basis
-VH0 uB; //coefficients to be used for the bubble function per mesh element
+VH uH=0; //the global problem is formulated on a standard FE P1-basis
+VH0 uB=0; //coefficients to be used for the bubble function per mesh element
 solveGlobalProblem(uH,uB)
 
 mpiBarrier(comm); //only the main process computes the solution
