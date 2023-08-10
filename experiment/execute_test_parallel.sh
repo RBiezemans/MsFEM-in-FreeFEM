@@ -21,7 +21,7 @@ TEST_P1_LIN=0
 
 # Parameter values to be used in the tests (all will be combined)
 # eg TOTEST_LARGE_N="8 16 32" to test for three different (coarse) mesh sizes
-TOTEST_PDEFILE="pde_230512_diff_periodic.idp"
+TOTEST_PDEFILE="pde_230414_advdiff_adv_constant.idp"
 TOTEST_VFFILE="advection_diffusion_direct.idp advection_diffusion_p1_supg.idp"
 TOTEST_L="1."
 TOTEST_LARGE_N="40" 
