@@ -200,7 +200,7 @@ macro postReconstructionError(uH,uB){
     }
     if (plots) plot(uref,wait=1,value=1, cmm="Reference solution");
 
-    resetNormsErrors() /* (re)set global error variables and norms to zero */
+    resetNormsErrors /* (re)set global error variables and norms to zero */
 
     /* Reconstruction and error computation
     /* Error computation does not yet apply square roots, because these are to be taken once..
@@ -341,12 +341,12 @@ macro postReconstructionErrorMPI(uH,uB) {
     real[int] eML1cur(1), eML2cur(1), eMH1cur(1), eMMaxcur(1); /* errors OBL according to the definition of Madiot */
     real[int] eOL1cur(1), eOL2cur(1), eOH1cur(1), eOMaxcur(1); /* errors outside the mesh elements at the outflow */
 
-    resetNormsErrors() /* (re)set global error variables and norms to zero */
+    resetNormsErrors /* (re)set global error variables and norms to zero */
 
     /* Reconstruction and error computation */
     /* Error computation does not yet apply square roots, becuse these are to be taken once.. */
     /* ..everyhing is reduced and added on the main process */
-    countOffline=0; /* counter used to retrieve the result from the local computations per triangle */
+    int countOffline=0; /* counter used to retrieve the result from the local computations per triangle */
     real[int] correctReduce(Vh.ndof); correctReduce=0;
     /* correctReduce will be increased by 1 on each triangle associated to the current process */
     /* it will be used below to correct for mpiReduce on repeated edges */
@@ -506,7 +506,7 @@ macro postCoarseError(uH) {
     }
     if (plots) plot(urefH,wait=1,value=1, cmm="Reference solution");
 
-    resetNormsErrors() /* (re)set global error variables and norms to zero */
+    resetNormsErrors /* (re)set global error variables and norms to zero */
 
     /* Defining square domains for computations outside boundary layer/mesh elements at the outflow (olme) */
     VH errCoarse = urefH-uH;

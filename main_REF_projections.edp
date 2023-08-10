@@ -40,7 +40,7 @@ if (plots) {
 }
 
 // Compute norms of uref
-resetNormsErrors() //(re)set global error variables and norms to zero
+resetNormsErrors //(re)set global error variables and norms to zero
 nL1=int2d(Th)(abs(uref));
 nL2=sqrt(int2d(Th)(uref*uref));
 nH1=sqrt(int2d(Th)(uref*uref + dx(uref)*dx(uref) + dy(uref)*dy(uref)));

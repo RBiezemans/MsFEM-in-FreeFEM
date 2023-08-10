@@ -62,9 +62,9 @@ if (offlineMode == "compute")
         phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
-            localProblemsCR(i)
+            localProblemsCR(i,i)
         } else { //OS case
-            localProblemsCROS(i)
+            localProblemsCROS(i,i)
         }
 
         if (debug) if (i%(2*n)==0) cout << endl;

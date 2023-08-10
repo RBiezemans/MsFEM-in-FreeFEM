@@ -59,9 +59,9 @@ mpiBarrier(comm);
 // -- Computation of numerical correctors V[c/x/y] and bubble function B per coarse mesh element
 // -- The discrete RHS is also computed via the inclusion of msfem_blocks/offline_effective_RHS.idp in the files for the offline stage
 // -- Data structures storeVx, storeVy, store B are declared in init.idp
-int countOffline=0; //to count the number of triangles associated to the current process
 if (offlineMode == "compute") 
 {
+    int countOffline=0; //to count the number of triangles associated to the current process
     for(int i=0; i<VH0.ndof; i++) {
         if (iproc == i%nbproc) {
             if (i%(2*n)==0) {
@@ -71,9 +71,9 @@ if (offlineMode == "compute")
             phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
             if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
-                localProblemsLIN(i)
+                localProblemsLIN(i,countOffline)
             } else { //OS case
-                localProblemsLINOS(i)
+                localProblemsLINOS(i,countOffline)
             }
 
             if (debug) if (i%(2*n)==0) cout << endl;
@@ -128,7 +128,7 @@ if (iproc>0) {
 // (msfem_blocks/write_results[/_MPI].idp)                           //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
-postReconstructionError(uH,uB)
+postReconstructionErrorMPI(uH,uB)
 if (iproc==0) {
     postCoarseError(uH)
 }

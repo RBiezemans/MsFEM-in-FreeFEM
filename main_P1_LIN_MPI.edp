@@ -57,28 +57,28 @@ mpiBarrier(comm);
 ///////////////////////////////////////////////////////////////////////
 // -- Computation of the effective coefficients on a fine mesh
 // -- The discrete RHS is also computed via the inclusion of msfem_blocks/offline_effective_RHS.idp in the files for the offline stage
-int countOffline=0; //to count the number of triangles associated to the current process
 for(int i=0; i<VH0.ndof; i++) {
-if (iproc == i%nbproc) {
-    if (i%(2*n)==0) {
-        cout <<"construction ms coefficients on tri "<<i<<endl;
-        // if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
-    }
-    phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
+    int countOffline=0; //to count the number of triangles associated to the current process
+    if (iproc == i%nbproc) {
+        if (i%(2*n)==0) {
+            cout <<"construction ms coefficients on tri "<<i<<endl;
+            // if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
+        }
+        phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
-    // All numerical correctors vanish for a standard P1 method
-    // and are defined here only for compatibility with other offline routines
-    mesh K=trunc(Th,phi>1,split=1,label=1); //fine mesh of the coarse mesh element K indicated by phi
-    fespace VK(K,P1); //P1 finite element space on the triangle K
-    VK Vc=0, Vx=0, Vy=0, B=0, uHx=x-xb[][i], uHy=y-yb[][i];
-    VK phi0=1, phix=0, phiy=0; 
-    // Compute effective coefficient on K
-    offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
-    
-    if (debug) if (i%(2*n)==0) cout << endl;
-    phi[][i]=0;
-    countOffline++;
-}
+        // All numerical correctors vanish for a standard P1 method
+        // and are defined here only for compatibility with other offline routines
+        mesh K=trunc(Th,phi>1,split=1,label=1); //fine mesh of the coarse mesh element K indicated by phi
+        fespace VK(K,P1); //P1 finite element space on the triangle K
+        VK Vc=0, Vx=0, Vy=0, B=0, uHx=x-xb[][i], uHy=y-yb[][i];
+        VK phi0=1, phix=0, phiy=0; 
+        // Compute effective coefficient on K
+        offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
+        
+        if (debug) if (i%(2*n)==0) cout << endl;
+        phi[][i]=0;
+        countOffline++;
+    }
 }
 // send all information for the global problem to the main process
 offlineEffectiveTensorsReduceMPI
@@ -121,7 +121,7 @@ if (iproc>0) {
 // (msfem_blocks/write_results[/_MPI].idp)                           //
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
-postReconstructionError(uH,uB)
+postReconstructionErrorMPI(uH,uB)
 if (iproc==0) {
     postCoarseError(uH)
 }

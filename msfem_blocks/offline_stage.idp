@@ -391,6 +391,7 @@ macro offlineLoad() {
         ifstream ffvec (vecFile);
         ffvec >> useVcOnK;
     }
+    int countOffline=0;
     for(int i=0; i<VH0.ndof; i++) {
         if (iproc == i%nbproc) {
             if (i%(2*n)==0) {
@@ -527,7 +528,7 @@ macro offlineLoad() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
 
-macro localProblemsLIN(i) {
+macro localProblemsLIN(i,countOffline) {
     mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
     fespace VK(K,P1); /* P1 finite element space on the triangle K */
 
@@ -571,12 +572,12 @@ macro localProblemsLIN(i) {
     }
 
     offlineExportLocalComputations(i,Vc,Vx,Vy,B)
-    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(countOffline,Vc,Vx,Vy,B)
     VK phi0=1, phix=0, phiy=0; 
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 } // EOM
 
-macro localProblemsLINOS(i) {
+macro localProblemsLINOS(i,countOffline) {
     /* Construction of the sampling patch S, the fine-scale P1 space VS on S */
     /* Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain) */
     real[int,int] Kx(3,2); 
@@ -698,12 +699,12 @@ macro localProblemsLINOS(i) {
     }
 
     offlineExportLocalComputations(i,Vc,Vx,Vy,B)
-    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(countOffline,Vc,Vx,Vy,B)
     VK phi0=1, phix=0, phiy=0; 
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 } // EOM
 
-macro localProblemsCR(i) {
+macro localProblemsCR(i,countOffline) {
     /* Construct fine mesh, finite element space, normals */
     mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
     fespace VK(K,P1); /* P1 finite element space on the triangle K */
@@ -841,13 +842,13 @@ macro localProblemsCR(i) {
     }
 
     offlineExportLocalComputations(i,Vc,Vx,Vy,B)
-    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(countOffline,Vc,Vx,Vy,B)
     VK phi0=1, phix=0, phiy=0; 
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 
 } // EOM
 
-macro localProblemsCROS(i) {
+macro localProblemsCROS(i,countOffline) {
     real[int,int] Kx(3,2); 
     saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
     real[int,int] normS(3,2); /* to save the normals to the sides of S = ideal oversampling patch */
@@ -1040,7 +1041,7 @@ macro localProblemsCROS(i) {
     }
 
     offlineExportLocalComputations(i,Vc,Vx,Vy,B)
-    offlineSaveLocalComputations(i,Vc,Vx,Vy,B)
+    offlineSaveLocalComputations(countOffline,Vc,Vx,Vy,B)
     VK phi0=1, phix=0, phiy=0; 
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 } // EOM

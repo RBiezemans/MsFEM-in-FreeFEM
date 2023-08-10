@@ -124,7 +124,7 @@ macro ipcheck(u1, u2) ( u1[0]*(x-u2[0]) + u1[1]*(y-u2[1]) )// EOM
 
 
 // Reset errors and norm variables on the current process to 0
-macro resetNormsErrors(unused) {
+macro resetNormsErrors() {
     nL1=0;   nL2=0;   nH1=0;   nMax=0;
     eL1=0;   eL2=0;   eH1=0;   eMax=0; 
     eML1=0;  eML2=0;  eMH1=0;  eMMax=0;
