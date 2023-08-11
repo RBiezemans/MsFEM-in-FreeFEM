@@ -292,60 +292,62 @@ macro offlineEffectiveTensorsReduceMPI() {
 
 // Saving the effective coefficients of the PDE (can be called once all is reduced to the main process)
 macro offlineSaveEffectiveTensors() {    
-    /* Save residue information */
-    ffRes << "The maximum residue for the numerical correctors is " << maxResOffline << endl;
-    if (bcType == "Lin" && osCoef > osThr) ffRes << "The maximum residue for the LIN-OS 'DOF' option is " << LINOSRes << endl;
-    ffRes << endl;
+    if (iproc==0) {/* the main process saves the effective coefficient (for the entire coarse mesh)*/
+        /* Save residue information */
+        ffRes << "The maximum residue for the numerical correctors is " << maxResOffline << endl;
+        if (bcType == "Lin" && osCoef > osThr) ffRes << "The maximum residue for the LIN-OS 'DOF' option is " << LINOSRes << endl;
+        ffRes << endl;
 
-    { /* save Vc pattern for future loading of basis functions */
-        string vecFile = basisDir + "/Vc_pattern.txt";
-        ofstream ffvec (vecFile);
-        ffvec << useVcOnK;
-    }
-
-    cout << "saving effective coefficients" << endl;
-    ffLog << "saving effective coefficients" << endl;
-    writeVec2File("/AHxx.txt", AHxx[])
-    writeVec2File("/AHyx.txt", AHyx[])
-    writeVec2File("/AHxy.txt", AHxy[])
-    writeVec2File("/AHyy.txt", AHyy[])
-    writeVec2File("/BHx.txt", BHx[])
-    writeVec2File("/BHy.txt", BHy[])
-    if (fullVF) {
-        writeVec2File("/BAHx.txt", BAHx[])
-        writeVec2File("/BAHy.txt", BAHy[])
-        writeVec2File("/MH.txt", MH[])
-    }
-    if (useB) {
-        writeVec2File("/rH.txt",  rH[])
-        writeVec2File("/rHx.txt", rHx[])
-        writeVec2File("/rHy.txt", rHy[])
-        if (treatB=="in_system") {
-            writeVec2File("/AHB.txt", AHB[])
-            writeVec2File("/lHx.txt", lHx[])
-            writeVec2File("/lHy.txt", lHy[])
-            if (fullVF) writeVec2File("/lH.txt", lH[])
-        } 
-    }
-
-    if (testMS) {
-        writeVec2File("/AHxxTestMS.txt", AHxxTestMS[])
-        writeVec2File("/AHyxTestMS.txt", AHyxTestMS[])
-        writeVec2File("/AHxyTestMS.txt", AHxyTestMS[])
-        writeVec2File("/AHyyTestMS.txt", AHyyTestMS[])
-        if (useVc) {
-            writeVec2File("/BHxTestMS.txt", BHxTestMS[])
-            writeVec2File("/BHyTestMS.txt", BHyTestMS[])
+        { /* save Vc pattern for future loading of basis functions */
+            string vecFile = basisDir + "/Vc_pattern.txt";
+            ofstream ffvec (vecFile);
+            ffvec << useVcOnK;
         }
+
+        cout << "saving effective coefficients" << endl;
+        ffLog << "saving effective coefficients" << endl;
+        writeVec2File("/AHxx.txt", AHxx[])
+        writeVec2File("/AHyx.txt", AHyx[])
+        writeVec2File("/AHxy.txt", AHxy[])
+        writeVec2File("/AHyy.txt", AHyy[])
+        writeVec2File("/BHx.txt", BHx[])
+        writeVec2File("/BHy.txt", BHy[])
         if (fullVF) {
-            writeVec2File("/BAHxTestMS.txt", BAHxTestMS[])
-            writeVec2File("/BAHyTestMS.txt", BAHyTestMS[])
-            if (useVc) writeVec2File("/MHTestMS.txt", MHTestMS[])
+            writeVec2File("/BAHx.txt", BAHx[])
+            writeVec2File("/BAHy.txt", BAHy[])
+            writeVec2File("/MH.txt", MH[])
         }
-        if(useB) {
-            if (useVc) writeVec2File("/rHTestMS.txt",  rHTestMS[])
-            writeVec2File("/rHxTestMS.txt", rHxTestMS[])
-            writeVec2File("/rHyTestMS.txt", rHyTestMS[])
+        if (useB) {
+            writeVec2File("/rH.txt",  rH[])
+            writeVec2File("/rHx.txt", rHx[])
+            writeVec2File("/rHy.txt", rHy[])
+            if (treatB=="in_system") {
+                writeVec2File("/AHB.txt", AHB[])
+                writeVec2File("/lHx.txt", lHx[])
+                writeVec2File("/lHy.txt", lHy[])
+                if (fullVF) writeVec2File("/lH.txt", lH[])
+            } 
+        }
+
+        if (testMS) {
+            writeVec2File("/AHxxTestMS.txt", AHxxTestMS[])
+            writeVec2File("/AHyxTestMS.txt", AHyxTestMS[])
+            writeVec2File("/AHxyTestMS.txt", AHxyTestMS[])
+            writeVec2File("/AHyyTestMS.txt", AHyyTestMS[])
+            if (useVc) {
+                writeVec2File("/BHxTestMS.txt", BHxTestMS[])
+                writeVec2File("/BHyTestMS.txt", BHyTestMS[])
+            }
+            if (fullVF) {
+                writeVec2File("/BAHxTestMS.txt", BAHxTestMS[])
+                writeVec2File("/BAHyTestMS.txt", BAHyTestMS[])
+                if (useVc) writeVec2File("/MHTestMS.txt", MHTestMS[])
+            }
+            if(useB) {
+                if (useVc) writeVec2File("/rHTestMS.txt",  rHTestMS[])
+                writeVec2File("/rHxTestMS.txt", rHxTestMS[])
+                writeVec2File("/rHyTestMS.txt", rHyTestMS[])
+            }
         }
     }
 } // EOM

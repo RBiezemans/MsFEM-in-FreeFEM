@@ -82,9 +82,7 @@ for(int i=0; i<VH0.ndof; i++) {
 }
 // send all information for the global problem to the main process
 offlineEffectiveTensorsReduceMPI
-if (iproc==0) { //the main process saves the effective coefficients (for the entire coarse mesh)
-    offlineSaveEffectiveTensors
-}
+offlineSaveEffectiveTensors
 mpiBarrier(comm);
 if (iproc==0) printTime("Offline phase (computing + storing) lasted ")
 
@@ -120,6 +118,4 @@ if (iproc>0) {
 ///////////////////////////////////////////////////////////////////////
 // -- Reconstruction, error computation, documentation
 postReconstructionErrorMPI(uH,uB)
-if (iproc==0) {
-    postCoarseError(uH)
-}
+postCoarseError(uH)
