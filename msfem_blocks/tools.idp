@@ -136,7 +136,7 @@ macro resetNormsErrors() {
 
 
 // Building the oversampling patch
-macro buildOversamplingPatch(Kx,normS,S) {
+macro buildOversamplingPatch(Kx,i,normS,S) {
     real[int,int] Sx(3,2); /* compute coordinates for the ideal oversampling patch by homothety */
     for(int kk=0; kk<3; kk++) {
         Sx(kk,0) = (osCoef)*(Kx(kk,0) - xb[][i]) + xb[][i];
@@ -183,7 +183,9 @@ macro buildOversamplingPatch(Kx,normS,S) {
      * S is obtained by requiring that they are all satisfied in all the vertices, i.e. patch > 2/3
      * patch is built on C rather than Th entirely to save time in costly function evaluations */
     if (debug) {
-        plot(C, patch, phi, fill=1, cmm="Mesh element and oversampling patch", wait=1);
+        VH0 psi=0;
+        psi[][i]=1;
+        plot(C, patch, psi, fill=1, cmm="Mesh element and oversampling patch", wait=1);
     }
     if (timing) {
         cout << "Building the indicator function for the (real) patch lasted " << clock()-time << " s" << endl;

@@ -11,6 +11,15 @@
 ////////////////////////////////////////////////////////////////////////
 
 
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////                                                                           ////////// 
+//////////   GENERIC MACROS                                                          //////////
+//////////   to handle computation of effective coefficients and storage/loading     //////////
+//////////                                                                           ////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+
 // Save numerical correctors and bubble function to global data structures
 macro offlineSaveLocalComputations(i,Vc,Vx,Vy,B) {
     if (useVcOnK[i]) storeVc(i,:)=Vc[];
@@ -342,7 +351,15 @@ macro offlineSaveEffectiveTensors() {
 } // EOM
 
 
-// Load variant of the offline stage suitable for any MsFEM
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////                                                                           ////////// 
+//////////   OFFLINE STAGE                                                           //////////
+//////////   load option when numerical correctors (and possibly coefficients)       //////////
+//////////   have already been computed and stored                                   //////////
+//////////                                                                           ////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
 
 // Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
 macro readBasis(filename,storage) {
@@ -352,6 +369,7 @@ macro readBasis(filename,storage) {
     ffbasis >> vec;
     storage=vec;
 } // EOM
+
 // Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
 macro readFile2Vec(filename,vec) {string matrixFile = coeffDir + filename; ifstream ffmat (matrixFile); ffmat >> vec;} // EOM
 
@@ -527,8 +545,8 @@ macro offlineLoad() {
 ///////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
-
 macro localProblemsLIN(i,countOffline) {
+    phi[][i]=2;
     mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
     fespace VK(K,P1); /* P1 finite element space on the triangle K */
 
@@ -563,6 +581,7 @@ macro localProblemsLIN(i,countOffline) {
         residue(A,F,B[],locRes); /* store residue of the local problem to locRes */
         imaxResOffline=max(locRes,imaxResOffline);
     }
+    phi[][i]=0;
 
     if (plotBubbles) {
         if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
@@ -580,11 +599,12 @@ macro localProblemsLIN(i,countOffline) {
 macro localProblemsLINOS(i,countOffline) {
     /* Construction of the sampling patch S, the fine-scale P1 space VS on S */
     /* Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain) */
+    phi[][i]=2;
     real[int,int] Kx(3,2); 
     saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
     real[int,int] normS(3,2); /* to save the normals to the sides of S = ideal oversampling patch */
     mesh S;
-    buildOversamplingPatch(Kx,normS,S)
+    buildOversamplingPatch(Kx,i,normS,S)
     fespace VS(S,P1);
 
     /* Construction of the actual coarse mesh element K inside of the patch */
@@ -690,6 +710,7 @@ macro localProblemsLINOS(i,countOffline) {
     } else {
         assert(glue=="restrict");
     }
+    phi[][i]=0;
 
     if (plotBubbles) {
         if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
@@ -706,6 +727,7 @@ macro localProblemsLINOS(i,countOffline) {
 
 macro localProblemsCR(i,countOffline) {
     /* Construct fine mesh, finite element space, normals */
+    phi[][i]=2;
     mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
     fespace VK(K,P1); /* P1 finite element space on the triangle K */
 
@@ -828,6 +850,7 @@ macro localProblemsCR(i,countOffline) {
         imaxResOffline=max(locRes,imaxResOffline);
         if (debug) writeResidue(locRes,"Bubble was computed with residue ")
     }
+    phi[][i]=0;
 
     if (plotBubbles) {
         if (useVcOnK[i]) plot(TH, Vc, fill=1, value=1, wait=1, cmm="Bubble function for constants");
@@ -853,10 +876,11 @@ macro localProblemsCROS(i,countOffline) {
     saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
     real[int,int] normS(3,2); /* to save the normals to the sides of S = ideal oversampling patch */
     mesh S;
-    buildOversamplingPatch(Kx,normS,S)
+    buildOversamplingPatch(Kx,i,normS,S)
     fespace VS(S,P1);
 
     /* Construction of the actual coarse mesh element K inside of the patch */
+    phi[][i]=2;
     int[int] S2K;
     mesh K=trunc(S,phi>1,split=1,label=1,new2old=S2K); 
     fespace VK(K,P1);
@@ -1009,6 +1033,7 @@ macro localProblemsCROS(i,countOffline) {
     imaxResOffline=max(locRes,imaxResOffline);
     if (debug) writeResidue(locRes,"Corrector 2 was computed with residue ")
     if (debug) printIntegralsTri(K,VyS)
+    phi[][i]=0;
 
     if (useB) {
         F(0:VS.ndof-1)=id(0,VS);    X=CRmat^-1*F;   BS[]=X; /* adapt if different Dirichlet conditions for bubbles are required */

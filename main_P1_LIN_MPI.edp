@@ -96,7 +96,7 @@ if (iproc==0) printTime("Offline phase (computing + storing) lasted ")
 // -- Solving the effective problem  
 fespace VH(TH,P1); //coarse global FE conforming P1 space
 VH uH=0;
-VH0 uB=0;
+VH0 uB=0; //introduced here only for compatibility with MsFEMs, that can use bubble functions
 solveGlobalProblem(uH,uB)
 // the P1 solution is stored in (VH) uH, the bubble coefficients in (VH0) uB
 
@@ -104,13 +104,11 @@ mpiBarrier(comm); //only the main process computes the solution
 if (iproc==0) { 
     for (int i=1; i<nbproc; i++) { //send the coarse scale solution to the other processes
         Send(processor(i,comm), uH[]);
-        //Send(processor(i,comm), uB[]); //never used for P1
     }
 }
 //mpiBarrier(comm); //THIS BARRIER MUST NOT BE USED
 if (iproc>0) {
     Recv(processor(0,comm), uH[]); //the other processes receive the coarse scale solution
-    // Recv(processor(0,comm), uB[]); //never used for P1
 }
 
 

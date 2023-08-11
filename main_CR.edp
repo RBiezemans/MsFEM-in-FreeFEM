@@ -52,23 +52,21 @@ include "msfem_blocks/init.idp"
 // -- Computation of numerical correctors V[c/x/y] and bubble function B per coarse mesh element
 // -- The discrete RHS is also computed via the inclusion of msfem_blocks/offline_effective_RHS.idp in the files for the offline stage
 // -- Data structures storeVx, storeVy, store B are declared in init.idp
-int countOffline=0; //to count the number of triangles treated for compatibility with parallel offline_load.idp
 if (offlineMode == "compute") 
 {
     for(int i=0; i<VH0.ndof; i++) {
         if (i%(2*n)==0) {
             cout <<"construction ms coefficients on tri "<<i<<endl;
         }
-        phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
+        //phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
             localProblemsCR(i,i)
         } else { //OS case
             localProblemsCROS(i,i)
         }
-
         if (debug) if (i%(2*n)==0) cout << endl;
-        phi[][i]=0;
+        //phi[][i]=0;
     }
     offlineEffectiveTensorsReduce //compatibility with parallel version
     offlineSaveEffectiveTensors //save effective coefficients (for the entire coarse mesh)

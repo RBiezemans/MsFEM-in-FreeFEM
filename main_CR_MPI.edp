@@ -66,7 +66,7 @@ if (offlineMode == "compute") {
             cout <<"construction ms coefficients on tri "<<i<<endl;
             // if (iproc==0) ffLog <<"construction ms coefficients on tri "<<i<<endl;
         }
-        phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
+        //phi[][i]=2; //initialized in init.idp -- used to loop over the coarse mesh elements
 
         if (osCoef < osThr) {//oversampling is used iff osCoef is larger than osThr
             localProblemsCR(i,countOffline)
@@ -74,7 +74,7 @@ if (offlineMode == "compute") {
             localProblemsCROS(i,countOffline)
         }
         if (debug) if (i%(2*n)==0) cout << endl;
-        phi[][i]=0;
+        //phi[][i]=0;
         countOffline++;
     }
     }
@@ -96,7 +96,7 @@ else if (offlineMode == "load")
 
 ///////////////////////////////////////////////////////////////////////
 // ONLINE STAGE                                                      //
-// (msfem_blocks/online.idp                                          //
+// (msfem_blocks/online.idp)                                         //
 ///////////////////////////////////////////////////////////////////////
 // -- Solving the effective problem  
 fespace VH(TH,P1nc); //coarse global FE Crouzeix-Raviart space 
@@ -111,6 +111,7 @@ if (iproc==0) {
         Send(processor(i,comm), uB[]);
     }
 }
+//mpiBarrier(comm); //THIS BARRIER MUST NOT BE USED
 if (iproc>0) {
     Recv(processor(0,comm), uH[]); //the other processes receive the coarse scale solution
     Recv(processor(0,comm), uB[]);
