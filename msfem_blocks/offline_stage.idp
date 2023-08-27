@@ -12,22 +12,28 @@
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
 //////////                                                                           ////////// 
 //////////   GENERIC MACROS                                                          //////////
 //////////   to handle computation of effective coefficients and storage/loading     //////////
 //////////                                                                           ////////// 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
 
-// Save numerical correctors and bubble function to global data structures
+// Save numerical correctors and bubble function to global data structures //
+// i = index in storage infrastructure at which the just computed offline stage is stored
+// Vc = computed numerical corrector related to constants
+// V[x/y] = computed numerical corrector related to the [x/y]-direction
+// B = computed bubble function
 macro offlineSaveLocalComputations(i,Vc,Vx,Vy,B) {
     if (useVcOnK[i]) storeVc(i,:)=Vc[];
     storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
     if (useB) storeB(i,:)=B[];
 } // EOM
 
-// Save numerical correctors and bubble function to external files
+// Save numerical correctors and bubble function to external files //
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// Vc = computed numerical corrector related to constants
+// V[x/y] = computed numerical corrector related to the [x/y]-direction
+// B = computed bubble function
 macro offlineExportLocalComputations(i,Vc,Vx,Vy,B) {    
     if (useVcOnK[i]) {
         string basisname = basisDir + "/tri_" + i + "_Vc" + ".txt";
@@ -51,6 +57,13 @@ macro offlineExportLocalComputations(i,Vc,Vx,Vy,B) {
     }
 } // EOM
 
+// Compute the effective coefficients for the right-hand side of the PDE based on pre-computed
+//   numerical correctors V[c/x/y] and a bubble function B (which may be unused) for one mesh element //
+// K = mesh of the triangle on which effective quantities are computed
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// Vc = computed numerical corrector related to constants
+// V[x/y] = computed numerical corrector related to the [x/y]-direction
+// B = computed bubble function
 macro offlineEffectiveRhs(K,i,Vc,Vx,Vy,B) {
     if (useB) { 
         if (treatB=="out_system") ifH[][i]=int2d(K)(fRHS)/K.measure; /* average of fRHS per element */
@@ -69,7 +82,7 @@ macro offlineEffectiveRhs(K,i,Vc,Vx,Vy,B) {
     }
 } // EOM
 
-// Reduction of RHS quantities for sequential MsFEM (copying to other variables)
+// Reduce of RHS quantities for sequential MsFEM (copying to other variables) //
 macro offlineEffectiveRhsReduce() {
     if (useB) { 
         if (treatB=="out_system") fH[]=ifH[];
@@ -88,7 +101,7 @@ macro offlineEffectiveRhsReduce() {
     }
 } // EOM
 
-// Reduction of RHS quantities to the main process for parallelized MsFEM
+// Reduce of RHS quantities to the main process for parallelized MsFEM //
 macro offlineEffectiveRhsReduceMPI() {
     if (useB) { 
         if (treatB=="out_system") mpiReduce(ifH[], fH[], processor(0,comm), mpiSUM);
@@ -108,7 +121,14 @@ macro offlineEffectiveRhsReduceMPI() {
 } // EOM
 
 // Compute the effective coefficients and effective right-hand side based on pre-computed
-// numerical correctors V[c/x/y] and a bubble function B (which may vanish) for one mesh element
+//   numerical correctors V[c/x/y] and a bubble function B (which may be unused) for one mesh element //
+// K = mesh of the triangle on which effective quantities are computed
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// phi[0/x/y] = FE functions on K (that will be declared inside the macro)
+// uH[x/y] = the centered coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
+// Vc = computed numerical corrector related to constants
+// V[x/y] = computed numerical corrector related to the [x/y]-direction
+// B = computed bubble function
 macro offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B) {
     if (useVcOnK[i]) {
         phi0[]+=Vc[]; /* sums of affine functions and numerical correctors */
@@ -173,14 +193,7 @@ macro offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B) {
     offlineEffectiveRhs(K,i,Vc,Vx,Vy,B)
 } // EOM
 
-// Macro that provides the writing procedure of the vector vec to a file with name coeffDir+filename
-macro writeVec2File(filename,vec) {
-    string matrixFile = coeffDir + filename; 
-    ofstream ffmat (matrixFile); 
-    ffmat << vec;
-} // EOM
-
-// Reduction of effective tensors for sequential MsFEM (copying to other variables)
+// Reduce of effective tensors for sequential MsFEM (copying to other variables) //
 macro offlineEffectiveTensorsReduce() {
     /* Retrieve the maximum residue of local computations over all processes */
     maxResOffline=imaxResOffline;
@@ -235,7 +248,7 @@ macro offlineEffectiveTensorsReduce() {
     offlineEffectiveRhsReduce
 } // EOM
 
-// Reduction of RHS quantities to the main process for parallelized MsFEM
+// Reduce of RHS quantities to the main process for parallelized MsFEM //
 macro offlineEffectiveTensorsReduceMPI() {
     /* Retrieve the maximum residue of local computations over all processes */
     mpiReduce(imaxResOffline, maxResOffline, processor(0,comm), mpiMAX);
@@ -290,7 +303,7 @@ macro offlineEffectiveTensorsReduceMPI() {
     offlineEffectiveRhsReduceMPI
 } // EOM
 
-// Saving the effective coefficients of the PDE (can be called once all is reduced to the main process)
+// Save the effective coefficients of the PDE (can be called once all is reduced to the main process) //
 macro offlineSaveEffectiveTensors() {    
     if (iproc==0) {/* the main process saves the effective coefficient (for the entire coarse mesh)*/
         /* Save residue information */
@@ -354,31 +367,18 @@ macro offlineSaveEffectiveTensors() {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
 //////////                                                                           ////////// 
-//////////   OFFLINE STAGE                                                           //////////
-//////////   load option when numerical correctors (and possibly coefficients)       //////////
-//////////   have already been computed and stored                                   //////////
+//////////   LOADING THE OFFLINE STAGE                                               //////////
+//////////   numerical correctors (and possibly coefficients) have already been      //////////
+//////////   computed and stored                                                     //////////
 //////////                                                                           ////////// 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-// Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
-macro readBasis(filename,storage) {
-    string basisFile = basisDir + filename; 
-    ifstream ffbasis (basisFile); 
-    real[int] vec(ndofOffline);
-    ffbasis >> vec;
-    storage=vec;
-} // EOM
-
-// Macro that provides the reading procedure from a file with name coeffDir+filename to the vector vec
-macro readFile2Vec(filename,vec) {string matrixFile = coeffDir + filename; ifstream ffmat (matrixFile); ffmat >> vec;} // EOM
 
 macro offlineLoad() {
-    int computeCoeff=0; /* variable to indicate whether or not the effective coefficients were found */
-        /* this is indeed possible when the basis was computed but the coefficients were determined */
-        /* with another type of test functions */
+    int computeCoeff=0; 
+        /* variable to indicate whether or not the effective coefficients were found
+         * this is indeed possible when the basis was computed but the coefficients were determined
+         * with another type of test functions */
 
     /* Try to open typical files from the directory with effective coefficients */
     try {
@@ -404,8 +404,8 @@ macro offlineLoad() {
         computeCoeff=1; /* compute effective coefficients below if the correct version does not exist yet */
     }
 
-    /* Load and store the basis for the current process in storeV[c/x/y] and storeB */
-    /* Compute effective coefficients per coarse mesh element if needed */
+    /* Load and store the basis for the current process in storeV[c/x/y] and storeB
+     * Compute effective coefficients per coarse mesh element if needed */
     { /* Load Vc pattern over all coarse mesh elements */
         string vecFile = basisDir + "/Vc_pattern.txt";
         ifstream ffvec (vecFile);
@@ -435,8 +435,8 @@ macro offlineLoad() {
                 readBasis(basisname,storeB(countOffline,:))
             }
 
-            /* Define the numerical correctors on the current triangle in order to.. */
-            /* ..compute the necessary effective quantities */
+            /* Define the numerical correctors on the current triangle in order to
+             *   compute the necessary effective quantities */
             mesh K=trunc(Th,phi>1,split=1); 
             fespace VK(K, P1);
             VK Vc=0, Vx, Vy, B=0;
@@ -451,8 +451,8 @@ macro offlineLoad() {
                 VK phi0=1, phix=0, phiy=0; 
                 offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B) /* also computes effective RHS quantities */
             } else {
-            /* Anything related to the right-hand side cannot be loaded from the offline phase */
-            /* It must be computed regardless of the availability of the coefficients */
+            /* Anything related to the right-hand side cannot be loaded from the offline phase 
+             * It must be computed regardless of the availability of the coefficients */
                 offlineEffectiveRhs(K,i,Vc,Vx,Vy,B)
             }
 
@@ -483,8 +483,8 @@ macro offlineLoad() {
         }
     }
 
-    /* Loading the effective coefficients when possible */
-    /* Only to be done by the main process */
+    /* Loading the effective coefficients when possible
+     * Only to be done by the main process */
     if (computeCoeff==0 && iproc==0) {
         /* store the piecewise constant coefficients of the effective PDE */
         cout << "loading effective coefficients" << endl;
@@ -539,24 +539,26 @@ macro offlineLoad() {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
 //////////                                                                           ////////// 
 //////////   LOCAL PROBLEMS                                                          //////////
 //////////   for MsFEM-LIN(-OS) and MsFEM-CR(-OS)                                    //////////
+//////////   compute numerical correctors and effective coefficients                 //////////
 //////////                                                                           ////////// 
 ///////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////////////////
 
+// Local computations for the MsFEM-LIN without oversampling //
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// countOffline = counter for the number of triangles treated by the current process
 macro localProblemsLIN(i,countOffline) {
     phi[][i]=2;
     mesh K=trunc(Th,phi>1,split=1,label=1); /* fine mesh of the coarse mesh element K indicated by phi */
     fespace VK(K,P1); /* P1 finite element space on the triangle K */
 
     VK Vc=0, Vx=0, Vy=0, uH=0, B=0, uHx=x-xb[][i], uHy=y-yb[][i];
-    /* V[c/x/y] -- the numerical corrector associated to constants/the [x/y]-direction */
-    /* B -- bubble function for the MsFEM space associated to RHS = 1 */
-    /* uH[x/y] -- the centered coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients */
-    /* uH -- serves as a dummy in the variational form pb to set the RHS for V[c/x/y] and B */
+    /* V[c/x/y] -- the numerical corrector associated to constants/the [x/y]-direction
+     * B -- bubble function for the MsFEM space associated to RHS = 1
+     * uH[x/y] -- the centered coordinate function in the [x/y]-direction that appears in the definition of the effective coefficients
+     * uH -- serves as a dummy in the variational form pb to set the RHS for V[c/x/y] and B */
 
     varf pb(uh,vh)=int2d(K)(aBasis(uh,vh)) + int1d(K)(tgv*uh*vh) /* variational formulation of local problems -- bilinear form */
                 -int2d(K)(aBasis(uH,vh)); /* variational formulation of local problems -- linear form for the RHS of the numerical correctors */
@@ -598,9 +600,12 @@ macro localProblemsLIN(i,countOffline) {
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 } // EOM
 
+// Local computations for the MsFEM-LIN with oversampling //
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// countOffline = counter for the number of triangles treated by the current process
 macro localProblemsLINOS(i,countOffline) {
-    /* Construction of the sampling patch S, the fine-scale P1 space VS on S */
-    /* Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain) */
+    /* Construction of the sampling patch S, the fine-scale P1 space VS on S
+     * Defining the vertices of the ideal oversampling patch (possibly lying partially outside the global domain) */
     phi[][i]=2;
     real[int,int] Kx(3,2); 
     saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
@@ -616,10 +621,11 @@ macro localProblemsLINOS(i,countOffline) {
     int[int] RS2K = restrict(VK,VS,S2K); /* array for the restriction of a function on S to K */
 
     VS VcS=0, VxS=0, VyS=0, BS=0, uH=0, uHxS=x-xb[][i], uHyS=y-yb[][i];
-    /* V[c/x/y]S -- the numerical corrector on the patch associated to constants/the [x/y]-direction */
-    /* BS -- bubble function on the patch for the MsFEM space associated to RHS = 1 */
-    /* uH[x/y]S -- the centered coordinate function in the [x/y]-direction on the patch that appears in the definition of the effective coefficients */
-    /* uH -- serves as a dummy in the variational form pb to set the RHS for V[c/x/y]S and B */
+    /* V[c/x/y]S -- the numerical corrector on the patch associated to constants/the [x/y]-direction 
+     * BS -- bubble function on the patch for the MsFEM space associated to RHS = 1 
+     * uH[x/y]S -- the centered coordinate function in the [x/y]-direction on the patch that appears 
+     *   in the definition of the effective coefficients
+     * uH -- serves as a dummy in the variational form pb to set the RHS for V[c/x/y]S and B */
 
     varf pb(uh,vh)=int2d(S)(aBasis(uh,vh)) + int1d(S)(tgv*uh*vh) /* variational formulation of local problems -- bilinear form */
                 -int2d(S)(aBasis(uH,vh)); /* variational formulation of local problems -- linear form for the RHS of the numerical correctors */
@@ -655,8 +661,8 @@ macro localProblemsLINOS(i,countOffline) {
     if(useB) B[]=BS[](RS2K);
 
     if (glue=="dof") {
-        /* Impose continuity on the vertices of K if desired */
-        /* This is done by adding the functions W[c/x/y] = [1/x/y]+V[c/x/y] */
+        /* Impose continuity on the vertices of K if desired
+         * This is done by adding the functions W[c/x/y] = [1/x/y]+V[c/x/y] */
         real ndofK=3;
         real[int,int] gval(ndofK,ndofK); /* matrix for W-values at the vertices */
         real[int] Vcval(ndofK), Vxval(ndofK), Vyval(ndofK), Bval(ndofK); /* values to be corrected of the patch functions */
@@ -727,6 +733,9 @@ macro localProblemsLINOS(i,countOffline) {
     offlineEffectiveTensors(K,i,phi0,phix,phiy,uHx,uHy,Vc,Vx,Vy,B)
 } // EOM
 
+// Local computations for the MsFEM-CR without oversampling //
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// countOffline = counter for the number of triangles treated by the current process
 macro localProblemsCR(i,countOffline) {
     /* Construct fine mesh, finite element space, normals */
     phi[][i]=2;
@@ -738,9 +747,9 @@ macro localProblemsCR(i,countOffline) {
 
     real[int,int] normK(3,2); normK=consNormals(Kx); /* normal vectors associated to the edges of K */
 
-    /* Select edges of K on which to impose Crouzeix-Raviart BC */
-    /* (i.e. those not lying on the boundary of the global domain if strong Dirichlet conditions are chosen) */
-    /* We use that the global boundary was given the label -1, and the interior local boundaries the label 1 */
+    /* Select edges of K on which to impose Crouzeix-Raviart BC
+     * (i.e. those not lying on the boundary of the global domain if strong Dirichlet conditions are chosen)
+     * We use that the global boundary was given the label -1, and the interior local boundaries the label 1 */
     real[int] edges(3); edges=3; /* to store those indices corresponding to the edges where CR conditions are imposed */
     int nedges=0; /* number of edges where CR conditions will be imposed */
     if (strongDir) {
@@ -758,9 +767,10 @@ macro localProblemsCR(i,countOffline) {
     if (debug) cout << "Edges for CR conditions: " << edges << endl;
 
 
-    /* Construction of the local problems with Crouzeix-Raviart boundary conditions */
-    /* This is a sadlle point problem */
-    varf pb(uh,vh)=int2d(K)(aBasis(uh,vh)); /* variational formulation of local problems -- bilinear form -- LHS of the PDE of the saddle point problem */
+    /* Construction of the local problems with Crouzeix-Raviart boundary conditions
+     * This is a sadlle point problem */
+    varf pb(uh,vh)=int2d(K)(aBasis(uh,vh)); /* variational formulation of local problems -- bilinear form 
+                                             * -- LHS of the PDE of the saddle point problem */
     matrix A=pb(VK,VK); /* linear system of the local problems -- matrix associated to the PDE */
     if (strongDir) { /* add strong Dirichlet conditions to A if if S partially lies on the global boundary (with label 1) */
         real testB = int1d(K,-1)(1.);
@@ -784,12 +794,12 @@ macro localProblemsCR(i,countOffline) {
         /* integrations over the edges of S that are to be given Crouzeix-Raviart boundary conditions */
         edg=edges[k];
         real[int] Bedge = intEdge(0,VK);
-        /* real meas=edgeIntegral(K,1,normK,edg,1) + edgeIntegral(K,-1,normK,edg,1);
+        /* the normalization below is unnecessary since we are only imposing homogeneous constraints in the local problems
+         * real meas=edgeIntegral(K,1,normK,edg,1) + edgeIntegral(K,-1,normK,edg,1);
          * if (debug) {
          *     cout << "Measure of coarse element edge: " << meas << endl;
          * }
-         * Bedge = Bedge/meas; 
-         *   normalization is unnecessary since we are only imposing homogeneous constraints in the local problems */
+         * Bedge = Bedge/meas;  */
         arrB(:,k) = Bedge;
         if (debug) {
             VK test;
@@ -873,6 +883,9 @@ macro localProblemsCR(i,countOffline) {
 
 } // EOM
 
+// Local computations for the MsFEM-CR with oversampling //
+// i = index of the coarse triangle whose local computations are stored in the coarse mesh TH
+// countOffline = counter for the number of triangles treated by the current process
 macro localProblemsCROS(i,countOffline) {
     real[int,int] Kx(3,2); 
     saveVertexCoordinates(i,Kx) /* save coordinates of the vertices belonging to K */
@@ -916,7 +929,6 @@ macro localProblemsCROS(i,countOffline) {
         cout << "Selecting the edges lasted " << clock()-time << " s" << endl;
         time=clock();
     }
-
 
     /* Construction of the local problems with Crouzeix-Raviart boundary conditions
      * This is a sadlle point problem */
@@ -995,7 +1007,6 @@ macro localProblemsCROS(i,countOffline) {
     varf boundaryVy(unused,vh) = -int1d(S,-1)(tgv*(y-yb[][i])*vh);
     varf boundaryVc(unused,vh) = -int1d(S,-1)(tgv*vh);
 
-
     /* Complete definition and resolution of the linear systems for the fine-scale problems */
     VS VcS=0, VxS=0, VyS=0, BS=0, uH=0, uHxS=x-xb[][i], uHyS=y-yb[][i];
     /* V[c/x/y]S -- the numerical corrector on the patch associated to constants/the [x/y]-direction
@@ -1049,7 +1060,6 @@ macro localProblemsCROS(i,countOffline) {
         cout << "Solving for the basis functions lasted " << clock()-time << " s" << endl;
         time=clock();
     }
-
 
     /* Restriction of the functions on the patch to the mesh element K */
     VK Vc=0, Vx=0, Vy=0, B=0, uHx=0, uHy=0;

@@ -9,10 +9,15 @@
 // Macros to perform reconstruction of multiscale solution, error computation, 
 // projection on the coarse P1 space, etc.
 //
-////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
 
+// Save and write test results for SEQUENTIAL MsFEM //
+// uH = FE function on the coarse meshwith the solution of the effective problem
+// uB = P0 function on the coarse mesh with the bubble function coefficients
+// coarseerrors = indicator of the type of errors that are written to the output
+//  - coarseerrors == 0 => the output corresponds to the output of the actual MsFEM routine
+//  - coarseerrors == 1 => the output corresponds to the computation of errors on the coarse space
 macro postWriteResults(uH,uB,coarseerrors) {
-    /* Saving and writing test results */
     if (coarseerrors == 0) {
         {/* Saving coarse scale solution */
             string solCname = output + "solCoarse_" + name;
@@ -97,6 +102,7 @@ macro postWriteResults(uH,uB,coarseerrors) {
     ffLog << endl << endl; /* end of MsFEM routine */
 } // EOM
 
+// Save and write test results for PARELLEL MsFEM //
 macro postWriteResultsMPI(uH,uB,coarseerrors) {
     if (iproc==0) {
         if (coarseerrors == 0)
@@ -183,6 +189,7 @@ macro postWriteResultsMPI(uH,uB,coarseerrors) {
     }
 } // EOM
 
+// Reconstruct multiscale solution and error computation for SEQUENTIAL MsFEM //
 macro postReconstructionError(uH,uB){
     VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions */
     VH0 uHdx=dx(uH), uHdy=dy(uH); /* interpolation of derivatives of uH (which in fact are piecewise constant) */
@@ -203,8 +210,8 @@ macro postReconstructionError(uH,uB){
     resetNormsErrors /* (re)set global error variables and norms to zero */
 
     /* Reconstruction and error computation
-    /* Error computation does not yet apply square roots, because these are to be taken once..
-    /* ..all contributions are added at the end of the next for loop */
+     * Error computation does not yet apply square roots, because these are to be taken once
+     *   all contributions are added at the end of the next for loop */
     for(int i=0; i<VH0.ndof; i++) {
         /* build fine mesh of the current coarse mesh element K */
         if (i%(2*n)==0) {
@@ -306,9 +313,10 @@ macro postReconstructionError(uH,uB){
     postWriteResults(uH,uB,coarseerrors)
 } // EOM
 
+// Reconstruct multiscale solution and error computation for PARALLEL MsFEM //
 macro postReconstructionErrorMPI(uH,uB) {
-    VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions */
-        /* every process will use this information, albeit on different triangles */
+    VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions
+                 * every process will use this information, albeit on different triangles */
     VH0 uHdx=dx(uH), uHdy=dy(uH); /* interpolation of derivatives of uH (which in fact are piecewise constant) */
 
     Vh uref=0, error=0; /* reconstructed solution, reference solution, error (on the current process) */
@@ -343,13 +351,13 @@ macro postReconstructionErrorMPI(uH,uB) {
 
     resetNormsErrors /* (re)set global error variables and norms to zero */
 
-    /* Reconstruction and error computation */
-    /* Error computation does not yet apply square roots, becuse these are to be taken once.. */
-    /* ..everyhing is reduced and added on the main process */
+    /* Reconstruction and error computation
+     * Error computation does not yet apply square roots, becuse these are to be taken once
+     *   everyhing is reduced and added on the main process */
     int countOffline=0; /* counter used to retrieve the result from the local computations per triangle */
     real[int] correctReduce(Vh.ndof); correctReduce=0;
-    /* correctReduce will be increased by 1 on each triangle associated to the current process */
-    /* it will be used below to correct for mpiReduce on repeated edges */
+    /* correctReduce will be increased by 1 on each triangle associated to the current process
+     * it will be used below to correct for mpiReduce on repeated edges */
     if (timing) time=clock();
     for(int i=0; i<VH0.ndof; i++) {
     if (iproc == i%nbproc) {
@@ -491,7 +499,7 @@ macro postReconstructionErrorMPI(uH,uB) {
     postWriteResultsMPI(uH,uB,coarseerrors)
 } // EOM
 
-// Coarse errors
+// Compute the error between the projections of the MsFEM and reference solutions on the coarse space //
 macro postCoarseError(uH) {
     if (iproc==0) {
         VH urefH=0; /* projection of uref on VH */

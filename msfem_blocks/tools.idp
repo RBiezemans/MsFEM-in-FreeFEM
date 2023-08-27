@@ -6,58 +6,93 @@
 // //  //  // //  //////  //        //        //  //  // //
 // //   ////  //      //  //        //        //   ////  //
 // //    //   //  //////  //        ////////  //    //   //
-// Some (geometric) tools that are used when working with CR and oversampling methods and writing tools to provide output
+// Short macros with various functionalities
+// To be loaded inside init.idp
 //
-// Variables not defined in this script /////////////////////////////////
-// - ffLog -- (ofstream) writes execution log to "log_msfem.txt"
-// - time -- (real) CPU time since last clocked
-//
-//
-// Global variables declared in this script ////////////////////////////
-// - (macro) loadRef[1] -- load reference solution to the argument FE function
-// - (macro) loadCoarse[1] -- load the relevant projection of the reference solution to the argument FE function
-// - (macro) residue[4] -- compute residue of the solution of a linear system and store in a predeclared variable
-// - (macro) writeResidue[2] -- write a precomputed residue + message to the terminal and MsFEM log
-// - (macro) printTime[1] -- print a message follows by the time since last clocking time (and clocks automatically)
-// - (func)  consNormals[1] -- construct outward unit normals on the three edges of the argument passed
-// - (macro) edgeIntegral[5] -- integration over a specific edge, one can choose to only integrate for specific labels
-// - (macro) printIntegralsTri[2] -- write integrals of a function over all edges of the specified triangle to command line
-// - (macro) ip[3] -- inner product between two components and a vector
-// - (macro) ipcheck[2] -- compute the inner product of (x,y)-#2 and #1
-// - (macro) resetNormErrors[unused] -- reset errors and norm variables on the current process to 0
-////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////
 
 
-// Macros for loading external files
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////                                                                           ////////// 
+//////////   Read/write to external files                                            ////////// 
+//////////                                                                           ////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+// Read the reference solution //
+// target = FE function in which the reference solution will be stored
 macro loadRef(target) {
     string refname = "sol_REF" + parametersFine + ".txt";
     ifstream ff(refname);
-    ff>>uref[];
+    ff>>target[];
 } // EOM
 
+// Read the projection of the reference solution on the coarse space in use //
+// target = FE function in which the reference solution are stored
 macro loadCoarse(target) {
     string refname = "sol_REF_" + bcType + "/solCoarse_REF" + parametersFine + "_n_" + n + ".txt";
     ifstream ff(refname);
     ff>>target[];
 } // EOM
 
+// Read a basis function //
+// filename = file name of basis function in the basis directory
+// storage = vector of the FE function in which the basis function is stored
+macro readBasis(filename,storage) {
+    string basisFile = basisDir + filename; 
+    ifstream ffbasis (basisFile); 
+    real[int] vec(ndofOffline);
+    ffbasis >> vec;
+    storage=vec;
+} // EOM
 
-// Macro for residue computation of the resolution of linear systems
+// Write a file to the effective coefficient directory //
+// filename = file name of for the effective coefficient in the coefficient directory
+// vec = P0 FE function representing the effective coefficient
+macro writeVec2File(filename,vec) {
+    string matrixFile = coeffDir + filename; 
+    ofstream ffmat (matrixFile); 
+    ffmat << vec;
+} // EOM
+
+// Read a saved effective coefficient //
+// filename = file name of for the effective coefficient in the coefficient directory
+// vec = vector fo the P0 function in which the effective coefficient is stored
+macro readFile2Vec(filename,vec) {
+    string matrixFile = coeffDir + filename; 
+    ifstream ffmat (matrixFile); 
+    ffmat >> vec;
+} // EOM
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////                                                                           ////////// 
+//////////   Various small routines                                                  //////////
+//////////                                                                           ////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+// Compute the residue of the numerical solution to a linear system //
+// mat = matrix of the linear system
+// rhs = vector on the right of the linear system
+// sol = vector solution to the linear system
+// residue = real to which the residue is stored
 macro residue(mat,rhs,sol,residue) {
-    real[int] res=mat*sol;
+real[int] res=mat*sol;
     res=res-rhs;
     real resNorm=sqrt(res'*res);
     real rhsNorm=sqrt(rhs'*rhs);
     residue=resNorm/rhsNorm;
 } // EOM
 
-// Macro for residue computation of the resolution of linear systems
+// Write residue to output (cout and the msfem log file) //
+// residue = real with the value of the residue to be written
+// message = string printed before the residue
 macro writeResidue(residue,message) {
     cout << message << residue << endl;
 	ffLog << message << residue << endl;
 } // EOM
 
-// Print a message follows by the time since last clocking time (and clocks automatically)
+// Write time elapsed since the last time measurement to msfem log file //
+// message = string printed before the elapsed time
 macro printTime(message) {
 	real timeLapse = clock()-time;
 	ffLog << message << timeLapse << "s" << endl;
@@ -65,65 +100,7 @@ macro printTime(message) {
 }
 // EOM
 
-
-// Saving the vertices of the ith triangle
-macro saveVertexCoordinates(i,KK) {
-    for(int kk=0; kk<3; kk++) {
-        KK(kk,0) = TH[i][kk].x;
-        KK(kk,1) = TH[i][kk].y;
-    }
-} // EOM
-
-
-// Constructing normals
-func real[int,int] consNormals(real[int,int] & pp) {
-    // construct unit outward normals for a triangle of nodes pp (given with positive orientation)
-    // if p_0 = (x_0, y_0) and p_1 = (x_1, y_1), 
-    // then the normal opposite p_3 constructed here is parallel to (and points in the same direction as)
-    //   n =  / (y_1 - y_0) \
-    //        \-(x-1 - x_0) /
-
-    real[int,int] normals(3,2); normals=0;
-    for(int k=0; k<3; k++) {
-        normals(k,0) =  ( pp((k+2)%3,1) - pp((k+1)%3,1) );
-        normals(k,1) = -( pp((k+2)%3,0) - pp((k+1)%3,0) );
-        real len = sqrt(normals(k,0)^2 + normals(k,1)^2);
-        normals(k,:) = normals(k,:)/len;
-    }
-    return normals;
-}
-
-
-// Integrals over edges 
-// In its use, we mostly adopt the following conventions:
-// - label==-1  =>  boundary of global domain
-// - label== 1  =>  only interior edges are considered
-macro edgeIntegral(S,label,normS,edg,fnc) (int1d(S,label)( (ip(N.x,N.y,normS(edg,:))>0.99) *fnc))// EOM
-
-
-// writing integrals of a function over all edges of K to command line
-macro printIntegralsTri(K,uH) {
-    cout << "Integrals on K: ";
-    for (edg=0; edg<3; edg++) {
-        real toprint = edgeIntegral(K,1,normS,edg,uH) + edgeIntegral(K,-1,normS,edg,uH);
-        cout << toprint << "  ";
-    }
-    cout << endl;
-} // EOM
-
-
-// Related to inner products
-
-//inner product of (u,v) with a vector (w[0],w[1])
-macro ip(u,v,w) (u*w[0] + v*w[1])// EOM 
-
-
-// Check if (x,y) - u2 points in the same direction as a normal vector u1
-// A positive value means that this condition is indeed satisfied
-macro ipcheck(u1, u2) ( u1[0]*(x-u2[0]) + u1[1]*(y-u2[1]) )// EOM
-
-
-// Reset errors and norm variables on the current process to 0
+// Reset all errors and norms of the reference solution on the current process to 0 //
 macro resetNormsErrors() {
     nL1=0;   nL2=0;   nH1=0;   nMax=0;
     eL1=0;   eL2=0;   eH1=0;   eMax=0; 
@@ -135,7 +112,82 @@ macro resetNormsErrors() {
 } // EOM
 
 
-// Building the oversampling patch
+///////////////////////////////////////////////////////////////////////////////////////////////
+//////////                                                                           ////////// 
+//////////   Geometric tools and building oversampling patches                       //////////
+//////////                                                                           ////////// 
+///////////////////////////////////////////////////////////////////////////////////////////////
+
+// Save the coordinates of the vertices of a coarse mesh element to a matrix //
+// i = index of the mesh element in the coarse mesh TH
+// KK = 3x2 matrix in which the coordinates are stored
+macro saveVertexCoordinates(i,KK) {
+    for(int kk=0; kk<3; kk++) {
+        KK(kk,0) = TH[i][kk].x;
+        KK(kk,1) = TH[i][kk].y;
+    }
+} // EOM
+
+// Construct unit outward normals for a given triangle //
+// pp = 3x2 matrix containing the coordinates of the vertices of the triangle
+// if p_0 = (x_0, y_0) and p_1 = (x_1, y_1), 
+// then the normal opposite p_3 constructed here is parallel to (and points in the same direction as)
+//   n =  / (y_1 - y_0) \
+//        \-(x-1 - x_0) /
+func real[int,int] consNormals(real[int,int] & pp) {
+    real[int,int] normals(3,2); normals=0;
+    for(int k=0; k<3; k++) {
+        normals(k,0) =  ( pp((k+2)%3,1) - pp((k+1)%3,1) );
+        normals(k,1) = -( pp((k+2)%3,0) - pp((k+1)%3,0) );
+        real len = sqrt(normals(k,0)^2 + normals(k,1)^2);
+        normals(k,:) = normals(k,:)/len;
+    }
+    return normals;
+}
+
+// Compute integrals over selected edge of triangles //
+// S = mesh of the triangle over which is integrated
+// label = FeeFEM label indicating over what type of boundary is integrated
+//  - Throughout our code, we mostly adopt the following conventions:
+//  - label==-1  =>  edge is selected iff on the boundary of global domain
+//  - label== 1  =>  edge is selected iff not on the boundary of global domain
+// normS = 3x2 matrix containing the normals of the edges of the triangle
+// edg = index of the normal in normS corresponding to the selected edge
+// fnc = function to be integrated
+macro edgeIntegral(S,label,normS,edg,fnc) (int1d(S,label)( (ip(N.x,N.y,normS(edg,:))>0.99) *fnc))// EOM
+
+// Write integrals of a function over all edges of a triangle to command line //
+// K = mesh of the triangle over which is integrated
+// normS = 3x2 matrix containing the normals of the edges of the triangle
+// fnc = function to be integrated
+macro printIntegralsTri(K,normS,fnc) {
+    cout << "Integrals on K: ";
+    for (edg=0; edg<3; edg++) {
+        real toprint = edgeIntegral(K,1,normS,edg,fnc) + edgeIntegral(K,-1,normS,edg,fnc);
+        cout << toprint << "  ";
+    }
+    cout << endl;
+} // EOM
+
+// Compute inner product of the vector (u,v) with a vector (w[0],w[1]) //
+// u = 1st component of the 1st vector (real)
+// v = 2nd component of the 1st vector (real)
+// w = 2nd vector (real[2])
+macro ip(u,v,w) (u*w[0] + v*w[1])// EOM 
+
+// Check if (x,y) - u2 points in the same direction as a normal vector u1 //
+// A positive value means that this condition is indeed satisfied //
+// u1 = vector of the desired direction (real[2])
+// u2 = point in x,y-space (real[2])
+macro ipcheck(u1, u2) ( u1[0]*(x-u2[0]) + u1[1]*(y-u2[1]) )// EOM
+
+
+// Build the oversampling patch //
+// !!! This macro was developed and testing only for meshes using the flags=0 option in FreeFEM
+// Kx = 3x2 matrix containing the coordinates of the vertices of the triangle whose oversampling patch is built
+// i = index of the triangle whose oversampling patch is built in the global coarse mesh TH
+// normS = 3x2 matrix containing the normals of the edges of the triangle whose oversampling patch is built
+// S = mesh variable to which the oversampling patch will be stored
 macro buildOversamplingPatch(Kx,i,normS,S) {
     real[int,int] Sx(3,2); /* compute coordinates for the ideal oversampling patch by homothety */
     for(int kk=0; kk<3; kk++) {
@@ -170,8 +222,8 @@ macro buildOversamplingPatch(Kx,i,normS,S) {
     fespace VC(C, P1);
 
 
-    /* The the ideal oversampling patch is defined by 3 conditions: */
-    /* Lying at the correct side of all three normals associated to S */
+    /* The the ideal oversampling patch is defined by 3 conditions:
+     * Lying at the correct side of all three normals associated to S */
     normS=consNormals(Sx); /* normals to each of the boundaries of S */
     func cond1 = ( ipcheck(normS(2,:), Sx(0,:) ) < -1E-8 );
     func cond2 = ( ipcheck(normS(0,:), Sx(1,:) ) < -1E-8 );
@@ -193,7 +245,6 @@ macro buildOversamplingPatch(Kx,i,normS,S) {
     }
     /* Build the real oversampling patch S */
     S = trunc(C, patch>0.9, split=1, label=1);
-    /* fespace VS(S,P1); */
 
     if (debug) plot(C, S, cmm="Over-sampling fine mesh", wait=1);
 
