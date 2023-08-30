@@ -103,6 +103,11 @@ macro postWriteResults(uH,uB,coarseerrors) {
 } // EOM
 
 // Save and write test results for PARELLEL MsFEM //
+// uH = FE function on the coarse meshwith the solution of the effective problem
+// uB = P0 function on the coarse mesh with the bubble function coefficients
+// coarseerrors = indicator of the type of errors that are written to the output
+//  - coarseerrors == 0 => the output corresponds to the output of the actual MsFEM routine
+//  - coarseerrors == 1 => the output corresponds to the computation of errors on the coarse space
 macro postWriteResultsMPI(uH,uB,coarseerrors) {
     if (iproc==0) {
         if (coarseerrors == 0)
@@ -190,6 +195,8 @@ macro postWriteResultsMPI(uH,uB,coarseerrors) {
 } // EOM
 
 // Reconstruct multiscale solution and error computation for SEQUENTIAL MsFEM //
+// uH = FE function on the coarse meshwith the solution of the effective problem
+// uB = P0 function on the coarse mesh with the bubble function coefficients
 macro postReconstructionError(uH,uB){
     VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions */
     VH0 uHdx=dx(uH), uHdy=dy(uH); /* interpolation of derivatives of uH (which in fact are piecewise constant) */
@@ -314,6 +321,8 @@ macro postReconstructionError(uH,uB){
 } // EOM
 
 // Reconstruct multiscale solution and error computation for PARALLEL MsFEM //
+// uH = FE function on the coarse meshwith the solution of the effective problem
+// uB = P0 function on the coarse mesh with the bubble function coefficients
 macro postReconstructionErrorMPI(uH,uB) {
     VH0 uH0=uH; /* interpolation of uH at barycentres to facilitate local reconstructions
                  * every process will use this information, albeit on different triangles */
@@ -500,6 +509,7 @@ macro postReconstructionErrorMPI(uH,uB) {
 } // EOM
 
 // Compute the error between the projections of the MsFEM and reference solutions on the coarse space //
+// uH = FE function on the coarse meshwith the solution of the effective problem
 macro postCoarseError(uH) {
     if (iproc==0) {
         VH urefH=0; /* projection of uref on VH */
