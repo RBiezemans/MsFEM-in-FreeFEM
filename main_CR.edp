@@ -7,6 +7,7 @@
 ////// Sequential version ////////////////////////////////////////////
 
 // Initialization
+string FEtype = "multiscale"; //the vffile checks whether it is compatible with the intended FE type (P1 or multiscale)
 string bcType = "CR"; //type of boundary condtitions, relevant for the macroscopic problem
 string name = bcType; //abbreviation used for the MsFEM output
 // MPI compatibility
