@@ -1,51 +1,59 @@
 ///////////////////////////////////////////////////////////////////////
 // Some additional parameters that are used during code development  //
-int debug=1; //display/hide intermediate output                      //
-int plotBubbles=1; //show plots of numerical correctors and bubbles  //
-int plots=1; //display/hide basic input and output plots             //
+int debug=0; //display/hide intermediate output                      //
+int plotBubbles=0; //show plots of numerical correctors and bubbles  //
+int plots=0; //display/hide basic input and output plots             //
 int timing=0; //time certain steps in oversampling methods           //
 ///////////////////////////////////////////////////////////////////////
-
-
-// Outfile stream for process output
-ofstream ffLog("log_msfem.txt", append);
-
-
-exec("mkdir -p basis");
 
 ///////////////////////////////////////////////////////////////////////
 // Parameters                                                        //
 ///////////////////////////////////////////////////////////////////////
 
-string FEtype="CR";
+string bcType="CR";
+string name = bcType; //abbreviation used for the MsFEM output
+// MPI compatibility
+string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
+int iproc=0; //sequential code only uses a single process, which corresponds to the main process
+int nbproc=1; 
+real time=0;
+// Outfile stream for process output
+ofstream ffLog("log_msfem.txt", append);
+
+
+///////////////////////////////////////////////////////////////////////
+// Declaring and reading external parameters                         //
+///////////////////////////////////////////////////////////////////////
+
+// Command line argument: option for the offline phase
+include "getARGV.idp"
+string offlineMode = getARGV("-o", "compute");
+assert(offlineMode == "compute" || offlineMode == "load");
 
 // Parameters defining the coarse mesh
 int n=2, nx=n, ny=n;
 real L=n*0.0625, Lx=L, Ly=L;
 // Parameters defining the fine mesh
-int Ndiscr=n*40, Nx=Ndiscr, Ny=Ndiscr;
+int Ndiscr=n*80, Nx=Ndiscr, Ny=Ndiscr;
 // Parameters defining the PDE
-real eps=2.^(-2), alpha=2.^(1), theta=0.15, cont=7, osCoef=2;
+real eps=2.^(-4), alpha=2.^(1), theta=0.15, cont=20, osCoef=0;
 //theta: angle of the advection field
 //cont: contrast of the multiscale coefficient
 real osThr=0.5;
 //threshold to decide whether oversampling is to be employed
 // Parameters tuning the MsFEM method
-int strongDir=1, useB=1, testMS=1;
-string glue="dof", treatB="in_system";
+int strongDir=0, useB=0, testMS=1;
+string glue="dof", treatB="out_system";
 
-int nbproc=1;
-string basisDir="basis";
-real time=0;
-
-// macro writeResidue(mat,rhs,sol,message) {
-//     real[int] res=mat*sol;
-//     res=res-rhs;
-//     real resNorm=sqrt(res'*res);
-//     real rhsNorm=sqrt(rhs'*rhs);
-//     resNorm=resNorm/rhsNorm;
-//     cout << message << resNorm << endl;
-// } // EOM
+// Compatibility checks for certain parameters
+if (bcType == "Lin") assert(strongDir==0); // strong local Dirichlet BC are not supported for the MsFEM-lin
+else assert(strongDir==0 || strongDir==1 || strongDir==2);
+if (!useB) assert(treatB=="out_system");
+  //without bubbles, there is no need to construct linear equations with bubble functions
+assert(treatB=="out_system" || treatB=="in_system");
+if (osCoef>=osThr) {
+	assert(glue=="dof" || glue=="restrict");
+}
 
 
 ///////////////////////////////////////////////////////////////////////
@@ -62,25 +70,38 @@ xb=x; yb=y; //interpolate and stock the coordinates of the barycentre for each t
 
 // Fine mesh Th
 real hx=Lx/Nx, hy=Ly/Ny;
-int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements, but we do not use the global boundary now
+int[int] labs=[-1,-1,-1,-1]; //this label is useful to construct CR elements
 mesh Th=square(Nx,Ny,[Lx*x,Ly*y], label=labs);
 fespace Vh(Th,P1); //fine global FE space
+Vh uHh=0; //fine-scale msfem reconstruction will be stored in this variable
+
+// Peclet numbers and boundary layer as in the definition of the PhD thesis of F. Madiot
+real PeGlob = 1./2./alpha; //global Peclet number, computational domain
+real PeLoc = PeGlob*sqrt(2)/nx; //local Peclet number, coarse mesh
+real PeFine = PeGlob*sqrt(2)/Nx; //local Peclet number, fine mesh
+real widthMadiot = log(PeGlob)/PeGlob; //log = natural logarithm
 
 
 ///////////////////////////////////////////////////////////////////////
-// Define the PDE                                                    //
+// Define the PDE and the MsFEM                                      //
 ///////////////////////////////////////////////////////////////////////
 
+// Definition of the PDE coefficient and 
+// the necessary bilinear forms for the variational formulation as macros
 // Diffusion coefficient
 real delta = (cont-1.)/(cont+1.);
-func nu=alpha*(1+delta*cos(2*pi/eps*x));
-// func nu=alpha*(1+delta*cos(2*pi/eps*x))*(1+delta*sin(0.2*pi/eps*y)) + 5*alpha*( (x-3*Lx/8)^2 + (y-5*Ly/8)^2 < 0.004*Lx^2 ) + 5*alpha*( (x-3*Lx/4)^2 + (y-Ly/2)^2 < 0.008*Lx^2 );
+// func nu=alpha*(1+delta*cos(2*pi/eps*x));
+func nu=alpha*(1+delta*cos(2*pi/eps*x))*(1+delta*sin(0.2*pi/eps*y)) + 5*alpha*( (x-3*Lx/8)^2 + (y-5*Ly/8)^2 < 0.004*Lx^2 ) + 5*alpha*( (x-3*Lx/4)^2 + (y-Ly/2)^2 < 0.008*Lx^2 );
+// func nu=1;
 // func nu=alpha*(1+cont*cos(pi/eps*x)^2*sin(pi/eps*y)^2);
 // Advection field
-real bx=cos(2*pi*theta);
-real by=sin(2*pi*theta);
+// real bx=cos(2*pi*theta);
+// real by=sin(2*pi*theta);
+real bx=0;
+real by=0;
 // Divergence of the advection field
 func sigma=0; 
+func fRHS=1;
  
 macro adif(u,v) (dx(u)*dx(v)*nu+dy(u)*dy(v)*nu)// EOM
 //bilinear form associated to diffusion
@@ -101,7 +122,8 @@ macro asupg(u,v) (tau*( (bx*dx(u)+by*dy(u))*(bx*dx(v)+by*dy(v)) ))// EOM
 //bilinear form for supg stabilization
 string stabExpression="-- Stabilization parameter = unused --"; //can be specified in vffile if relevant
 string vfname="no_VF_provided"; //string to characterize the output directory for MsFEM results
-include "../variational_forms/advection_diffusion_direct.idp"
+
+include "../variational_forms/diffusion.idp"
 
 real[int] useVcOnK(VH0.ndof); //an array to keep track of the computation of Vc at the bounday of Omega for strong Dirichlet conditions
 useVcOnK=useVc;
@@ -111,17 +133,6 @@ if (name=="CR" && strongDir==1) {
 }
 if (fullVF==0) assert(useVc==0);
 if (stabilization==1) assert(useB==0); //supg with bubbles is not supported
-
-// RHS of the PDE to be solved
-// func fRHS=2+sin(2*pi*x)+x*cos(2*pi*y);
-// string rhsDescription = "-- Tests for RHS f = 2+sin(2pi x)+x*cos(2pi y) --";
-  //string used to document the tests performed in the error file
-// func fRHS=sin(x)*sin(y);
-// string rhsDescription = "-- Tests for RHS f = sin(x)sin(y) --";
-// VH0 fRHS; for (int i=0; i<VH0.ndof; i++) fRHS[][i]=1+i;
-// string rhsDescription = "-- Tests for RHS f[][i] = 1+i";
-func fRHS=1;
-string rhsDescription = "-- Tests for RHS f = 1 --";
 
 // Stabilization to be used at the RHS of the variational problem
 macro rhssupg(v) (fRHS * tau * (bx*dx(v)+by*dy(v)))// EOM
@@ -133,12 +144,100 @@ if (plots) { //plot of diffusion coefficient
 
 
 ///////////////////////////////////////////////////////////////////////
+// Define directory and file names for storage and output            //
+///////////////////////////////////////////////////////////////////////
+
+string output = "results_" + vfname + "/"; //directory name to store all test results
+string residueFile = output + "log_residues_" + vfname + ".txt";
+if (name=="REF") residueFile = "./log_residues_REF.txt";
+
+// Parameter strings for reference (fine mesh) and MsFEM solution names
+string parametersFine = "_alpha_" + alpha + "_cont_" + cont + "_eps_" + eps; 
+string parameters = parametersFine;
+if (osCoef >= osThr) {
+    //add OS coefficient for OS methods
+	parameters = parameters + "_OS_" + osCoef;
+}
+parametersFine = parametersFine + "_N_" + Ndiscr;
+parameters = parameters + "_N_" + Ndiscr + "_n_" + nx;
+
+// Update name string to characterize specific MsFEM options
+string nameBasis = name; // to be used to check if an output directory should be created
+if (osCoef >= osThr) {
+	//osCoef should be 0 when no oversampling is applied and larger than 1 if it is to be applied
+	name = name + "OS";
+	if (glue=="dof") name = name + "gld";
+	else name = name + "glr";	
+}
+if (bcType=="CR" || osCoef>osThr) {
+	//specify the use of weak or strong BC for CR methods
+	if (strongDir) name = name + "_strDir_" + strongDir;
+	else name = name + "_weakDir";
+}
+
+// Directory names for storage of offline phase
+string basisDir = output + "basis_" + name + parameters;
+string coeffDir = output + "effective_coeff_" + name + parameters;
+if (iproc==0 && nameBasis != "REF") {
+    string createDir = "mkdir -p " + output;
+    exec(createDir);
+	if (bcType != "") { //exclude the code used for the computation of the reference solution
+		createDir = "mkdir -p " + basisDir;
+		exec(createDir); //directory to store numerical correctors and bubble functions
+		createDir = "mkdir -p " + coeffDir;
+		exec(createDir); //directory to store the effective coefficients for the MsFEM
+	}
+}
+
+// Add the choice of test space to the MsFEM name
+name = name + nameMPI;
+name = name + "_testMS_" + testMS;
+
+// Add the bubble specifications to the MsFEM name
+if (useB) {
+	name = name + "_wB";
+	if (treatB=="out_system") name = name + "os";
+	else name = name + "is";
+}
+else name = name + "_nB";
+
+// int coarseerrors=0; //to be set to 1 if the script considers coarse errors 
+//                     //and no solutions are to be saved in write_results[/_MPI].idp
+
+
+// Define residue output stream and data structures
+ofstream ffRes(residueFile, append);
+real maxResOffline=0; //storage of the maximum residue in the offline stage on the main process
+real imaxResOffline=0; //storage of the maximum residue in the offline stage on the current process
+real LINOSRes=0; //storage of the maximum residue for the DOF option for LinOS on the main process
+real iLINOSRes=0; //storage of the maximum residue for the DOF option for LinOS on the current process
+real ResOnline=0; //residue of the online stage in the online stage -- restricted to main process only
+
+// Write starting message for the method
+if (iproc==0) {
+	cout << "////////////////////////////////////////////////////////////////" << endl;
+	ffLog << "////////////////////////////////////////////////////////////////" << endl;
+	if (nameBasis == "REF") {
+		cout << "// Computing reference solution with parameters " + parametersFine << endl;
+		ffLog << "// Computing reference solution with parameters " + parametersFine << endl;
+		ffRes << "// Computing reference solution with parameters " + parametersFine << endl;
+	} else {
+		cout << "// Performing " + name + " with parameters " + parameters << endl;
+		cout << "// Variational forms used: " + vfname << endl;
+		ffLog << "// Performing " + name + " with parameters " + parameters << endl;
+		ffLog << "// Variational forms used: " + vfname << endl;
+		ffRes << "// Performing " + name + " with parameters " + parameters << endl;
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////
 // Define internal data structures                                   //
 ///////////////////////////////////////////////////////////////////////
 
 int ndofOffline;
 {
-    //obtain the number of DOF for the discretization of each coarse element
+    // Obtain the number of DOF for the discretization of each coarse element
     phi[][0]=2;
     mesh K=trunc(Th,phi>1,split=1);
     fespace VK(K,P1);
@@ -156,12 +255,86 @@ real[int,int] storeVx(storeLen,ndofOffline); storeVx=0;
 real[int,int] storeVy(storeLen,ndofOffline); storeVy=0;
 real[int,int] storeB(storeLen,ndofOffline); storeB=0;
 
+// Initialize data structures to save errors on the global process
+// These reals can be used when no communication between processes is required
+real eL1=0,   eL2=0,   eH1=0,   eMax=0; //errors on the entire domain
+real eML1=0,  eML2=0,  eMH1=0,  eMMax=0; //errors OBL according to the definition of Madiot
+real eOL1=0,  eOL2=0,  eOH1=0,  eOMax=0; //errors outside the mesh elements at the outflow
+real erL1=0,  erL2=0,  erH1=0,  erMax=0; //relative errors on the entire domain
+real erML1=0, erML2=0, erMH1=0, erMMax=0; //relative errors OBL according to the definition of Madiot
+real erOL1=0, erOL2=0, erOH1=0, erOMax=0; //relative errors outside the mesh elements at the outflow
+// MPI reduce can only handle arrays in FreeFem
+real[int] eL1Gl(1),   eL2Gl(1),   eH1Gl(1),   eMaxGl(1); //errors on the entire domain
+real[int] eML1Gl(1),  eML2Gl(1),  eMH1Gl(1),  eMMaxGl(1); //errors OBL according to the definition of Madiot
+real[int] eOL1Gl(1),  eOL2Gl(1),  eOH1Gl(1),  eOMaxGl(1); //errors outside the mesh elements at the outflow
+real[int] erL1Gl(1),  erL2Gl(1),  erH1Gl(1),  erMaxGl(1); //relative errors on the entire domain
+real[int] erML1Gl(1), erML2Gl(1), erMH1Gl(1), erMMaxGl(1); //relative errors OBL according to the definition of Madiot
+real[int] erOL1Gl(1), erOL2Gl(1), erOH1Gl(1), erOMaxGl(1); //relative errors outside the mesh elements at the outflow
+// For the various norms of uref
+real nL1=0, nL2=0, nH1=0, nMax=0; 
+
+
+///////////////////////////////////////////////////////////////////////
+// Effective coefficients for the macroscopic problem                //
+///////////////////////////////////////////////////////////////////////
+
+// Effective coefficients for the main process (== only process for sequential code)
+VH0 AHxx=0, AHxy=0, AHyx=0, AHyy=0, 
+	BHx=0, BHy=0, BAHx=0, BAHy=0, MH=0, 
+	fH=0, fB=0,
+	AHB=0, rH=0, rHx=0, rHy=0, lH=0, lHx=0, lHy=0;
+
+// Additional coefficients of the effective problem to capture mutliscale test contributions
+VH0 AHxxTestMS=0, AHxyTestMS=0, AHyxTestMS=0, AHyyTestMS=0, 
+	BHxTestMS=0, BHyTestMS=0, BAHxTestMS=0, BAHyTestMS=0, MHTestMS=0, 
+	fHxTestMS=0, fHyTestMS=0, fHTestMS=0,
+	fHxTestMSsupg=0, fHyTestMSsupg=0, fHTestMSsupg=0,
+	rHTestMS=0, rHxTestMS=0, rHyTestMS=0;
+// There is no AHBTestMS/lH[/x/y]TestMS because we always test against the computed multiscale bubbles
+
+// Effective coefficients for the current process, to be sent to the main process at the end of the online stage
+VH0 iAHxx=0, iAHxy=0, iAHyx=0, iAHyy=0, 
+	iBHx=0, iBHy=0, iBAHx=0, iBAHy=0, iMH=0, 
+	ifH=0, ifB=0,
+	iAHB=0, irH=0, irHx=0, irHy=0, ilH=0, ilHx=0, ilHy=0;
+VH0 iAHxxTestMS=0, iAHxyTestMS=0, iAHyxTestMS=0, iAHyyTestMS=0, 
+	iBHxTestMS=0, iBHyTestMS=0, iBAHxTestMS=0, iBAHyTestMS=0, iMHTestMS=0, 
+	ifHxTestMS=0, ifHyTestMS=0, ifHTestMS=0,
+	ifHxTestMSsupg=0, ifHyTestMSsupg=0, ifHTestMSsupg=0,
+	irHTestMS=0, irHxTestMS=0, irHyTestMS=0;
+ 
+// Effective variational forms in terms of the above coefficients (that are to be computed)
+// All piecewise constant coefficients will be computed in such a way that the evaluation..
+// ..of the respective integrals at the barycentre corresponds to the exact integral..
+// ..to be computed for the effective problem
+varf rhsP1(unused,vH) = // Right-hand side of the effective problem
+	 int2d(TH)(fRHS*vH) 
+	+int2d(TH,qft=qf1pT)(fHTestMS*vH + fHxTestMS*dx(vH) + fHyTestMS*dy(vH));
+varf rhsP1supg(unsued,vH) = // Right-hand side contribution for the SUPG method
+	 int2d(TH)(rhssupg(vH))
+	+int2d(TH,qft=qf1pT)(fHTestMSsupg*vH + fHxTestMSsupg*dx(vH) + fHyTestMSsupg*dy(vH));
+varf effectiveVar(uH,vH) = // Effective bilinear form without bubble functions
+	 int2d(TH,qft=qf1pT)( dx(vH)*(AHxx+AHxxTestMS)*dx(uH) + dy(vH)*(AHyx+AHyxTestMS)*dx(uH) 
+	                    + dx(vH)*(AHxy+AHxyTestMS)*dy(uH) + dy(vH)*(AHyy+AHyyTestMS)*dy(uH) 
+						+ vH*(BHx+BHxTestMS)*dx(uH)   + vH*(BHy+BHyTestMS)*dy(uH)
+						+ uH*(BAHx+BAHxTestMS)*dx(vH) + uH*(BAHy+BAHyTestMS)*dy(vH)
+						+ uH*vH*(MH+MHTestMS) );
+varf rEffective(u0,vH) = // Effective form for bubbles tested against P1
+	 int2d(TH,qft=qf1pT)( u0*( (rHx+rHxTestMS)*dx(vH) + (rHy+rHyTestMS)*dy(vH)
+	                         + (rH+rHTestMS)*vH ) );
+varf rEffectiveOS(unused,vH) = // Effective form for predetermined bubbles tested against P1
+	 int2d(TH,qft=qf1pT)( fH*( (rHx+rHxTestMS)*dx(vH) + (rHy+rHyTestMS)*dy(vH)
+	                         + (rH+rHTestMS)*vH ) );
+varf lEffective(uH,v0) = // Effective form for P1 tested against bubbles
+	 int2d(TH,qft=qf1pT)( v0*( lH*uH + lHx*dx(uH) + lHy*dy(uH)) );
+
 
 ///////////////////////////////////////////////////////////////////////
 // Construction of multiscale basis                                  //
 ///////////////////////////////////////////////////////////////////////
 
 include "../msfem_blocks/tools.idp" //load some functions and macros for OS
+include "../msfem_blocks/offline_stage.idp" //load macros for offline stage
 
 for(int i=0; i<VH0.ndof; i++) {
     cout <<"construction ms coefficients on tri "<<i<<endl;
@@ -169,33 +342,21 @@ for(int i=0; i<VH0.ndof; i++) {
 
     if (osCoef < osThr) {  //compute numerical correctors, bubble functions on K
         //osCoef is larger than osThr if oversampling should be used
-        if (FEtype=="Lin") {
-            include "../msfem_blocks/local_problems_LIN.idp"
-            if (useVc) storeVc(i,:)=Vc[];
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
-            if (useB) storeB(i,:)=B[];
+        if (bcType=="Lin") {
+            localProblemsLIN(i,i)
         }
-        else if (FEtype=="CR") {
-            include "../msfem_blocks/local_problems_CR.idp"
-            if (useVc) storeVc(i,:)=Vc[];
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
-            if (useB) storeB(i,:)=B[];
+        else if (bcType=="CR") {
+            localProblemsCR(i,i)
         }
         // Save (internally) the offline computations on K
         // Compute effective coefficient on K
         // include "msfem_blocks/offline_effective_tensors.idp"
     } else { //OS case
-        if (FEtype=="Lin") {
-            include "../msfem_blocks/local_problems_LIN_OS.idp"
-            if (useVc) storeVc(i,:)=Vc[];
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
-            if (useB) storeB(i,:)=B[];
+        if (bcType=="Lin") {
+            localProblemsLINOS(i,i)
         }
-        else if (FEtype=="CR") {
-            include "../msfem_blocks/local_problems_CR_OS.idp"
-            if (useVc) storeVc(i,:)=Vc[];
-            storeVx(i,:)=Vx[]; storeVy(i,:)=Vy[]; 
-            if (useB) storeB(i,:)=B[];
+        else if (bcType=="CR") {
+            localProblemsCROS(i,i)
         }
         // Save (internally) the offline computations on K
         // Compute effective coefficient on K
@@ -221,7 +382,7 @@ real[int] colorhsv=[ // color hsv model
 
 macro reconstruct(uH,bubbleValue) {
     /*(plot(TH,uH,wait=1,cmm="Coarse basis function", hsv=colorhsv, fill=1);*/
-    plot(TH,uH,wait=1, fill=1,ps="basis_fem.eps");
+    plot(uH,wait=1, fill=1,ps="basis_fem.eps",hsv=colorhsv);
     Vh uHh=0; /*for the reconstructed basis functions*/
     Vh uBh=0; /*reconstruction of bubble functions*/
     Vh uHhB=0; /*reconstruction with a bubble function*/
@@ -239,7 +400,7 @@ macro reconstruct(uH,bubbleValue) {
         VK uHK;
         uHK=uH0[][i] + uHdx[][i]*(x-xb[][i]) + uHdy[][i]*(y-yb[][i]);
         real[int] uHhK=uHK[];  /*array currently representing the coarse solution on K*/
-        if (useVc) {uHhK+=uH0[][i]*storeVc(i,:);}
+        /*if (useVc) {uHhK+=uH0[][i]*storeVc(i,:);}*/
         /*VK uplot=1; uplot[]+=storeVc(i,:); plot(TH, uplot, wait=1, fill=1, value=1, cmm="Lambda_0");*/
         uHhK+=uHdx[][i]*storeVx(i,:);
         /*uplot=x-xb[][i]; uplot[]+=storeVx(i,:); plot(TH, uplot, wait=1, fill=1, value=1, cmm="Lambda_x");*/
@@ -259,13 +420,13 @@ macro reconstruct(uH,bubbleValue) {
         phi[][i]=0;
     }
     /*plot(TH, uHh, wait=1, cmm="Reconstruction of basis function", fill=1, value=0, hsv=colorhsv);*/
-    plot(TH, uHh, wait=1, fill=1, value=0, ps="basis_msfem.eps"); /*hsv=colorhsv*/
-    plot(TH, uBh, wait=1, cmm="Reconstruction of bubble function", fill=1, value=1);
-    plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1);
+    plot(uHh, wait=1, fill=1, value=0, ps="basis_msfem.eps",hsv=colorhsv);
+    /*plot(TH, uBh, wait=1, cmm="Reconstruction of bubble function", fill=1, value=1,hsv=colorhsv);*/
+    /*plot(TH, uHhB, wait=1, cmm="Reconstruction of basis function + bubbles", fill=1, value=1,hsv=colorhsv);*/
 } // EOM
 
 real basisValue=0.1;
-if (FEtype=="Lin") {
+if (bcType=="Lin") {
     fespace VH(TH,P1); 
     VH uH=0; 
     for (int i=0; i<VH.ndof; i++) {
@@ -273,17 +434,17 @@ if (FEtype=="Lin") {
         reconstruct(uH,1./basisValue)
         uH[][i]=0;
     }
-    uH=x*basisValue;
-    reconstruct(uH,1./basisValue)
+    // uH=x*basisValue;
+    // reconstruct(uH,1./basisValue)
 }
-else if (FEtype=="CR") {
+else if (bcType=="CR") {
     fespace VH(TH,P1nc); 
     VH uH=0; 
-    for (int i=0; i<VH.ndof; i++) {
+    for (int i=4; i<5; i++) {
         uH[][i]=1;
         reconstruct(uH,1./basisValue)
         uH[][i]=0;
     }
-    uH=x*basisValue;
-    reconstruct(uH,1./basisValue)
+    // uH=x*basisValue;
+    // reconstruct(uH,0)
 }

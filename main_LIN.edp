@@ -10,7 +10,7 @@
 // Initialization
 string bcType = "Lin"; //type of boundary condtitions, relevant for the macroscopic problem
 string name = bcType; //abbreviation used for the MsFEM output
-s// MPI compatibility
+// MPI compatibility
 string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 int iproc=0; //sequential code only uses a single process, which corresponds to the main process
 int nbproc=1; 

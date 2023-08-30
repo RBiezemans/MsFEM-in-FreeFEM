@@ -1031,7 +1031,7 @@ macro localProblemsCROS(i,countOffline) {
                     writeResidue(locRes,"Corrector 0 was computed with residue ")
                 }
         }
-        if (debug) printIntegralsTri(K,VcS)
+        if (debug) printIntegralsTri(K,normS,VcS)
         /* note that Vc[] and X are not of the same length; the Lagrange multipliers in X are automatically ignored */
     }
 
@@ -1039,13 +1039,13 @@ macro localProblemsCROS(i,countOffline) {
     residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
     imaxResOffline=max(locRes,imaxResOffline);
     if (debug) writeResidue(locRes,"Corrector 1 was computed with residue ")
-    if (debug) printIntegralsTri(K,VxS)
+    if (debug) printIntegralsTri(K,normS,VxS)
 
     uH[]=uHyS[];  F(0:VS.ndof-1)=pbRHS(0,VS);  if (strongDir==1) F(0:VS.ndof-1)+=boundaryVy(0,VS);  X=CRmat^-1*F;   VyS[]=X;
     residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
     imaxResOffline=max(locRes,imaxResOffline);
     if (debug) writeResidue(locRes,"Corrector 2 was computed with residue ")
-    if (debug) printIntegralsTri(K,VyS)
+    if (debug) printIntegralsTri(K,normS,VyS)
     phi[][i]=0;
 
     if (useB) {
@@ -1053,7 +1053,7 @@ macro localProblemsCROS(i,countOffline) {
         residue(CRmat,F,X,locRes); /* store residue of the local problem to locRes */
         imaxResOffline=max(locRes,imaxResOffline);
         if (debug) writeResidue(locRes,"Bubble was computed with residue ")
-        if (debug) printIntegralsTri(K,BS)
+        if (debug) printIntegralsTri(K,normS,BS)
     }
 
     if (timing) {

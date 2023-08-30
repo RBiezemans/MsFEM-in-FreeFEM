@@ -13,6 +13,9 @@ string name = bcType; //abbreviation used for the MsFEM output
 string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 int iproc=0; //sequential code only uses a single process, which corresponds to the main process
 int nbproc=1; 
+// The next macro is defined for compatibility with some macros that are loaded for parallel MsFEM,
+//  but it should never actually be executed for sequential MsFEM
+macro mpiReduce(a,b,c,d) cout << "WARNING: mpiReduce was erroneously called with sequential MsFEM" << endl //EOM 
 
 include "msfem_blocks/init.idp"
 assert(strongDir==0);
@@ -37,7 +40,7 @@ for(int i=0; i<VH0.ndof; i++)
     phi[][i]=0;
 }
 // Send all information for the global problem to the main process
-offlineEffectiveTensorsReduceMPI
+offlineEffectiveTensorsReduce
 // Save effective coefficients (for the entire coarse mesh)
 // Also save the Vc pattern over all coarse mesh elements
 offlineSaveEffectiveTensors
