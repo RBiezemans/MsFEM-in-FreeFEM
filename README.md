@@ -30,7 +30,7 @@ For its parallelized counterpart [main_LIN_MPI.edp](main_LIN_MPI.edp), run FreeF
 mpirun -np [number_of_processes] FreeFem++-mpi main_LIN_MPI.edp
 ```
 Any `main` file includes [init.idp](msfem_blocks/init.idp), which requires the presence of the [parameters.txt](parameterst.txt), [pdefile.idp](pdefile.idp) and [vffile.idp](vffile.idp) files in the `msfem_directory`.
-Find information on how to tune the MsFEM in the wiki.
+Find information on how to tune the MsFEM in the [wiki](https://github.com/RBiezemans/MsFEM-in-FreeFEM/wiki).
 
 ## Contributing
 Feel free to submit your issues or pull requests if you want to contribute to this project.
