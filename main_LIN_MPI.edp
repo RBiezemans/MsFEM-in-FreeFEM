@@ -18,6 +18,8 @@ int nbproc = mpiSize(comm); //number of processes in parallel
 int iproc = mpiRank(comm); //current process
 
 include "msfem_blocks/init.idp"
+mpiBarrier(comm); //all processes must wait for the main process to finish some actions (e.g. creating directories)
+
 fespace VH(TH,P1); //coarse global FE conforming P1 space
 
 // Offline stage
