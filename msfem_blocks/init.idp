@@ -222,6 +222,8 @@ int timing=0; //time certain steps in oversampling methods           //
 real time=clock(); 
 // Outfile stream for process output
 ofstream ffLog("log_msfem.txt", append);
+// Name string to collect info of the MsFEM for the output files
+string name = bcType;
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,6 +458,7 @@ if (iproc==0) {
 	cout << "////////////////////////////////////////////////////////////////" << endl;
 	ffLog << "////////////////////////////////////////////////////////////////" << endl;
 	if (nameBasis == "REF") {
+		name = nameBasis; // undo adaptations due to method settings
 		cout << "// Computing reference solution with parameters " + parametersFine << endl;
 		ffLog << "// Computing reference solution with parameters " + parametersFine << endl;
 		ffRes << "// Computing reference solution with parameters " + parametersFine << endl;

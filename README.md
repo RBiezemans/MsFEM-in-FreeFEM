@@ -29,8 +29,14 @@ For its parallelized counterpart [main_LIN_MPI.edp](main_LIN_MPI.edp), run FreeF
 ```
 mpirun -np [number_of_processes] FreeFem++-mpi main_LIN_MPI.edp
 ```
-Any `main` file includes [msfem_blocks/init.idp](msfem_blocks/init.idp), which requires the presence of the [parameters.txt](parameterst.txt), [pdefile.idp](pdefile.idp) and [vffile.idp](vffile.idp) files in the `msfem_directory`.
+Any `main` file includes [init.idp](msfem_blocks/init.idp), which requires the presence of the [parameters.txt](parameterst.txt), [pdefile.idp](pdefile.idp) and [vffile.idp](vffile.idp) files in the `msfem_directory`.
 Find information on how to tune the MsFEM in the wiki.
 
 ## Contributing
 Feel free to submit your issues or pull requests if you want to contribute to this project.
+To test that your changes are compatible with all main files of the current version of the project and the various  you can run the bash files [execute_test_sequential.sh](experiment/execute_test_sequential.sh) and [execute_test_parallel.sh](experiment/execute_test_parallel.sh) from the `msfem_directory`. 
+Should permission to execute these be denied, first do
+```
+chmod +x experiment/execute_test_sequential.sh
+```
+and similarly for [execute_test_parallel.sh](experiment/execute_test_parallel.sh).

@@ -2,15 +2,13 @@
 // run with   ff-mpirun -np 1 main_REF.edp  
 load "MUMPS"
 
-string name = "REF";
 string nameMPI = ""; //empty string for compatibility with init.idp
-string bcType = ""; //empty string for compatibility with init.idp
+string bcType = "REF"; //to pass the right information to the name string in init.idp
 string FEtype = "reference"; // empty string for compatibility with vffile.idp
 
 int iproc=0, nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
 
-include "./msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
-name = "REF"; // undo adaptations due to method settings
+include "msfem_blocks/init.idp" // defines bilinear form, RHS, global P1 space Vh on the fine mesh
 
 Vh uh,vh; //the global problem is formulated on a standard FE basis !
 

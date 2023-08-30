@@ -9,9 +9,8 @@
 // Initialization
 string FEtype = "P1"; //the vffile checks whether it is compatible with the intended FE type (P1 or multiscale)
 string bcType = "Lin"; //type of boundary condtitions, relevant for the macroscopic problem
-string name = bcType; //abbreviation used for the MsFEM output
-string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
 // MPI setup
+string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
 mpiComm comm(mpiCommWorld,0,0);
 int nbproc = mpiSize(comm); //number of processes in parallel
 int iproc = mpiRank(comm); //current process

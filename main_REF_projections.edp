@@ -1,9 +1,8 @@
 // Compute projections of the reference solution in the semi-H1 norms on the Lagrange and CR P1 spaces
 // run with   FreeFem++ main_REF_projections.edp  
 
-string name = "REF";
 string nameMPI = ""; //empty string for compatibility with init.idp
-string bcType = ""; //empty string for compatibility with init.idp
+string bcType = "REF"; //to pass the right information to the name string in init.idp
 string FEtype = "reference"; // empty string for compatibility with vffile.idp
 
 int iproc=0, nbproc=1; //defined for compatibility with init.idp in the case of parallel computing
