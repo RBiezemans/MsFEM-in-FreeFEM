@@ -22,7 +22,8 @@ fespace VH(TH,P1nc); //coarse global FE Crouzeix-Raviart space
 
 
 // Offline stage
-if (offlineMode == "compute") {
+if (offlineMode == "compute") 
+{
     int countOffline=0; //counter for the number of triangles treated in the offline stage on the current process
     for(int i=0; i<VH0.ndof; i++) 
     {

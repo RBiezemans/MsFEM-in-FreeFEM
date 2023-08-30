@@ -5,13 +5,10 @@
 //            -o specifies the option for the offline stage: either "compute" (default) or "load"
 // The user must ensure at all times that the appropriate mode is used for correct results
 //
-////// Parallel version ///////////////////////////////////////////////
+////// Parallel version ////////////////////////////////////////////////
 
 
-///////////////////////////////////////////////////////////////////////
-// INITIALIZATION                                                    //
-// (msfem_blocks/init.idp)                                           //
-///////////////////////////////////////////////////////////////////////
+// Initialization
 string bcType = "Lin"; //type of boundary condtitions, relevant for the macroscopic problem
 string name = bcType; //abbreviation used for the MsFEM output
 string nameMPI = "_MPI"; //added to name later, indicating usage of parallel code
