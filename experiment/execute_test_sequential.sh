@@ -64,7 +64,6 @@ for TEST_LARGE_N in $TOTEST_LARGE_N; do sed -i "s/N=.*/N= $TEST_LARGE_N/" "exper
     if [ $COMPUTE_REF == 0 ]
     then
         /usr/bin/mpirun -np 1 /usr/local/bin/FreeFem++-mpi main_REF.edp -v 0
-        FreeFem++ main_REF_projections.edp -v 0 -ng
     fi
 
     for TEST_VFFILE in $TOTEST_VFFILE; do cp variational_forms/$TEST_VFFILE vffile.idp

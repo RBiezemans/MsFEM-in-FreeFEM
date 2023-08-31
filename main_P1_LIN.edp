@@ -54,4 +54,3 @@ solveGlobalProblem(uH,uB)
 
 // Post-processing
 postReconstructionError(uH,uB) //error computation
-postCoarseError(uH) //error computation of projections on the coarse space

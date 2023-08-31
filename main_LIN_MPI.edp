@@ -77,4 +77,3 @@ if (iproc>0) {
 
 // Post-processing
 postReconstructionErrorMPI(uH,uB) //error computation
-postCoarseError(uH) //error computation of projections on the coarse space
