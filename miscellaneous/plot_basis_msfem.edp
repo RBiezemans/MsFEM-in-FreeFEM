@@ -12,6 +12,7 @@ int timing=0; //time certain steps in oversampling methods           //
 
 string bcType="CR";
 string name = bcType; //abbreviation used for the MsFEM output
+string FEtype = "multiscale"; //the vffile checks whether it is compatible with the intended FE type (P1 or multiscale)
 // MPI compatibility
 string nameMPI = ""; //nothing is added to name later, indicating no usage of parallel code
 int iproc=0; //sequential code only uses a single process, which corresponds to the main process
@@ -367,17 +368,25 @@ for(int i=0; i<VH0.ndof; i++) {
 }
 
 
-real[int] colorhsv=[ // color hsv model
-   1./6., 0.1216 , 1., // LightYellow
-   //1./12., 0.3031 , 1., // LightOrange
-   38./360., 1. , 1., // Orange
-   //0., 0.75, 1., // Coral Red
-   1./72., 0.75 , 0.86// Google Red
-   //1./180., 1., 1. // Candy Apple Red
-   //1, 1. , 1, // red
-   //7./12., 0.48, 0.71, // dark blue
-   //5./6., 0.85, 0.79 // dark blue
-   ];
+// real[int] colorhsv=[ // color hsv model
+//    1./6., 0.1216 , 1., // LightYellow
+//    //1./12., 0.3031 , 1., // LightOrange
+//    38./360., 1. , 1., // Orange
+//    //0., 0.75, 1., // Coral Red
+//    1./72., 0.75 , 0.86// Google Red
+//    //1./180., 1., 1. // Candy Apple Red
+//    //1, 1. , 1, // red
+//    //7./12., 0.48, 0.71, // dark blue
+//    //5./6., 0.85, 0.79 // dark blue
+//    ];
+
+real[int] colorhsv=[ // Rainbow Simple Color Palette
+    203./360, 0.640, 0.980,       // Blue
+     88./360, 0.650, 0.886,       // Green
+     60./360, 0.600, 1.000,       // Yellow
+     37./360, 0.667, 1.000,       // Orange
+      0./360, 0.600, 1.000        // Red
+];
 
 
 macro reconstruct(uH,bubbleValue) {
